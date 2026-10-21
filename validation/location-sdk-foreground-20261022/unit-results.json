@@ -1,0 +1,78 @@
+{
+  "total": {
+    "tests": 1117,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "modules": {
+    "app": {
+      "tests": 600,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/home": {
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/location": {
+      "tests": 211,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/servicecountdown": {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/identification": {
+      "tests": 84,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/carddiagnostics": {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/photoupload": {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "integration/txface": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/ui": {
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/common": {
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/data": {
+      "tests": 94,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "fullPreflightPassed": true,
+  "scope": "Historical SDK-FGS trial source only; does not validate subsequent production wake-lock/45-second restart candidate."
+}

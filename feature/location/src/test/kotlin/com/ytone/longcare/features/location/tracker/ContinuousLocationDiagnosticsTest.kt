@@ -366,9 +366,10 @@ class ContinuousLocationDiagnosticsTest {
         val contextual = ContinuousLocationDiagnostics("12345678-1234-1234-1234-123456789012", 30_000L,
             runtimeSnapshot = { mapOf(
                 "clientPurpose" to "service", "orderId" to Long.MAX_VALUE,
+                "backgroundPolicy" to "bg=1,ds=3,lps=1",
                 "androidApi" to 35, "appVersionCode" to 74L, "amapSdkVersion" to "11.3.101",
                 "networkAvailable" to true, "networkValidated" to false, "networkTransport" to "CELLULAR",
-                "deviceIdle" to true, "screenOn" to false, "powerSave" to true, "batteryExempt" to false,
+                "deviceIdle" to true, "deviceLightIdle" to false, "screenOn" to false, "powerSave" to true, "batteryExempt" to false,
             ) }, elapsedRealtime = { now },
         )
         val raw = location(4)
@@ -382,8 +383,9 @@ class ContinuousLocationDiagnosticsTest {
         val fields = delivered.last().fields
         listOf("requestId", "failureEpisode", "errorCode", "failureCount", "recoveryCount", "errorCounts",
             "observationDurationMs", "stage", "intervalMs", "httpTimeoutMs", "networkFailureKind", "sdkDetailCode",
-            "clientPurpose", "orderId", "androidApi", "appVersionCode", "amapSdkVersion")
+            "clientPurpose", "orderId", "androidApi", "appVersionCode", "amapSdkVersion", "backgroundPolicy")
             .forEach { assertTrue("Required diagnostic field was truncated: $it", fields.containsKey(it)) }
+        assertEquals("bg=1,ds=3,lps=1", fields["backgroundPolicy"])
         assertEquals("4:2,13:1,12:1,11:1,other:2", fields["errorCounts"])
         assertTrue(delivered.all { requireNotNull(it.message).length <= 950 })
         assertTrue(delivered.all { it.fields.size <= 30 })

@@ -1,5 +1,6 @@
 package com.ytone.longcare.platform.location
 
+import android.net.ConnectivityManager
 import android.os.Looper
 import android.os.Build
 import android.os.Handler
@@ -53,6 +54,31 @@ class AmapContinuousRecoveryTest {
         assertTrue((fields["appVersionCode"] as? Long ?: 0L) > 0L)
         for (key in listOf("deviceIdle", "screenOn", "powerSave", "batteryExempt")) {
             assertTrue("Platform state unavailable: $key", fields[key] is Boolean)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            assertTrue("Light idle state unavailable", fields["deviceLightIdle"] is Boolean)
+            assertTrue("Low Power Standby setting unavailable", fields["lowPowerStandbyEnabled"] is Boolean)
+        } else {
+            assertTrue(fields.containsKey("deviceLightIdle"))
+            assertNull(fields["deviceLightIdle"])
+            assertTrue(fields.containsKey("lowPowerStandbyEnabled"))
+            assertNull(fields["lowPowerStandbyEnabled"])
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            assertTrue("Background restriction unavailable", fields["backgroundRestricted"] is Boolean)
+        } else {
+            assertTrue(fields.containsKey("backgroundRestricted"))
+            assertNull(fields["backgroundRestricted"])
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            assertTrue("Unexpected Data Saver policy", fields["restrictBackgroundStatus"] in setOf(
+                ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED,
+                ConnectivityManager.RESTRICT_BACKGROUND_STATUS_WHITELISTED,
+                ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
+            ))
+        } else {
+            assertTrue(fields.containsKey("restrictBackgroundStatus"))
+            assertNull(fields["restrictBackgroundStatus"])
         }
         assertTrue(fields["networkAvailable"] is Boolean)
         if (fields["networkAvailable"] == false) {
@@ -229,9 +255,57 @@ class AmapContinuousRecoveryTest {
         recoveredClient.assertReleased()
     }
 
-    @Test fun refreshed_sdk_wall_times_cannot_make_an_old_source_tick_complete_an_action() = withFixture {
+    @Test fun temporary_actions_accept_fresh_gps_source_ticks_despite_wall_clock_offsets() = withFixture {
+        for (wallOffsetMs in listOf(5_000L, -60_000L)) {
+            val action = scope.async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
+            val client = nextClient()
+            val gps = validLocation().apply {
+                locationType = AMapLocation.LOCATION_TYPE_GPS
+                time = System.currentTimeMillis() + wallOffsetMs
+                setLocationTickTime(SystemClock.elapsedRealtimeNanos())
+            }
+            client.emitFromHandler(gps)
+
+            val result = action.await() as LocationAcquisition.Success
+            assertEquals(AMapLocation.LOCATION_TYPE_GPS, result.location.locationType)
+            assertEquals(gps.time, result.location.locationTime)
+            assertEquals(gps.locationTickTime / 1_000_000L, result.location.sourceElapsedRealtime)
+            client.assertReleased()
+        }
+    }
+
+    @Test fun checkout_reuses_the_continuous_client_for_fresh_gps_with_an_offset_wall_clock() = withFixture {
+        start("order-a")
+        val client = nextClient()
+        assertOption(client.options.receive(), intervalMs = 30_000L)
+        val action = scope.async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
+        assertOption(client.options.receive(), intervalMs = 3_000L)
+        val gps = validLocation().apply {
+            locationType = AMapLocation.LOCATION_TYPE_GPS
+            time = System.currentTimeMillis() - 60_000L
+            setLocationTickTime(SystemClock.elapsedRealtimeNanos())
+        }
+        client.emitFromHandler(gps)
+
+        val result = action.await() as LocationAcquisition.Success
+        assertEquals(gps.time, result.location.locationTime)
+        assertEquals(gps.locationTickTime / 1_000_000L, result.location.sourceElapsedRealtime)
+        assertOption(client.options.receive(), intervalMs = 30_000L)
+        assertClientActive(client)
+    }
+
+    @Test fun future_and_pre_action_source_ticks_cannot_complete_an_action_before_a_fresh_tick() = withFixture {
         val action = scope.async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
         val client = nextClient()
+        val future = validLocation().apply {
+            locationType = AMapLocation.LOCATION_TYPE_GPS
+            setLocationTickTime(SystemClock.elapsedRealtimeNanos() + 10_000_000_000L)
+        }
+        client.emitFromHandler(future)
+        assertEquals(future.locationTickTime / 1_000_000L,
+            (manager.latestEvent() as LocationAcquisition.Success).location.sourceElapsedRealtime)
+        assertNull(withTimeoutOrNull(150L) { action.await() })
+        assertFalse(action.isCompleted)
         val oldTick = SystemClock.elapsedRealtimeNanos() - 10_000_000_000L
         assertTrue("The test requires more than ten seconds of device uptime", oldTick > 0L)
         val reused = validLocation().apply {
@@ -258,6 +332,29 @@ class AmapContinuousRecoveryTest {
         assertEquals(AMapLocation.LOCATION_TYPE_WIFI, result.location.locationType)
         assertEquals(freshTick / 1_000_000L, result.location.sourceElapsedRealtime)
         assertTrue(result.location.sourceElapsedRealtime > oldSample.sourceElapsedRealtime)
+        client.assertReleased()
+    }
+
+    @Test fun unknown_source_ticks_keep_wall_clock_validation_until_a_valid_wall_time_arrives() = withFixture {
+        val action = scope.async(Dispatchers.Main.immediate) { manager.acquireServiceOrderLocation() }
+        val client = nextClient()
+        val future = validLocation().apply {
+            time = System.currentTimeMillis() + 60_000L
+            setLocationTickTime(0L)
+        }
+        client.emitFromHandler(future)
+        val rejected = (manager.latestEvent() as LocationAcquisition.Success).location
+        assertEquals(future.time, rejected.locationTime)
+        assertEquals(0L, rejected.sourceElapsedRealtime)
+        assertNull(withTimeoutOrNull(150L) { action.await() })
+        assertFalse(action.isCompleted)
+        assertClientActive(client)
+
+        val valid = validLocation().apply { setLocationTickTime(0L) }
+        client.emitFromHandler(valid)
+        val result = action.await() as LocationAcquisition.Success
+        assertEquals(valid.time, result.location.locationTime)
+        assertEquals(0L, result.location.sourceElapsedRealtime)
         client.assertReleased()
     }
 

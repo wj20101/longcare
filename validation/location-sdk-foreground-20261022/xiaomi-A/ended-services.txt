@@ -1,0 +1,32 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{f17b68a u0 com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService}
+    intent={act=debug.location.PROBE_START cmp=com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService}
+    packageName=com.ytone.longcare
+    processName=com.ytone.longcare
+    baseDir=/data/app/com.ytone.longcare-zmJKoLSK1fYlwu46waU6wQ==/base.apk
+    dataDir=/data/user/0/com.ytone.longcare
+    app=ProcessRecord{bd51ff7 6091:com.ytone.longcare/u0a216}
+    isForeground=true foregroundId=1 foregroundNoti=Notification(channel=location_tracking_channel pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x62 color=0x00000000 vis=PRIVATE)
+    createTime=-8m30s593ms startingBgTimeout=--
+    lastActivity=-119ms restartTime=-1m50s304ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=false callStart=false lastStartId=3
+    callerPackage=com.android.shell
+    executeNesting=1 executeFg=true executingStart=-118ms
+    Delivered Starts:
+    #0 id=3 dur=-118ms dc=1
+      intent=Intent { act=debug.location.PROBE_CONTROL cmp=com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService (has extras) }
+
+  Destroying services:
+  * Destroy ServiceRecord{c71e5d7 u0 com.ytone.longcare/com.amap.api.location.APSService}
+    intent={cmp=com.ytone.longcare/com.amap.api.location.APSService}
+    packageName=com.ytone.longcare
+    processName=com.ytone.longcare
+    baseDir=/data/app/com.ytone.longcare-zmJKoLSK1fYlwu46waU6wQ==/base.apk
+    dataDir=/data/user/0/com.ytone.longcare
+    app=ProcessRecord{bd51ff7 6091:com.ytone.longcare/u0a216}
+    createTime=-8m30s323ms startingBgTimeout=--
+    lastActivity=-1m50s34ms restartTime=-- createdFromFg=true
+    callerPackage=com.ytone.longcare
+    executeNesting=2 executeFg=false executingStart=-45ms
+    destroying=true destroyTime=-45ms

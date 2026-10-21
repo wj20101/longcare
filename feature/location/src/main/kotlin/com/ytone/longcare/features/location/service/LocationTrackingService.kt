@@ -3,13 +3,13 @@ package com.ytone.longcare.features.location.service
 import android.Manifest
 import android.app.PendingIntent
 import android.app.Notification
-import android.os.PowerManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -87,6 +87,7 @@ open class LocationTrackingService : Service() {
     // Android commands, SDK state and notifications share the Service's main-thread lifecycle.
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var collectorJob: Job? = null
+    private var samplingWakeLock: PowerManager.WakeLock? = null
     private var currentGeneration: Long = 0L
     private var currentOwner: String? = null
     private var cleanupCompleted = false
@@ -268,7 +269,7 @@ open class LocationTrackingService : Service() {
                     }
                     .filterIsInstance<LocationAcquisition.Success>().map { it.location }
                 val evaluator = LocationSampleEvaluator(
-                    sessionStartedAt = locationClock.currentTimeMillis(),
+                    sessionStartedAtElapsedRealtime = locationClock.elapsedRealtime(),
                     clock = locationClock,
                 )
                 coroutineScope {
@@ -301,11 +302,16 @@ open class LocationTrackingService : Service() {
                             samplingEnabled = samplingEnabled,
                             diagnostics = diagnostics,
                         ).run()
-                    } finally { healthJob.cancel() }
+                    } finally {
+                        healthJob.cancel()
+                        releaseSamplingWakeLock()
+                    }
                 }
             } catch (cancellation: CancellationException) {
+                releaseSamplingWakeLock()
                 throw cancellation
             } catch (error: Exception) {
+                releaseSamplingWakeLock()
                 LocationEventTracker.trackError(
                     LocationEventTracker.EventType.REPORTING_TASK_ERROR,
                     throwable = error,
@@ -356,6 +362,7 @@ open class LocationTrackingService : Service() {
                 if (ready) locationClock.elapsedRealtime() else enabled.value.resumedAtElapsedRealtime)
             continuousAmapLocationManager.setSamplingEnabled(owner, ready)
         }
+        syncSamplingWakeLock(ready)
         if (!ready) {
             reportingManager.updateStatus(owner, LocationReportingStatus.PAUSED)
             updateNotification(if (locationEnabled) R.string.location_tracking_authorization_wait else R.string.location_tracking_location_off)
@@ -401,17 +408,8 @@ open class LocationTrackingService : Service() {
             if (!ready) continue
             // A client created by this very check has not had an initialization grace period yet.
             continuousAmapLocationManager.syncAppVisibility(fromHealthTimer = healthTimerElapsed && wasEnabled)
-            val power = getSystemService(POWER_SERVICE) as PowerManager
-            // Exempt apps can still sample/network in Doze; idle alone must not disable recovery.
-            if (power.isDeviceIdleMode && !power.isIgnoringBatteryOptimizations(packageName)) continue
-            // Background health checks and foreground actions share the manager's one recovery budget.
-            if (continuousAmapLocationManager.recoverStalledSampling(owner)) {
-                reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
-                updateNotification(R.string.location_tracking_locating)
-                LocationEventTracker.trackEvent(LocationEventTracker.EventType.SDK_RECOVERED,
-                    mapOf(LocationEventTracker.Attribute.ORDER_ID to session.orderId))
-            } else if (continuousAmapLocationManager.isSamplingStalled(owner)) {
-                // Keep the rebuilt listener alive: a delayed SDK callback can recover without a page visit.
+            if (continuousAmapLocationManager.isSamplingStalled(owner)) {
+                // Silence is diagnostic evidence, not a reason to replace the live SDK client.
                 reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
                 updateNotification(R.string.location_tracking_callback_wait)
             }
@@ -432,6 +430,7 @@ open class LocationTrackingService : Service() {
     }
 
     private fun stopKeepAlive(stopService: Boolean = false) {
+        releaseSamplingWakeLock()
         if (!cleanupCompleted) {
             collectorJob?.cancel()
             collectorJob = null
@@ -449,6 +448,31 @@ open class LocationTrackingService : Service() {
         }
         if (stopService) {
             cleanupStage(CleanupStage.STOP_SERVICE) { stopSelf() }
+        }
+    }
+
+    private fun syncSamplingWakeLock(active: Boolean) {
+        if (!active) {
+            releaseSamplingWakeLock()
+            return
+        }
+        runCatching {
+            val lock = samplingWakeLock ?: getSystemService(PowerManager::class.java)
+                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
+                ?.apply { setReferenceCounted(false) }
+                ?.also { samplingWakeLock = it }
+            lock?.acquire(WAKE_LOCK_LEASE_MS)
+        }.onFailure {
+            logI("定位采样唤醒锁获取失败，继续当前定位会话: ${it.javaClass.simpleName}")
+        }
+    }
+
+    private fun releaseSamplingWakeLock() {
+        val lock = samplingWakeLock ?: return
+        runCatching {
+            if (lock.isHeld) lock.release()
+        }.onFailure {
+            logI("定位采样唤醒锁释放异常: ${it.javaClass.simpleName}")
         }
     }
 
@@ -516,6 +540,8 @@ open class LocationTrackingService : Service() {
 
     companion object {
         private const val SAMPLING_HEALTH_INTERVAL_MS = 15_000L
+        private const val WAKE_LOCK_LEASE_MS = 180_000L
+        private const val WAKE_LOCK_TAG = "LongCare:LocationTrackingWakeLock"
         const val ACTION_ACQUIRE_KEEP_ALIVE = "ACTION_ACQUIRE_LOCATION_KEEPALIVE"
         const val EXTRA_OWNER = "EXTRA_OWNER"
         const val EXTRA_GENERATION = "EXTRA_GENERATION"

@@ -1,0 +1,138 @@
+{
+  "device": "xiaomi",
+  "inputFiles": [
+    "background-location-probe.jsonl"
+  ],
+  "traceRows": 23,
+  "duplicatesRemoved": 0,
+  "malformedRows": 0,
+  "captureStartElapsedRealtime": 2940803480,
+  "firstTraceElapsedRealtime": 2940990876,
+  "lastTraceElapsedRealtime": 2941039782,
+  "scope": "Local isolated repository counters only; no nursing backend request or geographic ground truth verification. Minute bucket coverage alone does not establish a rolling <=60s success gap.",
+  "wholeRunCallbacks": {
+    "raw": 2,
+    "sdkSuccess": 2,
+    "uniquePositiveSourceTicks": 2
+  },
+  "actions": [
+    {
+      "start": 2940990885,
+      "end": 2940991771,
+      "durationMs": 886,
+      "pid": 31968,
+      "clientAtStart": null,
+      "clientAtEnd": null,
+      "outcome": "success",
+      "reason": null,
+      "accuracyMeters": 61
+    }
+  ],
+  "allHttpEndsByOrderId": {
+    "9000001": {
+      "success": 1
+    }
+  },
+  "normalEndObservations": [],
+  "allPidSequence": [
+    {
+      "at": 2940990876,
+      "value": 31968
+    }
+  ],
+  "allClientSequence": [
+    {
+      "at": 2940991039,
+      "value": 1,
+      "pid": 31968
+    },
+    {
+      "at": 2941009863,
+      "value": 2,
+      "pid": 31968
+    }
+  ],
+  "unplugWindow": {
+    "startInclusive": 2941107816,
+    "endExclusive": 2941407816,
+    "durationMs": 300000,
+    "rawCallbacks": 0,
+    "sdkSuccessCallbacks": 0,
+    "nullCallbacks": 0,
+    "sdkErrorCodes": {},
+    "uniquePositiveSourceTicks": 0,
+    "uniquePositiveSuccessfulSourceTicks": 0,
+    "unseenPositiveSuccessSourceTicks": 0,
+    "positiveSuccessfulSourceAgeMsRange": null,
+    "localHttpSuccess": 0,
+    "buckets": [
+      {
+        "startInclusive": 2941107816,
+        "endExclusive": 2941167816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941167816,
+        "endExclusive": 2941227816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941227816,
+        "endExclusive": 2941287816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941287816,
+        "endExclusive": 2941347816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941347816,
+        "endExclusive": 2941407816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      }
+    ],
+    "allCompleteMinuteBucketsHaveLocalSuccess": false,
+    "boundaryInclusiveMaxGapMs": {
+      "rawCallback": 300000,
+      "sdkSuccessCallback": 300000,
+      "unseenPositiveSuccessSourceTick": 300000,
+      "localHttpSuccess": 300000
+    },
+    "pidSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2941039782,
+        "value": 31968
+      }
+    ],
+    "clientSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2941039782,
+        "value": 2,
+        "pid": 31968
+      }
+    ],
+    "clientCreatesInWindow": [],
+    "traceBracketsWholeWindow": false,
+    "cpu": {
+      "windowCpuSleepMs": null,
+      "note": "No exact in-window sleep timing is measured; elapsed minus uptime only bounds suspend."
+    },
+    "mappingUncertaintyMs": 51.96
+  }
+}

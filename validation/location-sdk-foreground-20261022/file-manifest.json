@@ -1,0 +1,487 @@
+{
+  "algorithm": "SHA-256",
+  "selfExcluded": true,
+  "fileCount": 96,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 6298,
+      "sha256": "de71c789a42d66e9af60dc45715de62d734f51435cf8f4e82ccb71e29f38e66b"
+    },
+    {
+      "path": "analyze.py",
+      "bytes": 8521,
+      "sha256": "611c86b713a79f91af1e025bf08106527fb20ec1a2d3cc4570874563fc2378df"
+    },
+    {
+      "path": "base-commit.txt",
+      "bytes": 41,
+      "sha256": "201dadb87e2f6f763a6b42daf7eb43fa379d8a8f3732f6b8c9f65a11413af49b"
+    },
+    {
+      "path": "comparison-summary.json",
+      "bytes": 10856,
+      "sha256": "f9fa46b9644428de01155e592a8139732701bab5dcbe9fb1248da34a9378c9ee"
+    },
+    {
+      "path": "current-candidate-unit-results.json",
+      "bytes": 1863,
+      "sha256": "94abfb4f656485a4350ed2558a187ea54cc3d2e30b739dfa0a36dec255bb8b30"
+    },
+    {
+      "path": "current-candidate-verification.json",
+      "bytes": 1386,
+      "sha256": "558bf2a15e29fa9387cfa7f7bdd8c08d60d7ef368d4f421f1df584100c3fa75e"
+    },
+    {
+      "path": "history/cpu-ab/xiaomi/B-summary.json",
+      "bytes": 9049,
+      "sha256": "14f2ca802491d064a4dea842da492c21a6593c467c87d6684c95f8a8a2e2de2c"
+    },
+    {
+      "path": "history/official-flow/huawei/summary-current.json",
+      "bytes": 784,
+      "sha256": "747a1f4687d0d078a279c3ed749760d9ea48fa3c05bd48470dfedeffba4a1013"
+    },
+    {
+      "path": "history/official-flow/huawei/summary.json",
+      "bytes": 3074,
+      "sha256": "038aeeca60f1e7439807ecb0d07dfbe49037a83433de8d0d8776f7e9e49e1490"
+    },
+    {
+      "path": "history/official-flow/xiaomi/summary-current.json",
+      "bytes": 3563,
+      "sha256": "228210c261e80bc3a4f4fa8e9d62170e1d24c3f48f456754ef09cd8a071ce47c"
+    },
+    {
+      "path": "history/official-flow/xiaomi/summary.json",
+      "bytes": 5364,
+      "sha256": "9a71860e179654f79a54c697c10a33fc085bb3d307ada786ad30482b5844bca9"
+    },
+    {
+      "path": "history/power-policy/xiaomi/summary.json",
+      "bytes": 3747,
+      "sha256": "2a9d00f77c7a04efd8488631bfbce5cdfc2adcd64db8a65cc93af511fc64b331"
+    },
+    {
+      "path": "history/power-policy/xiaomi-oem/summary.json",
+      "bytes": 3751,
+      "sha256": "76775e5bf983bbf507b2976ecc6a71eb162a2400c7671403d25dd477ac0230c1"
+    },
+    {
+      "path": "history/power-policy/xiaomi-physical-comparison-audit.json",
+      "bytes": 10078,
+      "sha256": "17a6ef857a898d87620ffea6461a2fafa40615753faed1e2471702062f826241"
+    },
+    {
+      "path": "huawei/background-location-probe.jsonl",
+      "bytes": 23820,
+      "sha256": "196abca35f2275419d694705150701f2b197965d777b40ac78e589586ea07f46"
+    },
+    {
+      "path": "huawei/before-interrupt-services.txt",
+      "bytes": 2806,
+      "sha256": "f8f384722e1954691167df97fc331ed5698f6ded4c3a7c0332668965ae1c761f"
+    },
+    {
+      "path": "huawei/checkout-action-services.txt",
+      "bytes": 2806,
+      "sha256": "78d8454999b09fcdfa1b624b34f6d88810eca4c41c8b78720f2fec8a50983d92"
+    },
+    {
+      "path": "huawei/ended-observed-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "huawei/final-owned-notification-headers.txt",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "huawei/final-restoration.json",
+      "bytes": 862,
+      "sha256": "a8ebfee37364327a6cace747185ea804decbd75e296da84d44081fddab724b40"
+    },
+    {
+      "path": "huawei/final-restored-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "huawei/foreground-ready-services.txt",
+      "bytes": 2794,
+      "sha256": "deefb779107fa4862f0b39f0b868e450ee5ee65254c663c8a214a71f27795086"
+    },
+    {
+      "path": "huawei/home-observed-services.txt",
+      "bytes": 2799,
+      "sha256": "6a38fbd11d77e62b2de578fa9b651db406948346e3170f1935c81711291fd419"
+    },
+    {
+      "path": "huawei/home-services.txt",
+      "bytes": 2794,
+      "sha256": "0c06f65658346d15cca5a1b3ed83efe64611f381e19560ad2f2dc964320a89a7"
+    },
+    {
+      "path": "huawei/lock-services.txt",
+      "bytes": 2801,
+      "sha256": "38e8772f4f2ce5b329af5b2de37e50932fb4b51d8679c0b4e8ff004b902fa049"
+    },
+    {
+      "path": "huawei/locked-observed-services.txt",
+      "bytes": 2808,
+      "sha256": "b71aa305718009f1aa6f98a1ee9a8968c48373c2b02d4927118018fa25caec16"
+    },
+    {
+      "path": "huawei/original-state.json",
+      "bytes": 504,
+      "sha256": "8c9c67f5ba7dd794d6679f27899d72d6ac0555e281b1c5167908e44361fcb24b"
+    },
+    {
+      "path": "huawei/probe-counters.json",
+      "bytes": 3092,
+      "sha256": "51f7e53c89667fece98efa101f1390045aec5a04d39cfb89060acbb5a6e2b665"
+    },
+    {
+      "path": "huawei/probe.log",
+      "bytes": 32007,
+      "sha256": "d971eba5400a60763807ae401f4d08f78d208e1676f0d0ec6304fa539ee4c69c"
+    },
+    {
+      "path": "huawei/probe.py",
+      "bytes": 11838,
+      "sha256": "1105dabfbf88a9f4a34bd32c27414ad7e43559bb8fcecd12791ad0a7c17655c9"
+    },
+    {
+      "path": "huawei/start-services.txt",
+      "bytes": 997,
+      "sha256": "6195bb95dec9dec96c52dbfd916adef0b5fe10d6c76d89c4337e8499a0a34d71"
+    },
+    {
+      "path": "huawei/sticky-recovery-relevant.log",
+      "bytes": 2499,
+      "sha256": "cae17987710dde914bd46cc0ddae23a7a60c10b24770cc9a3e221a61f183e662"
+    },
+    {
+      "path": "huawei/sticky-restored-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "huawei/summary.json",
+      "bytes": 8697,
+      "sha256": "fa98db41823528b79724538225d9658790164ace282a6a603b94c8c05fa7a0f5"
+    },
+    {
+      "path": "huawei/switched-order-services.txt",
+      "bytes": 2804,
+      "sha256": "50860ed7bb309a29aaff118d8e206f6398dfcdb8f8cfd0696833f8015d76918a"
+    },
+    {
+      "path": "huawei/visible-restored-services.txt",
+      "bytes": 2766,
+      "sha256": "6db2ae9f265adb7bc93a1f5ba751ec1462b7b5383e93e68a8d9c8ebe084ce15b"
+    },
+    {
+      "path": "huawei/wired-lock-window.json",
+      "bytes": 201,
+      "sha256": "f1dea66e8ce2e7eeff7e78115a975344fe1c42c3c814e8691b68904625e64c21"
+    },
+    {
+      "path": "offline-validation.json",
+      "bytes": 869,
+      "sha256": "a2233ce1dfea121d64d14212087757f17ce7bab084d7c2a65a8de680a664ddd8"
+    },
+    {
+      "path": "probe.py",
+      "bytes": 20275,
+      "sha256": "1a1e6d9b1884a178827e33c6ba78c4df0af0635881535800a5950abf7bdeaccb"
+    },
+    {
+      "path": "report.md",
+      "bytes": 21540,
+      "sha256": "d7d0e8143f517703d53ea0bec64e498ee4d57797d738a0f80cd906fec3aca212"
+    },
+    {
+      "path": "source/official-source-index.json",
+      "bytes": 7952,
+      "sha256": "db988501d757e48f1dd564fb765e9785c6cab41fda9974456388685a8413b0ed"
+    },
+    {
+      "path": "source/sdk-index.json",
+      "bytes": 490,
+      "sha256": "eb02c23c4359a246e5fb5abf4e2b8dd2b8e086883dfc286bbafddef35cc2b652"
+    },
+    {
+      "path": "summarize-device.py",
+      "bytes": 10294,
+      "sha256": "b6f992b53d4496a951be5e517c919feaf27681e09592e3d37738e97afbd93d89"
+    },
+    {
+      "path": "unit-results.json",
+      "bytes": 1482,
+      "sha256": "536cfd4eb1c33b183bf26e8b21c9504d3be813bfc8f699126578d18bfee2ce03"
+    },
+    {
+      "path": "xiaomi-A/background-location-probe.jsonl",
+      "bytes": 6619,
+      "sha256": "6f87ff4e301acc2e23b125f60f92f619a8fc3c68af91f2fee64ece9e8a040a55"
+    },
+    {
+      "path": "xiaomi-A/battery-history-transitions.txt",
+      "bytes": 2751,
+      "sha256": "86e329c9ffed68dca897928fb1545da2677d08cee29aa3950a2a4af58cf711ed"
+    },
+    {
+      "path": "xiaomi-A/before-unplug-live-policy.json",
+      "bytes": 723,
+      "sha256": "3d42754bb5fc8fd94d8bd96feae35e2e9a3b89d3c765e42b1a9fcfde3eb79390"
+    },
+    {
+      "path": "xiaomi-A/before-unplug-live-services.txt",
+      "bytes": 2428,
+      "sha256": "3ed654cc1f7f9940db6c828da805ee55e8c454278d9d7c42d252fc1270c549f0"
+    },
+    {
+      "path": "xiaomi-A/before-unplug-services.txt",
+      "bytes": 2428,
+      "sha256": "9c3c79856be5707eb6b906baa091c83ea3ef42b63bc0f7da09a667c29edaae3d"
+    },
+    {
+      "path": "xiaomi-A/ended-services.txt",
+      "bytes": 1941,
+      "sha256": "4c951eb96e815dbed1eb77bd0a175735d99a5dab0bcece12ca7a2f7b89985882"
+    },
+    {
+      "path": "xiaomi-A/home-services.txt",
+      "bytes": 2422,
+      "sha256": "03a922dcde3a7d12abef9a4ffde0e7b6eb5c1acc3766d1ece6bcc9bb424c106e"
+    },
+    {
+      "path": "xiaomi-A/original-state.json",
+      "bytes": 454,
+      "sha256": "94259832de42f170093e2119c71b00508b6bee53d5f92a2838eb1b80745f1564"
+    },
+    {
+      "path": "xiaomi-A/preflight-live-policy.json",
+      "bytes": 372,
+      "sha256": "7efad07024e8983fc3bc0ea06ce30841e7494795bbcfd512443aec148b1d2fb2"
+    },
+    {
+      "path": "xiaomi-A/preflight-live-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-A/prepare-live-policy.json",
+      "bytes": 372,
+      "sha256": "c3e9663c7c8347fc3cbd72f1233675ed249f7a616f0e59107a0aec38b2546df6"
+    },
+    {
+      "path": "xiaomi-A/prepare-live-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-A/probe-counters.json",
+      "bytes": 1250,
+      "sha256": "e139545e05ac2ff76037c918de8b2f798c2d5059c128eae7fc8e925a347371c2"
+    },
+    {
+      "path": "xiaomi-A/probe.log",
+      "bytes": 8017,
+      "sha256": "34892faaccae977241d54bc3404798370c23d85c20b2a9a0fbc979850aa64f19"
+    },
+    {
+      "path": "xiaomi-A/reconnected-live-policy.json",
+      "bytes": 723,
+      "sha256": "b17c5d2dd5994217d142143439a53af2b09f19c126228588b8906641ddd94f4a"
+    },
+    {
+      "path": "xiaomi-A/reconnected-live-services.txt",
+      "bytes": 2440,
+      "sha256": "1c95a92cd97f4af20c1092685d28993e5b7c0d2027976b6b92a991bafa997950"
+    },
+    {
+      "path": "xiaomi-A/reconnected-services.txt",
+      "bytes": 2440,
+      "sha256": "a268304156038b0a798f769f296ae15391a6663cbd2ebb5757eb3d1e74e9afaf"
+    },
+    {
+      "path": "xiaomi-A/run-config.json",
+      "bytes": 585,
+      "sha256": "dc9887978ab37afef1fe6c6a99d08392efdfa508066c97e7cdce32e45959353a"
+    },
+    {
+      "path": "xiaomi-A/start-services.txt",
+      "bytes": 1034,
+      "sha256": "e5c58b1e6d9707dc9a0767947ae230aed155e3458cec5d8257aa2e272679b46c"
+    },
+    {
+      "path": "xiaomi-A/summary.json",
+      "bytes": 10089,
+      "sha256": "b31f0403c9bec6c5cb0ae131d04570191da937b7d86b7e30cb091437bf148284"
+    },
+    {
+      "path": "xiaomi-A/unplug-anchor.json",
+      "bytes": 150,
+      "sha256": "213192535c99ba6a74980937e34523c2c27fb17bc5d68f2aa8e7dc0073338887"
+    },
+    {
+      "path": "xiaomi-A/unplug-confirmed.json",
+      "bytes": 320,
+      "sha256": "bd90901b8521d1ecde1c024ff6d7208754aa19cd11e0c970fc269bceb0d4a99a"
+    },
+    {
+      "path": "xiaomi-B/background-location-probe.jsonl",
+      "bytes": 14543,
+      "sha256": "88969ee338c1ea7e1f0f70884eef64f06a48fa8b3cecec716e349896f25dac2d"
+    },
+    {
+      "path": "xiaomi-B/battery-history-transitions.txt",
+      "bytes": 2160,
+      "sha256": "b9689d4694774ceb8141e41779d3f3d80a06a01592ae5eda78d7d7ffc804c0a4"
+    },
+    {
+      "path": "xiaomi-B/before-interrupt-services.txt",
+      "bytes": 2875,
+      "sha256": "658f81135f9c2992034b09bbd67b7d8c234618276028e945a41d844603400701"
+    },
+    {
+      "path": "xiaomi-B/before-unplug-live-policy.json",
+      "bytes": 724,
+      "sha256": "5353d76ac02084cd0244d37719569f417a6701ce21da0f423bf4b9b86a3a8dc0"
+    },
+    {
+      "path": "xiaomi-B/before-unplug-live-services.txt",
+      "bytes": 2862,
+      "sha256": "4daab3155b8efbd53cfd021377b6aea4453b3e74c5b31ff3fc746aecc681ab43"
+    },
+    {
+      "path": "xiaomi-B/before-unplug-services.txt",
+      "bytes": 2862,
+      "sha256": "3f1909d227af7f8b61c98570a84cddfb52029c13ba519ef451e097964cda6790"
+    },
+    {
+      "path": "xiaomi-B/checkout-dispatched-services.txt",
+      "bytes": 2873,
+      "sha256": "18fd97362ce7fc6c669598defb9a61a963296e0baac0de61b634b5429c328f1e"
+    },
+    {
+      "path": "xiaomi-B/checkout-observed-services.txt",
+      "bytes": 2878,
+      "sha256": "5285e22e33e8fc7a22ddd203cd84b4584790de867410a647846627aeb980b144"
+    },
+    {
+      "path": "xiaomi-B/end-observed-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-B/home-services.txt",
+      "bytes": 2862,
+      "sha256": "05b8dd0ecd176a7590ed73a0706f30b4face53b60da22da8d2452daac2dca443"
+    },
+    {
+      "path": "xiaomi-B/live-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-B/order-ended-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-B/original-state.json",
+      "bytes": 454,
+      "sha256": "b95aa7d1621fa4d6511fe7e932e91975786000e6b5b2b6149bd2ef3cc8d246f6"
+    },
+    {
+      "path": "xiaomi-B/preflight-live-policy.json",
+      "bytes": 373,
+      "sha256": "1d412072e2b65204f4a31ba311ac516cc71befe8af7b1d958c5578c454b687f3"
+    },
+    {
+      "path": "xiaomi-B/preflight-live-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-B/prepare-live-policy.json",
+      "bytes": 371,
+      "sha256": "fa88565576414fa9b2a71dbb3e52950b1a3d3498c5fd37eef4ae9fb78bb9bbce"
+    },
+    {
+      "path": "xiaomi-B/prepare-live-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": "xiaomi-B/probe-counters.json",
+      "bytes": 2569,
+      "sha256": "b41ec505dfeda8d1032f1ad12b32764654edc542932c68224c4bcf021538a449"
+    },
+    {
+      "path": "xiaomi-B/probe.log",
+      "bytes": 20111,
+      "sha256": "6c094a58822a94b208ff9e3cd3c404716507598eb9ee4686c16a29548bc81b25"
+    },
+    {
+      "path": "xiaomi-B/reconnected-live-policy.json",
+      "bytes": 723,
+      "sha256": "53155995c4ed76277bf94ece6d194f4af23791766c9650a20c30bdcd8093b8dc"
+    },
+    {
+      "path": "xiaomi-B/reconnected-live-services.txt",
+      "bytes": 2869,
+      "sha256": "17d580aaa313b2ba6793851e2c3b8d802bb276c94febb90134f3cf68420aba6f"
+    },
+    {
+      "path": "xiaomi-B/reconnected-services.txt",
+      "bytes": 2869,
+      "sha256": "396388fa15e531a37958d0173bcbb6b30a5de456da8322bb20ea89b8a1542081"
+    },
+    {
+      "path": "xiaomi-B/run-config.json",
+      "bytes": 612,
+      "sha256": "d72ed66ebc73add501f0a57efecd72f5db0a2e60565385a0cc26213f5aa099a3"
+    },
+    {
+      "path": "xiaomi-B/start-services.txt",
+      "bytes": 1055,
+      "sha256": "647da5f5d5041b45f42a483bf68076cc9698eecff2b3c726edc51155739ff07e"
+    },
+    {
+      "path": "xiaomi-B/sticky-restored-services.txt",
+      "bytes": 3177,
+      "sha256": "4808f81993fb61475045067b7cbe7cbffba9d096e281055d4ca1360f457b308d"
+    },
+    {
+      "path": "xiaomi-B/summary.json",
+      "bytes": 13372,
+      "sha256": "a80aa2a65934609859d6faf1032866a618453b4b55d351799944ec7f472113e9"
+    },
+    {
+      "path": "xiaomi-B/unplug-anchor.json",
+      "bytes": 151,
+      "sha256": "fbe0236715c7e51c8c963ac37421bd571eee8f22abeac73152472552297fb87b"
+    },
+    {
+      "path": "xiaomi-B/unplug-confirmed.json",
+      "bytes": 318,
+      "sha256": "3dfe5bfd8f7f40fe5115fd81e6d4c862506490b33ea445910987d7ec2b6d11eb"
+    },
+    {
+      "path": "xiaomi-final-cleanup.json",
+      "bytes": 748,
+      "sha256": "8289d3bc0987947a56aa8e873b9c3bf9a3a2c82d13e60e03e5edb2ffb7054702"
+    },
+    {
+      "path": "xiaomi-lifecycle-summary.json",
+      "bytes": 1005,
+      "sha256": "697b4bd9aff86e10254d768d975758d4975f90c9942f796da38a77c21d6a71b3"
+    }
+  ]
+}

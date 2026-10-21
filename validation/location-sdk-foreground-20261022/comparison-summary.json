@@ -1,0 +1,274 @@
+{
+  "scope": "Independent read-only audit of fixed physical Xiaomi A/B lock-unplug windows only; no device operations or official source edits. Later functional recovery is being reported separately and is not characterized as failed or incomplete by this audit.",
+  "asOfHostWall": 1792601309.872246,
+  "sameInstalledApkHash": {
+    "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+  },
+  "fixedBaselineMatches": true,
+  "groups": [
+    {
+      "group": "A",
+      "sdkForegroundRequested": false,
+      "fixedWindow": {
+        "startInclusive": 2945587068,
+        "endExclusive": 2945887068,
+        "durationMs": 300000,
+        "mappingUncertaintyMs": 48.87508297339082,
+        "bracketed": true,
+        "observedTraceRowsInside": 0,
+        "rawCallbacks": 0,
+        "uniquePositiveTicks": 0,
+        "successfulLocalUploads": 0,
+        "successfulMinuteBuckets": 0,
+        "completeMinuteBuckets": 5,
+        "rollingOneMinuteGoalMet": false,
+        "observedNoSuccessSpanMs": 300000,
+        "lifecycleAndOptionMutationsInsideWindow": [],
+        "pidAtBrackets": [
+          6091,
+          6091
+        ],
+        "clientAtBrackets": [
+          1,
+          1
+        ],
+        "samePidAndClient": true,
+        "cpu": {
+          "coveringStart": 2945568899,
+          "coveringEnd": 2945999206,
+          "elapsedMs": 430307,
+          "uptimeMs": 30019,
+          "suspendEstimateAcrossBracketMs": 400288,
+          "fixedWindowSuspendLowerBoundMs": 269981,
+          "fixedWindowSuspendUpperBoundMs": 300000,
+          "mappingAdjustedLowerBoundMs": 269883.2498340532
+        }
+      },
+      "actualServicesBeforeUnplug": {
+        "business": {
+          "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+          "foreground": true,
+          "notificationId": 1
+        },
+        "amap": {
+          "component": "com.ytone.longcare/com.amap.api.location.APSService",
+          "foreground": false,
+          "notificationId": null
+        }
+      },
+      "actualServicesAfterReconnect": {
+        "business": {
+          "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+          "foreground": true,
+          "notificationId": 1
+        },
+        "amap": {
+          "component": "com.ytone.longcare/com.amap.api.location.APSService",
+          "foreground": false,
+          "notificationId": null
+        }
+      },
+      "sdkForegroundEnableRequestsBeforeWindow": [],
+      "baseline": {
+        "before": {
+          "installedApkSha256ByFile": {
+            "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+          },
+          "batteryExemptObservedInLiveWhitelist": true,
+          "providers": "network",
+          "powerSaveSetting": "0",
+          "dataSaverRestricted": "false"
+        },
+        "after": {
+          "installedApkSha256ByFile": {
+            "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+          },
+          "batteryExemptObservedInLiveWhitelist": true,
+          "providers": "network",
+          "powerSaveSetting": "0",
+          "dataSaverRestricted": "false"
+        },
+        "runtimeBatteryExemptValuesAtRecordedBrackets": [
+          true
+        ],
+        "mode": "Hight_Accuracy",
+        "intervalMs": 30000,
+        "once": false,
+        "httpTimeOutMs": 30000,
+        "cache": false,
+        "onceLatest": true,
+        "oemPolicySource": "unrestricted_by_user_confirmation",
+        "oemProof": "user-confirmed-oem-unrestricted; original screenshot retained locally"
+      },
+      "physicalConditions": {
+        "dischargingObserved": true,
+        "screenOffBeforeWindowStartMs": 3549.0,
+        "lightIdleBeginsAfterWindowStartMs": 200612.0,
+        "firstCpuSuspendBeforeLightIdle": true,
+        "rechargeAfterWindowEndMs": 108126.0,
+        "wallOffsetSpreadMs": 1
+      },
+      "postWindowDataExcluded": {
+        "successfulUploadsObservedAfterWindow": 1,
+        "firstAfterWindowSuccessOffsetMs": 120741,
+        "note": "These successes and later action/kill/recovery/end checks are outside this immutable fixed-window result. Their whole-run summaries may continue to grow."
+      },
+      "evidenceFiles": [
+        "xiaomi-A/unplug-confirmed.json",
+        "xiaomi-A/background-location-probe.jsonl",
+        "xiaomi-A/battery-history-transitions.txt",
+        "xiaomi-A/before-unplug-live-policy.json",
+        "xiaomi-A/before-unplug-live-services.txt",
+        "xiaomi-A/reconnected-live-policy.json",
+        "xiaomi-A/reconnected-live-services.txt"
+      ],
+      "captureWarningsAtReview": []
+    },
+    {
+      "group": "B",
+      "sdkForegroundRequested": true,
+      "fixedWindow": {
+        "startInclusive": 2946113803,
+        "endExclusive": 2946413803,
+        "durationMs": 300000,
+        "mappingUncertaintyMs": 53.35268749855459,
+        "bracketed": true,
+        "observedTraceRowsInside": 0,
+        "rawCallbacks": 0,
+        "uniquePositiveTicks": 0,
+        "successfulLocalUploads": 0,
+        "successfulMinuteBuckets": 0,
+        "completeMinuteBuckets": 5,
+        "rollingOneMinuteGoalMet": false,
+        "observedNoSuccessSpanMs": 300000,
+        "lifecycleAndOptionMutationsInsideWindow": [],
+        "pidAtBrackets": [
+          6891,
+          6891
+        ],
+        "clientAtBrackets": [
+          1,
+          1
+        ],
+        "samePidAndClient": true,
+        "cpu": {
+          "coveringStart": 2946096946,
+          "coveringEnd": 2946428618,
+          "elapsedMs": 331672,
+          "uptimeMs": 14910,
+          "suspendEstimateAcrossBracketMs": 316762,
+          "fixedWindowSuspendLowerBoundMs": 285090,
+          "fixedWindowSuspendUpperBoundMs": 300000,
+          "mappingAdjustedLowerBoundMs": 284983.2946250029
+        }
+      },
+      "actualServicesBeforeUnplug": {
+        "business": {
+          "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+          "foreground": true,
+          "notificationId": 1
+        },
+        "amap": {
+          "component": "com.ytone.longcare/com.amap.api.location.APSService",
+          "foreground": true,
+          "notificationId": 9001
+        }
+      },
+      "actualServicesAfterReconnect": {
+        "business": {
+          "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+          "foreground": true,
+          "notificationId": 1
+        },
+        "amap": {
+          "component": "com.ytone.longcare/com.amap.api.location.APSService",
+          "foreground": true,
+          "notificationId": 9001
+        }
+      },
+      "sdkForegroundEnableRequestsBeforeWindow": [
+        {
+          "event": "sdk_fg_enable_requested",
+          "pid": 6891,
+          "client": 1,
+          "wallMillis": 1792600803794,
+          "elapsedRealtime": 2946082010,
+          "uptimeMillis": 2331005470,
+          "notificationId": 9001,
+          "screenOn": true,
+          "deviceIdle": false,
+          "powerSave": false,
+          "batteryExempt": true
+        }
+      ],
+      "baseline": {
+        "before": {
+          "installedApkSha256ByFile": {
+            "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+          },
+          "batteryExemptObservedInLiveWhitelist": true,
+          "providers": "network",
+          "powerSaveSetting": "0",
+          "dataSaverRestricted": "false"
+        },
+        "after": {
+          "installedApkSha256ByFile": {
+            "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+          },
+          "batteryExemptObservedInLiveWhitelist": true,
+          "providers": "network",
+          "powerSaveSetting": "0",
+          "dataSaverRestricted": "false"
+        },
+        "runtimeBatteryExemptValuesAtRecordedBrackets": [
+          true
+        ],
+        "mode": "Hight_Accuracy",
+        "intervalMs": 30000,
+        "once": false,
+        "httpTimeOutMs": 30000,
+        "cache": false,
+        "onceLatest": true,
+        "oemPolicySource": "unrestricted_by_user_confirmation",
+        "oemProof": "user-confirmed-oem-unrestricted; original screenshot retained locally"
+      },
+      "physicalConditions": {
+        "dischargingObserved": true,
+        "screenOffBeforeWindowStartMs": 10350.0,
+        "lightIdleBeginsAfterWindowStartMs": 274217.0,
+        "firstCpuSuspendBeforeLightIdle": true,
+        "rechargeAfterWindowEndMs": 14970.0,
+        "wallOffsetSpreadMs": 1
+      },
+      "postWindowDataExcluded": {
+        "successfulUploadsObservedAfterWindow": 5,
+        "firstAfterWindowSuccessOffsetMs": 18394,
+        "note": "These successes and later action/kill/recovery/end checks are outside this immutable fixed-window result. Their whole-run summaries may continue to grow."
+      },
+      "evidenceFiles": [
+        "xiaomi-B/unplug-confirmed.json",
+        "xiaomi-B/background-location-probe.jsonl",
+        "xiaomi-B/battery-history-transitions.txt",
+        "xiaomi-B/before-unplug-live-policy.json",
+        "xiaomi-B/before-unplug-live-services.txt",
+        "xiaomi-B/reconnected-live-policy.json",
+        "xiaomi-B/reconnected-live-services.txt"
+      ],
+      "captureWarningsAtReview": []
+    }
+  ],
+  "supportedConclusions": [
+    "A kept the existing business location foreground service and bound APSService; B additionally foregrounded that same live SDK client through APSService, with actual notification ID9001 observed before unplug and after reconnect.",
+    "Each fixed300s window has zero raw SDK callbacks, zero new positive source ticks and zero local successful uploads, hence0/5 minute buckets and no rolling one-minute coverage.",
+    "No SDK lifecycle, process/client replacement, option rewrite or SDK foreground toggle occurred inside either fixed window.",
+    "Both physical windows are fully after screen-off/discharge and before recharge; substantial CPU suspend is established by independent elapsed/uptime bounds.",
+    "In this phone/network-only indoor configuration, the supported SDK foreground API alone did not achieve one-minute effective reporting."
+  ],
+  "notEstablished": [
+    "SDK foreground state at every instant while physically unplugged: Android state was not polled during the window.",
+    "That APS foregroundization caused a larger CPU sleep duration: bounds and differing brackets cannot establish battery/performance causation.",
+    "That SDK foreground APIs never help on other phones, GPS-enabled settings or environments.",
+    "A surveyed geographic correctness result or an actual remote nursing API delivery: HTTP is isolated local repository success after app validation.",
+    "Any conclusion about later action, process recovery, order ending or Huawei recovery from these fixed windows."
+  ]
+}

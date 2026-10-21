@@ -45,6 +45,7 @@ class AndroidLocationRuntimeReadiness @Inject constructor(
             read { connectivity?.getNetworkCapabilities(network) }
         }
         val power = read { context.getSystemService(Context.POWER_SERVICE) as? PowerManager }
+        val activity = read { context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager }
         return mapOf(
             "androidApi" to Build.VERSION.SDK_INT,
             "appVersionCode" to read {
@@ -75,9 +76,27 @@ class AndroidLocationRuntimeReadiness @Inject constructor(
                 }
             },
             "deviceIdle" to read { power?.isDeviceIdleMode },
+            "deviceLightIdle" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                read { power?.isDeviceLightIdleMode }
+            } else null,
             "screenOn" to read { power?.isInteractive },
             "powerSave" to read { power?.isPowerSaveMode },
             "batteryExempt" to read { power?.isIgnoringBatteryOptimizations(context.packageName) },
+            "backgroundRestricted" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                read { activity?.isBackgroundRestricted }
+            } else null,
+            // Data Saver describes background metered-network policy, not current UID reachability.
+            "restrictBackgroundStatus" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                read { connectivity?.restrictBackgroundStatus }?.takeIf { status ->
+                    status == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED ||
+                        status == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_WHITELISTED ||
+                        status == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+                }
+            } else null,
+            // Enabled is configuration only; it does not establish that standby is currently active.
+            "lowPowerStandbyEnabled" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                read { power?.isLowPowerStandbyEnabled }
+            } else null,
         )
     }
 

@@ -47,11 +47,9 @@ class ServiceOrderLocationQualityTest {
         assertEquals(LocationFailure.QUALITY, ServiceOrderLocationQuality.failure(sample.copy(accuracy = Float.NaN), LocationQuality.Rejection.ACCURACY))
     }
 
-    @Test fun `reporting still rejects pre session and out of order samples`() {
+    @Test fun `reporting still rejects pre session samples`() {
         assertEquals(LocationQuality.Rejection.ORDER,
-            ServiceOrderLocationQuality.rejection(sample, 100_000, 1_000, notBefore = 100_001))
-        assertEquals(LocationQuality.Rejection.ORDER,
-            ServiceOrderLocationQuality.rejection(sample, 100_000, 1_000, previousSampleTime = 100_000))
+            ServiceOrderLocationQuality.rejection(sample, 100_000, 1_000, notBeforeElapsedRealtime = 1_001))
     }
 
     @Test fun `normal trust fresh online source is usable while cache offline and low trust stay rejected`() {
@@ -63,7 +61,8 @@ class ServiceOrderLocationQualityTest {
                 ServiceOrderLocationQuality.rejection(normal.copy(locationType = it), 100_000, 1_000))
         }
         assertEquals(LocationQuality.Rejection.ORDER,
-            ServiceOrderLocationQuality.rejection(normal.copy(locationTime = 96_999), 100_000, 1_000, notBefore = 97_000))
+            ServiceOrderLocationQuality.rejection(normal.copy(locationTime = 96_999, receivedElapsedRealtime = 100_000),
+                100_000, 100_000, notBeforeElapsedRealtime = 97_000))
         assertEquals(LocationQuality.Rejection.TRUST,
             ServiceOrderLocationQuality.rejection(sample.copy(trustedLevel = 3), 100_000, 1_000))
     }

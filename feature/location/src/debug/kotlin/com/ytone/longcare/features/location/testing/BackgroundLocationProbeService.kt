@@ -11,6 +11,9 @@ import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
@@ -25,6 +28,8 @@ import com.ytone.longcare.features.location.manager.AmapClientHandle
 import com.ytone.longcare.features.location.manager.AmapLocationClientFactory
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
+import com.ytone.longcare.features.location.manager.SdkAmapClientHandle
+import com.ytone.longcare.feature.location.R
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.features.location.service.LocationTrackingService
 import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
@@ -33,6 +38,7 @@ import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.model.User
 import com.ytone.longcare.model.result.ApiResult
 import java.lang.reflect.Proxy
+import java.io.File
 import java.io.IOException
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -61,6 +67,7 @@ class BackgroundLocationProbeService : LocationTrackingService() {
     private lateinit var sessionState: MutableStateFlow<SessionState>
     private lateinit var trackingManager: LocationTrackingManager
     private var traceClientId: Int? = null
+    private val traceFile by lazy { File(filesDir, "background-location-probe.jsonl") }
     private var activeOrderId: Long
         get() = prefs.getLong("orderId", ORDER_ID)
         set(value) { prefs.edit().putLong("orderId", value).commit() }
@@ -188,11 +195,12 @@ class BackgroundLocationProbeService : LocationTrackingService() {
 
     private fun applyControls(intent: Intent) {
         val edit = prefs.edit()
-        listOf("realSource", "stall", "httpFail", "httpSuspend", "locationEnabled", "permissionGranted", "sdkVisibilityEnabled").forEach { key ->
+        listOf("realSource", "sdkForeground", "stall", "httpFail", "httpSuspend", "locationEnabled", "permissionGranted").forEach { key ->
             if (intent.hasExtra(key)) {
                 val value = intent.getBooleanExtra(key, false)
                 edit.putBoolean(key, value)
-                trace("gate", "name" to key, "value" to value, "simulated" to (key != "realSource"))
+                trace("gate", "name" to key, "value" to value,
+                    "simulated" to (key != "realSource" && key != "sdkForeground"))
             }
         }
         if (intent.hasExtra("errorCode")) {
@@ -292,22 +300,34 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         val power = getSystemService(Context.POWER_SERVICE) as PowerManager
         json.put("screenOn", power.isInteractive).put("deviceIdle", power.isDeviceIdleMode)
             .put("powerSave", power.isPowerSaveMode).put("batteryExempt", power.isIgnoringBatteryOptimizations(packageName))
-        Log.i(LOG_TAG, json.toString())
+        val line = json.toString()
+        Log.i(LOG_TAG, line)
+        // Debug fixture only: retain unplugged observations beyond the system logcat ring.
+        // Two bounded files contain event metadata, never coordinates or real care records.
+        runCatching {
+            if (traceFile.length() >= MAX_TRACE_BYTES) {
+                val previous = File(filesDir, "background-location-probe.previous.jsonl")
+                check(!previous.exists() || previous.delete())
+                check(traceFile.renameTo(previous))
+            }
+            traceFile.appendText(line + "\n")
+        }.onFailure { Log.w(LOG_TAG, "Probe trace unavailable", it) }
     }
 
     private inner class TracedClient(private val delegate: AmapClientHandle, private val clientId: Int) : AmapClientHandle {
         private var originalListener: AMapLocationListener? = null
         private var tracedListener: AMapLocationListener? = null
+        private var sdkForegroundRequested = false
         override fun sdkVersion() = delegate.sdkVersion()
         override fun notifyAppEnterForeBack(foreground: Boolean) {
-            // Single-variable real-SDK comparison; production clients have no test switch.
-            val enabled = prefs.getBoolean("sdkVisibilityEnabled", true)
-            trace("sdk_visibility_attempt", "client" to clientId, "foreground" to foreground, "enabled" to enabled)
-            if (enabled) delegate.notifyAppEnterForeBack(foreground)
+            trace("sdk_visibility_attempt", "client" to clientId, "foreground" to foreground)
+            delegate.notifyAppEnterForeBack(foreground)
         }
         override fun setLocationOption(option: AMapLocationClientOption) {
             trace("client_option", "client" to clientId, "intervalMs" to option.interval,
-                "once" to option.isOnceLocation, "httpTimeoutMs" to option.httpTimeOut)
+                "once" to option.isOnceLocation, "httpTimeoutMs" to option.httpTimeOut,
+                "mode" to option.locationMode.name, "cache" to option.isLocationCacheEnable,
+                "onceLatest" to option.isOnceLocationLatest)
             delegate.setLocationOption(option)
         }
         override fun setLocationListener(listener: AMapLocationListener) {
@@ -330,12 +350,39 @@ class BackgroundLocationProbeService : LocationTrackingService() {
             tracedListener = null
             trace("client_unregister", "client" to clientId)
         }
-        override fun startLocation() { trace("client_start", "client" to clientId); delegate.startLocation() }
+        override fun startLocation() {
+            if (!sdkForegroundRequested && prefs.getBoolean("sdkForeground", false)) {
+                val sdk = checkNotNull(delegate as? SdkAmapClientHandle) { "SDK foreground trial requires real AMap" }
+                NotificationManagerCompat.from(this@BackgroundLocationProbeService).createNotificationChannel(
+                    NotificationChannelCompat.Builder(SDK_FOREGROUND_CHANNEL, NotificationManagerCompat.IMPORTANCE_LOW)
+                        .setName(getString(R.string.location_probe_sdk_channel)).setShowBadge(false).build(),
+                )
+                val notification = NotificationCompat.Builder(this@BackgroundLocationProbeService, SDK_FOREGROUND_CHANNEL)
+                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                    .setContentTitle(getString(R.string.location_probe_sdk_notification))
+                    .setContentText(getString(R.string.location_tracking_notification_content))
+                    .setOngoing(true).build()
+                sdkForegroundRequested = true
+                // The SDK swallows some start failures; only system service records prove promotion.
+                trace("sdk_fg_enable_requested", "client" to clientId, "notificationId" to SDK_FOREGROUND_NOTIFICATION)
+                sdk.enableBackgroundLocation(SDK_FOREGROUND_NOTIFICATION, notification)
+            }
+            trace("client_start", "client" to clientId)
+            delegate.startLocation()
+        }
         override fun stopLocation() { trace("client_stop", "client" to clientId); delegate.stopLocation() }
         override fun onDestroy() {
-            trace("client_destroy", "client" to clientId)
-            if (traceClientId == clientId) traceClientId = null
-            delegate.onDestroy()
+            try {
+                if (sdkForegroundRequested) {
+                    sdkForegroundRequested = false
+                    trace("sdk_fg_disable_requested", "client" to clientId)
+                    (delegate as SdkAmapClientHandle).disableBackgroundLocation()
+                }
+            } finally {
+                trace("client_destroy", "client" to clientId)
+                if (traceClientId == clientId) traceClientId = null
+                delegate.onDestroy()
+            }
         }
     }
 
@@ -378,6 +425,9 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         private const val ORDER_ID = 9_000_001L
         private const val SECOND_ORDER_ID = 9_000_002L
         private const val LOG_TAG = "LocationProbe"
+        private const val MAX_TRACE_BYTES = 1_048_576L
+        private const val SDK_FOREGROUND_CHANNEL = "location_probe_sdk_foreground"
+        private const val SDK_FOREGROUND_NOTIFICATION = 9_001
     }
 }
 

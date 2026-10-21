@@ -1,7 +1,9 @@
 package com.ytone.longcare.features.location.service
 
 import android.os.SystemClock
+import com.ytone.longcare.common.diagnostics.locationTimeDiagnostic
 import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.domain.location.LocationQuality
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.model.LocationResult
 
@@ -137,6 +139,7 @@ internal class LocationReportingDiagnostics(
     private fun report(type: LocationEventTracker.EventType, stage: String, error: Throwable? = null,
         successGapMs: Long? = null, requestMs: Long? = null, sample: LocationResult? = lastSample) {
         val now = elapsedRealtime()
+        val wallNow = System.currentTimeMillis()
         val rawAge = lastSample?.receivedElapsedRealtime?.takeIf { it > 0L }?.let { (now - it).coerceAtLeast(0L) }
         val gap = successGap(now)
         val resumed = type == LocationEventTracker.EventType.API_UPLOAD_RESUMED
@@ -163,11 +166,9 @@ internal class LocationReportingDiagnostics(
             "successGapMs" to (successGapMs ?: gap),
             "maxSuccessGapMs" to maxSuccessGap,
             "observedMs" to (now - startedAt).coerceAtLeast(0L),
-            "rawGapMs" to rawAge,
             "requestMs" to (requestMs ?: pendingAt?.let { (now - it).coerceAtLeast(0L) }),
-            "sourceAgeMs" to sample?.sourceElapsedRealtime?.takeIf { it > 0L && it <= now }?.let { now - it },
-            "sampleAgeMs" to sample?.takeIf { it.locationTime > 0L && it.receivedAt >= it.locationTime }
-                ?.let { it.receivedAt - it.locationTime + (now - it.receivedElapsedRealtime).coerceAtLeast(0L) },
+            "time" to sample?.let { locationTimeDiagnostic(it, wallNow, now,
+                LocationQuality.timeIssue(it, wallNow, now)?.name) },
             "accuracy" to sample?.accuracy?.takeIf { it.isFinite() },
             "locationType" to sample?.locationType,
             "sdkErrorCode" to sample?.errorCode, "qualityReason" to qualityReason,

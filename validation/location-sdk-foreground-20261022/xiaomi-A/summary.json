@@ -1,0 +1,303 @@
+{
+  "device": "xiaomi-A",
+  "inputFiles": [
+    "background-location-probe.jsonl"
+  ],
+  "traceRows": 27,
+  "duplicatesRemoved": 0,
+  "malformedRows": 0,
+  "captureStartElapsedRealtime": 2945486930,
+  "firstTraceElapsedRealtime": 2945508813,
+  "lastTraceElapsedRealtime": 2946019397,
+  "scope": "Local isolated repository counters only; no nursing backend request or geographic ground truth verification. Minute bucket coverage alone does not establish a rolling <=60s success gap.",
+  "wholeRunCallbacks": {
+    "raw": 3,
+    "sdkSuccess": 3,
+    "uniquePositiveSourceTicks": 3
+  },
+  "actions": [],
+  "allHttpEndsByOrderId": {
+    "9000001": {
+      "success": 3
+    }
+  },
+  "normalEndObservations": [
+    {
+      "orderId": 9000001,
+      "endedAt": 2946019268,
+      "observedThrough": 2946019397,
+      "laterHttpEnds": [],
+      "localSuccessAfterEnd": 0,
+      "observationDurationMs": 129
+    }
+  ],
+  "allPidSequence": [
+    {
+      "at": 2945508813,
+      "value": 6091
+    }
+  ],
+  "allClientSequence": [
+    {
+      "at": 2945509089,
+      "value": 1,
+      "pid": 6091
+    }
+  ],
+  "unplugWindow": {
+    "startInclusive": 2945587068,
+    "endExclusive": 2945887068,
+    "durationMs": 300000,
+    "rawCallbacks": 0,
+    "sdkSuccessCallbacks": 0,
+    "nullCallbacks": 0,
+    "sdkErrorCodes": {},
+    "uniquePositiveSourceTicks": 0,
+    "uniquePositiveSuccessfulSourceTicks": 0,
+    "unseenPositiveSuccessSourceTicks": 0,
+    "positiveSuccessfulSourceAgeMsRange": null,
+    "localHttpSuccess": 0,
+    "buckets": [
+      {
+        "startInclusive": 2945587068,
+        "endExclusive": 2945647068,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2945647068,
+        "endExclusive": 2945707068,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2945707068,
+        "endExclusive": 2945767068,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2945767068,
+        "endExclusive": 2945827068,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2945827068,
+        "endExclusive": 2945887068,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      }
+    ],
+    "allCompleteMinuteBucketsHaveLocalSuccess": false,
+    "boundaryInclusiveMaxGapMs": {
+      "rawCallback": 300000,
+      "sdkSuccessCallback": 300000,
+      "unseenPositiveSuccessSourceTick": 300000,
+      "localHttpSuccess": 300000
+    },
+    "pidSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2945568899,
+        "value": 6091
+      }
+    ],
+    "clientSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2945568899,
+        "value": 1,
+        "pid": 6091
+      }
+    ],
+    "clientCreatesInWindow": [],
+    "traceBracketsWholeWindow": true,
+    "cpu": {
+      "windowCpuSleepMs": null,
+      "note": "Bounds use covering trace endpoints and millisecond clocks; no exact sleep onset, duration or cause is inferred.",
+      "coveringTraceElapsedMs": 430307,
+      "coveringTraceUptimeMs": 30019,
+      "coveringTraceSuspendEstimateMs": 400288,
+      "coveringStart": 2945568899,
+      "coveringEnd": 2945999206,
+      "windowSuspendLowerBoundMs": 269981,
+      "windowSuspendUpperBoundMs": 300000
+    },
+    "mappingUncertaintyMs": 48.87508297339082,
+    "providerMetadata": {
+      "successCallbacks": 0,
+      "positiveSourceTicks": 0,
+      "unknownSourceTicks": 0,
+      "sourceAgeAtRawCallbackMsRange": null,
+      "futureSourceTicks": 0,
+      "sourceAgeOverReporting60s": 0,
+      "accuracyMetersRange": null,
+      "callbackTypes": [],
+      "note": "Raw trace omits coordinates/mock/coordType for privacy. Do not call a raw point business-valid solely from accuracy or a unique tick. Actual AddPosition local dispatches and diagnostics apply app quality rules."
+    },
+    "rollingLocalUploadCoverage": {
+      "successCount": 0,
+      "maxInternalSuccessGapMs": null,
+      "firstSuccessDelayMs": null,
+      "finalTailMs": 300000,
+      "maxBoundaryInclusiveGapMs": 300000,
+      "allFullyObservedMinuteWindowsCovered": false,
+      "note": "Minute buckets do not prove rolling coverage. Boundary gaps include the observed start and end; time outside this fixed window is unmeasured."
+    }
+  },
+  "sdkForegroundExperiment": {
+    "requested": false,
+    "baselineBeforeWindow": {
+      "hostWall": 1792600238.350924,
+      "hostMonotonic": 451002.60107225,
+      "uid": 10216,
+      "batteryExemptObservedInLiveWhitelist": true,
+      "providers": "network",
+      "powerSaveSetting": "0",
+      "dataSaverRestricted": "false",
+      "installedApkSha256ByFile": {
+        "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+      },
+      "foregroundServices": [
+        {
+          "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+          "isForeground": true,
+          "foregroundId": 1,
+          "bound": false
+        },
+        {
+          "component": "com.ytone.longcare/com.amap.api.location.APSService",
+          "isForeground": false,
+          "foregroundId": null,
+          "bound": true
+        }
+      ]
+    },
+    "baselineAfterReconnect": {
+      "hostWall": 1792600726.4805171,
+      "hostMonotonic": 451490.7303945,
+      "uid": 10216,
+      "batteryExemptObservedInLiveWhitelist": true,
+      "providers": "network",
+      "powerSaveSetting": "0",
+      "dataSaverRestricted": "false",
+      "installedApkSha256ByFile": {
+        "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+      },
+      "foregroundServices": [
+        {
+          "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+          "isForeground": true,
+          "foregroundId": 1,
+          "bound": false
+        },
+        {
+          "component": "com.ytone.longcare/com.amap.api.location.APSService",
+          "isForeground": false,
+          "foregroundId": null,
+          "bound": true
+        }
+      ]
+    },
+    "businessAndSdkServicesObservedSeparately": true,
+    "sdkBeforeWindow": {
+      "component": "com.ytone.longcare/com.amap.api.location.APSService",
+      "isForeground": false,
+      "foregroundId": null,
+      "bound": true
+    },
+    "sdkAfterReconnect": {
+      "component": "com.ytone.longcare/com.amap.api.location.APSService",
+      "isForeground": false,
+      "foregroundId": null,
+      "bound": true
+    },
+    "sdkBeforeWindowMatchesVariant": true,
+    "installedApkMatchesPreflight": true,
+    "sdkForegroundRequests": [],
+    "foregroundStateLimit": "Request trace means the API was called, not that Android acknowledged it. Actual APSService foreground state is observed at endpoints; it is not polled while unplugged."
+  },
+  "qualityAndHttpDiagnostics": [
+    {
+      "category": "location",
+      "eventCode": "api_upload_resumed",
+      "level": "INFO",
+      "description": "位置上报首次成功",
+      "orderId": "9000001",
+      "stage": "first_success",
+      "reason": "upload_success",
+      "reportSequence": "1",
+      "clientId": "80568028-21f1-4f7a-a74e-d86c4c81cae4",
+      "successGapMs": "822",
+      "maxSuccessGapMs": "0",
+      "observedMs": "823",
+      "requestMs": "21",
+      "time": "issue=none,fix=-49,source=48,elapsed=29,shift=-1",
+      "accuracy": "42.0",
+      "locationType": "5",
+      "sdkErrorCode": "0",
+      "maxTickGapMs": "0",
+      "maxSleepGapMs": "0",
+      "counts": "cb=1,rej=0,ok=1,fail=0,cancel=0,reuse=0",
+      "runtime": "idle=0/?,screen=1,net=1,validated=1,exempt=1,save=0,bg=0,ds=1,lps=?",
+      "sdkState": "count=1,null=0,ageMs=46,intervalMs=30000,visible=true"
+    },
+    {
+      "category": "location",
+      "eventCode": "reporting_health",
+      "level": "INFO",
+      "description": "定位上报间隔诊断",
+      "orderId": "9000001",
+      "stage": "gap",
+      "reason": "callback_silence",
+      "reportSequence": "2",
+      "clientId": "80568028-21f1-4f7a-a74e-d86c4c81cae4",
+      "successGapMs": "457063",
+      "maxSuccessGapMs": "32573",
+      "observedMs": "490458",
+      "time": "issue=none,fix=-20,source=21,elapsed=457107,shift=0",
+      "accuracy": "36.0",
+      "locationType": "5",
+      "sdkErrorCode": "0",
+      "maxTickGapMs": "415309",
+      "maxSleepGapMs": "400288",
+      "counts": "cb=2,rej=0,ok=2,fail=0,cancel=0,reuse=0",
+      "runtime": "idle=0/?,screen=1,net=1,validated=1,exempt=1,save=0,bg=0,ds=1,lps=?",
+      "sdkState": "count=2,null=0,ageMs=457124,intervalMs=30000,visible=false"
+    },
+    {
+      "category": "location",
+      "eventCode": "reporting_health",
+      "level": "INFO",
+      "description": "定位上报间隔诊断",
+      "orderId": "9000001",
+      "stage": "finished",
+      "reason": "healthy",
+      "reportSequence": "3",
+      "successGapMs": "11515",
+      "maxSuccessGapMs": "465503",
+      "observedMs": "510413",
+      "time": "issue=none,fix=-19,source=20,elapsed=11552,shift=0",
+      "accuracy": "45.0",
+      "locationType": "5",
+      "sdkErrorCode": "0",
+      "maxTickGapMs": "15105",
+      "maxSleepGapMs": "0",
+      "counts": "cb=3,rej=0,ok=3,fail=0,cancel=0,reuse=0",
+      "runtime": "idle=0/?,screen=0,net=1,validated=1,exempt=1,save=0,bg=0,ds=1,lps=?"
+    }
+  ],
+  "diagnosticScope": "Health counters are cumulative per service/session. They are retained evidence, not reconstructed exact per-minute rejection counts.",
+  "captureWarnings": [],
+  "acceptanceScope": "Successful HTTP records are local isolated repository completions after app validation; they do not prove a remote care API request or geographic correctness.",
+  "comparison": null
+}

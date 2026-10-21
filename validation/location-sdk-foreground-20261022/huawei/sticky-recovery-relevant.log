@@ -1,0 +1,21 @@
+10-22 00:35:07.535  1238  7058 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:35:07.536  1238  7058 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:35:40.962  1238  7050 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:35:40.962  1238  7050 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:36:14.325  1238  7050 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:36:14.325  1238  7050 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:36:47.662  1238  6622 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:36:47.662  1238  6622 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:37:21.118  1238  7058 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:37:21.118  1238  7058 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:37:51.327  1238  7050 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:37:51.328  1238  7050 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:37:51.332  1238  1923 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:37:51.332  1238  1923 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:37:55.939  1238  1923 D WifiService: startScan, pid:5908, uid:10131, appName:com.ytone.longcare
+10-22 00:37:55.939  1238  1923 I WifiService: Screen is off, com.ytone.longcare startScan is skipped.
+10-22 00:38:51.146  1238  1923 W ActivityManager: Scheduling restart of crashed service com.ytone.longcare/com.amap.api.location.APSService in 758566ms
+10-22 00:38:51.147  1238  1923 W ActivityManager: Scheduling restart of crashed service com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService in 1000ms
+10-22 00:38:52.182  1238  1428 I ActivityManager: Start proc 7323:com.ytone.longcare/u0a131 for service com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService
+10-22 00:38:52.278  1238  3766 W ActivityManager: Stopping service due to app idle: u0a131 -6m20s487ms com.ytone.longcare/com.amap.api.location.APSService
+10-22 00:38:52.278  1238  3766 W ActivityManager: Stopping service due to app idle: u0a131 -6m20s768ms com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService

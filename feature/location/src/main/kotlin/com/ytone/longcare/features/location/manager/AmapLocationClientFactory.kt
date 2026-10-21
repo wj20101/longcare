@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.location.manager
 
+import android.app.Notification
 import android.content.Context
 import android.os.SystemClock
 import com.amap.api.location.AMapLocation
@@ -42,6 +43,11 @@ interface AmapClientHandle {
 }
 
 class SdkAmapClientHandle(private val client: AMapLocationClient) : AmapClientHandle {
+    // Debug trials use the same live client; these do not change normal service ownership.
+    internal fun enableBackgroundLocation(notificationId: Int, notification: Notification) =
+        client.enableBackgroundLocation(notificationId, notification)
+    internal fun disableBackgroundLocation() = client.disableBackgroundLocation(true)
+
     override fun sdkVersion(): String = client.version
     override fun notifyAppEnterForeBack(foreground: Boolean) = client.notifyAppEnterForeBack(foreground)
     override fun setLocationOption(option: AMapLocationClientOption) = client.setLocationOption(option)

@@ -1,5 +1,6 @@
 package com.ytone.longcare.features.location.manager
 
+import android.net.ConnectivityManager
 import android.os.SystemClock
 import com.amap.api.location.*
 import com.ytone.longcare.domain.location.*
@@ -25,6 +26,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AmapLocationAcquisitionTest {
     private val dispatcher = StandardTestDispatcher()
+    // Fixtures include two-second-old valid fixes; those fixes must exist after this boot.
+    private val initialElapsedRealtime = 100_000L
     private val listeners = mutableListOf<AMapLocationListener>()
     private val options = mutableListOf<AMapLocationClientOption>()
     private val actionDiagnostics = mutableListOf<Map<String, Any?>>()
@@ -41,7 +44,7 @@ class AmapLocationAcquisitionTest {
         KLogger.updateConfig { enabled = false }
         Dispatchers.setMain(dispatcher)
         mockkStatic(SystemClock::class)
-        every { SystemClock.elapsedRealtime() } answers { dispatcher.scheduler.currentTime + 1_000 }
+        every { SystemClock.elapsedRealtime() } answers { dispatcher.scheduler.currentTime + initialElapsedRealtime }
         every { client.setLocationListener(capture(listeners)) } just Runs
         every { client.setLocationOption(capture(options)) } just Runs
         every { client.startLocation() } just Runs
@@ -86,6 +89,40 @@ class AmapLocationAcquisitionTest {
         }
     }
 
+    @Test fun `runtime packs deep and light idle separately and preserves unknown values`() {
+        assertEquals("idle=?/?,screen=?,net=?,validated=?,exempt=?,save=?,bg=?,ds=?,lps=?", manager.diagnosticSnapshot()["runtime"])
+        every { runtimeReadiness.diagnosticSnapshot() } returns mapOf(
+            "deviceIdle" to false, "deviceLightIdle" to null, "screenOn" to false,
+            "networkAvailable" to true, "networkValidated" to true, "batteryExempt" to false, "powerSave" to true,
+        )
+        assertEquals("idle=0/?,screen=0,net=1,validated=1,exempt=0,save=1,bg=?,ds=?,lps=?", manager.diagnosticSnapshot()["runtime"])
+        every { runtimeReadiness.diagnosticSnapshot() } returns mapOf("deviceIdle" to false, "deviceLightIdle" to true)
+        assertTrue(manager.diagnosticSnapshot()["runtime"].toString().startsWith("idle=0/1,"))
+        every { runtimeReadiness.diagnosticSnapshot() } returns mapOf("deviceIdle" to true, "deviceLightIdle" to false)
+        assertTrue(manager.diagnosticSnapshot()["runtime"].toString().startsWith("idle=1/0,"))
+    }
+
+    @Test fun `runtime reports supported background policies without treating validated network as UID reachability`() {
+        for (status in listOf(ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED,
+            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_WHITELISTED,
+            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED)) {
+            every { runtimeReadiness.diagnosticSnapshot() } returns mapOf(
+                "networkValidated" to true, "backgroundRestricted" to true,
+                "restrictBackgroundStatus" to status, "lowPowerStandbyEnabled" to true,
+            )
+            val runtime = manager.diagnosticSnapshot()["runtime"].toString()
+            assertTrue(runtime.contains("validated=1,"))
+            assertTrue(runtime.endsWith("bg=1,ds=$status,lps=1"))
+        }
+        for (status in listOf(null, -1, 0, 4, "3", 1L)) {
+            every { runtimeReadiness.diagnosticSnapshot() } returns mapOf(
+                "restrictBackgroundStatus" to status, "backgroundRestricted" to false,
+                "lowPowerStandbyEnabled" to false,
+            )
+            assertTrue(manager.diagnosticSnapshot()["runtime"].toString().endsWith("bg=0,ds=?,lps=0"))
+        }
+    }
+
     @Test fun `SDK diagnostic counter precedes flow conflation and ignores released client callbacks`() = runTest(dispatcher) {
         val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
         runCurrent()
@@ -105,16 +142,20 @@ class AmapLocationAcquisitionTest {
     @Test fun `action diagnostics retain source age when fresh callback reuses an old source`() = runTest(dispatcher) {
         val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
         runCurrent()
+        val sourceElapsedRealtime = SystemClock.elapsedRealtime()
         advanceTimeBy(10_000)
         val action = async { manager.acquireServiceOrderLocation() }
         runCurrent()
-        listeners.single().onLocationChanged(sample().also { every { it.locationTickTime } returns 1_000_000_000L })
+        listeners.single().onLocationChanged(sample().also {
+            every { it.locationTickTime } returns TimeUnit.MILLISECONDS.toNanos(sourceElapsedRealtime)
+        })
         runCurrent()
         advanceTimeBy(30_000)
         runCurrent()
         assertTrue(action.await() is LocationAcquisition.Failure)
         val fields = actionDiagnostics.single()
-        assertEquals(40_000L, fields["sourceAgeMs"])
+        assertTrue(fields["time"].toString().contains("source=10000"))
+        assertTrue(fields["time"].toString().contains("elapsed=30000"))
         assertEquals(30_000L, fields["rawGapMs"])
         assertTrue(fields["sdkState"].toString().contains("intervalMs=3000"))
         assertEquals(30_000L, options.last().interval)
@@ -133,7 +174,8 @@ class AmapLocationAcquisitionTest {
             assertEquals(now - 10_000L, beforeAction.locationTime)
             assertEquals(LocationQuality.Rejection.ORDER, ServiceOrderLocationQuality.rejection(
                 beforeAction, beforeAction.receivedAt, beforeAction.receivedElapsedRealtime,
-                notBefore = now - 3_000L, maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
+                notBeforeElapsedRealtime = beforeAction.receivedElapsedRealtime - 3_000L,
+                maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
             ))
 
             every { raw.locationUtcTime } returns now - ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS - 1L
@@ -156,7 +198,8 @@ class AmapLocationAcquisitionTest {
         assertEquals(now - 1_000L, fresh.locationTime)
         assertNull(ServiceOrderLocationQuality.rejection(
             fresh, fresh.receivedAt, fresh.receivedElapsedRealtime,
-            notBefore = now - 3_000L, maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
+            notBeforeElapsedRealtime = fresh.receivedElapsedRealtime - 3_000L,
+            maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
         ))
 
         every { raw.locationType } returns AMapLocation.LOCATION_TYPE_FIX_CACHE
@@ -194,7 +237,8 @@ class AmapLocationAcquisitionTest {
         assertEquals(correctedTime, corrected.locationTime)
         assertNull(ServiceOrderLocationQuality.rejection(
             corrected, corrected.receivedAt, corrected.receivedElapsedRealtime,
-            notBefore = now - 3_000L, maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
+            notBeforeElapsedRealtime = corrected.receivedElapsedRealtime - 3_000L,
+            maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
         ))
     }
 
@@ -273,46 +317,6 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 1) { client.onDestroy() }
     }
 
-    @Test fun `action diagnostics follow the actual callback client after service recovery`() = runTest(dispatcher) {
-        val observations = mutableListOf<LocationAcquisition>()
-        val collection = backgroundScope.launch { manager.startContinuousLocation("order").collect { observations += it } }
-        runCurrent()
-        advanceTimeBy(70_000)
-        val action = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-        advanceTimeBy(20_000)
-        assertTrue(manager.recoverStalledSampling("order"))
-        listeners.last().onLocationChanged(sample())
-        runCurrent()
-        assertTrue(action.await() is LocationAcquisition.Success)
-        val callbackId = (observations.last() as LocationAcquisition.Success).location.requestId
-        assertEquals(callbackId, actionDiagnostics.single()["clientId"])
-        collection.cancelAndJoin()
-    }
-
-    @Test fun `first service action repairs an already silent client without waiting for service health loop`() = runTest(dispatcher) {
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
-        runCurrent()
-        val stalledCallback = listeners.single()
-        advanceTimeBy(90_000)
-
-        val action = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-
-        assertEquals("An already stalled client must be repaired before spending the action budget", 2, listeners.size)
-        verify(exactly = 1) { client.onDestroy() }
-        stalledCallback.onLocationChanged(sample())
-        runCurrent()
-        assertFalse("The replaced client cannot complete the action", action.isCompleted)
-        listeners.last().onLocationChanged(sample())
-        assertTrue(action.await() is LocationAcquisition.Success)
-        assertEquals(90_000L, currentTime)
-        assertEquals(true, actionDiagnostics.single()["clientRecovered"])
-        assertFalse(manager.recoverStalledSampling("order"))
-        verify(exactly = 2) { factory.create(any()) }
-        collector.cancelAndJoin()
-    }
-
     @Test fun `service action does not rebuild a client that still returns network failures`() = runTest(dispatcher) {
         val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
         runCurrent()
@@ -325,154 +329,97 @@ class AmapLocationAcquisitionTest {
         assertEquals(1, listeners.size)
         listeners.single().onLocationChanged(sample())
         assertTrue(action.await() is LocationAcquisition.Success)
-        assertEquals(false, actionDiagnostics.single()["clientRecovered"])
         verify(exactly = 1) { factory.create(any()) }
         collector.cancelAndJoin()
     }
 
-    @Test fun `cancelling stalled action recovery during configuration lookup retains reporting client`() = runTest(dispatcher) {
-        val nextKey = CompletableDeferred<String>()
-        var keyReads = 0
-        val keyProvider = mockk<AmapApiKeyProvider>()
-        coEvery { keyProvider.getAmapApiKey() } coAnswers {
-            if (++keyReads == 1) "test-key" else nextKey.await()
-        }
-        manager = ContinuousAmapLocationManager(factory, keyProvider, runtimeReadiness)
-        val events = mutableListOf<LocationAcquisition>()
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect { events += it } }
-        runCurrent()
-        advanceTimeBy(90_000)
-        val action = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-        assertEquals(2, keyReads)
-        verify(exactly = 0) { client.onDestroy() }
-
-        action.cancelAndJoin()
-        listeners.single().onLocationChanged(sample())
-        runCurrent()
-
-        assertTrue(events.last() is LocationAcquisition.Success)
-        verify(exactly = 1) { factory.create(any()) }
-        verify(exactly = 0) { client.onDestroy() }
-        collector.cancelAndJoin()
-    }
-
-    @Test fun `callback recovered during stalled client configuration lookup cancels unnecessary replacement`() = runTest(dispatcher) {
-        val nextKey = CompletableDeferred<String>()
-        var keyReads = 0
-        val keyProvider = mockk<AmapApiKeyProvider>()
-        coEvery { keyProvider.getAmapApiKey() } coAnswers {
-            if (++keyReads == 1) "test-key" else nextKey.await()
-        }
-        manager = ContinuousAmapLocationManager(factory, keyProvider, runtimeReadiness)
+    @Test fun `silent SDK remains active while health checks only describe missing results`() = runTest(dispatcher) {
         val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
         runCurrent()
-        advanceTimeBy(90_000)
+        val clientId = manager.diagnosticSnapshot()["clientId"]
+        advanceTimeBy(89_999L)
+        assertFalse(manager.isSamplingStalled("order"))
+        advanceTimeBy(1L)
+        assertTrue(manager.isSamplingStalled("order"))
+        assertFalse(manager.isSamplingStalled("another-order"))
+        repeat(5) {
+            advanceTimeBy(60_000L)
+            listeners.single().onLocationChanged(null)
+            manager.syncAppVisibility(fromHealthTimer = true)
+            assertTrue(manager.isSamplingStalled("order"))
+        }
+        assertFalse(collector.isCompleted)
+        assertNull(manager.latestEvent())
+        assertEquals(clientId, manager.diagnosticSnapshot()["clientId"])
+        verify(exactly = 1) { factory.create(any()) }
+        verify(exactly = 1) { client.startLocation() }
+        verify(exactly = 0) { client.stopLocation() }
+        verify(exactly = 0) { client.onDestroy() }
+        collector.cancelAndJoin()
+        verify(exactly = 1) { client.onDestroy() }
+    }
+
+    @Test fun `same client fresh point after a long gap resumes reporting and completes the action`() = runTest(dispatcher) {
+        val received = mutableListOf<LocationAcquisition>()
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect { received += it } }
+        runCurrent()
+        val callback = listeners.single()
+        val clientId = manager.diagnosticSnapshot()["clientId"]
+        callback.onLocationChanged(sample())
+        runCurrent()
+        advanceTimeBy(300_000L)
+        assertTrue(manager.isSamplingStalled("order"))
+
         val action = async { manager.acquireServiceOrderLocation() }
         runCurrent()
-        assertEquals(2, keyReads)
-
-        listeners.single().onLocationChanged(sample())
-        nextKey.complete("test-key")
+        assertFalse("The pre-gap point must not satisfy a new action", action.isCompleted)
+        callback.onLocationChanged(sample().also {
+            every { it.locationTickTime } returns TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime())
+        })
         runCurrent()
 
         assertTrue(action.await() is LocationAcquisition.Success)
-        assertEquals(false, actionDiagnostics.single()["clientRecovered"])
+        assertEquals(2, received.size)
+        assertEquals(clientId, (received.last() as LocationAcquisition.Success).location.requestId)
+        assertEquals(clientId, actionDiagnostics.single()["clientId"])
+        assertFalse(manager.isSamplingStalled("order"))
+        assertEquals(listOf(30_000L, 3_000L, 30_000L), options.map { it.interval })
         verify(exactly = 1) { factory.create(any()) }
+        verify(exactly = 1) { client.startLocation() }
         verify(exactly = 0) { client.onDestroy() }
         collector.cancelAndJoin()
     }
 
-    @Test fun `cancelled recovery configuration read does not spend the shared recovery budget`() = runTest(dispatcher) {
-        val nextKey = CompletableDeferred<String>()
-        var reads = 0
-        val keyProvider = mockk<AmapApiKeyProvider>()
-        coEvery { keyProvider.getAmapApiKey() } coAnswers {
-            if (++reads == 1) "test-key" else nextKey.await()
-        }
-        manager = ContinuousAmapLocationManager(factory, keyProvider, runtimeReadiness)
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
+    @Test fun `action timeout leaves the reporting client available for later callbacks and actions`() = runTest(dispatcher) {
+        val received = mutableListOf<LocationAcquisition>()
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect { received += it } }
         runCurrent()
+        val callback = listeners.single()
+        val clientId = manager.diagnosticSnapshot()["clientId"]
         advanceTimeBy(90_000L)
         val action = async { manager.acquireServiceOrderLocation() }
         runCurrent()
-        action.cancelAndJoin()
+        advanceTimeBy(30_000L)
+        runCurrent()
+
+        assertEquals(LocationAcquisition.Failure(LocationFailure.TIMEOUT), action.await())
+        assertEquals(30_000L, actionDiagnostics.single()["durationMs"])
+        assertEquals(listOf(30_000L, 3_000L, 30_000L), options.map { it.interval })
+        assertFalse(collector.isCompleted)
+        assertEquals(clientId, manager.diagnosticSnapshot()["clientId"])
+        callback.onLocationChanged(sample().also {
+            every { it.locationTickTime } returns TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime())
+        })
+        runCurrent()
+        assertEquals(1, received.size)
+        assertTrue(manager.acquireServiceOrderLocation() is LocationAcquisition.Success)
+        assertEquals(listOf(30_000L, 3_000L, 30_000L), options.map { it.interval })
+        verify(exactly = 1) { factory.create(any()) }
+        verify(exactly = 1) { client.startLocation() }
+        verify(exactly = 0) { client.stopLocation() }
         verify(exactly = 0) { client.onDestroy() }
-
-        nextKey.complete("test-key")
-        assertTrue(manager.recoverStalledSampling("order"))
-        assertFalse(manager.isSamplingStalled("order"))
-        verify(exactly = 2) { factory.create(any()) }
-        verify(exactly = 1) { client.onDestroy() }
         collector.cancelAndJoin()
-    }
-
-    @Test fun `health recovery and foreground action replace the same stalled client only once`() = runTest(dispatcher) {
-        val nextKey = CompletableDeferred<String>()
-        var keyReads = 0
-        val keyProvider = mockk<AmapApiKeyProvider>()
-        coEvery { keyProvider.getAmapApiKey() } coAnswers {
-            if (++keyReads == 1) "test-key" else nextKey.await()
-        }
-        manager = ContinuousAmapLocationManager(factory, keyProvider, runtimeReadiness)
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
-        runCurrent()
-        advanceTimeBy(90_000)
-        val healthRecovery = async { manager.recoverStalledSampling("order") }
-        val action = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-        assertEquals(3, keyReads)
-
-        nextKey.complete("test-key")
-        runCurrent()
-
-        assertTrue(healthRecovery.await())
-        assertEquals(2, listeners.size)
-        assertEquals(listOf(30_000L, 3_000L), options.map { it.interval })
-        listeners.last().onLocationChanged(sample())
-        assertTrue(action.await() is LocationAcquisition.Success)
-        verify(exactly = 2) { factory.create(any()) }
         verify(exactly = 1) { client.onDestroy() }
-        collector.cancelAndJoin()
-    }
-
-    @Test fun `failed action rebuild notifies reporting collector instead of leaving an empty live stream`() = runTest(dispatcher) {
-        every { factory.create(any()) } returns SdkAmapClientHandle(client) andThenThrows
-            IllegalStateException("SDK recreation failed")
-        val collector = backgroundScope.async {
-            manager.startContinuousLocation("order").first { it is LocationAcquisition.Failure }
-        }
-        runCurrent()
-        val oldCallback = listeners.single()
-        advanceTimeBy(90_000)
-
-        val action = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-
-        val expected = LocationAcquisition.Failure(LocationFailure.CONFIGURATION)
-        assertEquals(expected, action.await())
-        assertEquals(expected, collector.await())
-        oldCallback.onLocationChanged(sample())
-        assertEquals(expected, manager.latestEvent())
-        verify(exactly = 2) { factory.create(any()) }
-        verify(exactly = 1) { client.onDestroy() }
-    }
-
-    @Test fun `permission revoked during action rebuild terminates both action and reporting acquisition`() = runTest(dispatcher) {
-        every { client.startLocation() } just Runs andThenThrows SecurityException("Permission revoked")
-        val collector = backgroundScope.async {
-            manager.startContinuousLocation("order").first { it is LocationAcquisition.Failure }
-        }
-        runCurrent()
-        advanceTimeBy(90_000)
-
-        val action = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-
-        val expected = LocationAcquisition.Failure(LocationFailure.PERMISSION)
-        assertEquals(expected, action.await())
-        assertEquals(expected, collector.await())
-        verify(exactly = 2) { client.onDestroy() }
     }
 
     @Test fun `action timeout without a callback does not invent callback age`() = runTest(dispatcher) {
@@ -655,145 +602,6 @@ class AmapLocationAcquisitionTest {
         }
     }
 
-    @Test fun `callbacks update liveness without replenishing a consumed silence recovery budget`() = runTest(dispatcher) {
-        val collection = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        val releasedCallback = listeners.single()
-        advanceTimeBy(90_000L)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        val activeCallback = listeners.last()
-
-        releasedCallback.onLocationChanged(sample())
-        releasedCallback.onLocationChanged(sample().also { every { it.errorCode } returns 4 })
-        activeCallback.onLocationChanged(null)
-        advanceTimeBy(90_000L)
-        assertTrue(manager.isSamplingStalled("order-1"))
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 2) { factory.create(any()) }
-
-        listOf(
-            sample().also { every { it.errorCode } returns 4 },
-            sample().also { every { it.accuracy } returns 2_000f },
-            sample(),
-        ).forEach { callback ->
-            activeCallback.onLocationChanged(callback)
-            assertFalse(manager.isSamplingStalled("order-1"))
-            advanceTimeBy(90_000L)
-            assertTrue(manager.isSamplingStalled("order-1"))
-            assertFalse(manager.recoverStalledSampling("order-1"))
-        }
-        verify(exactly = 2) { factory.create(any()) }
-        collection.cancelAndJoin()
-    }
-
-    @Test fun `synchronous first callback from a rebuilt client cannot grant another rebuild`() = runTest(dispatcher) {
-        every { client.startLocation() } answers { listeners.last().onLocationChanged(sample()) }
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        assertFalse(manager.isSamplingStalled("order-1"))
-
-        advanceTimeBy(90_000L)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        assertFalse(manager.isSamplingStalled("order-1"))
-        advanceTimeBy(90_000L)
-        assertTrue(manager.isSamplingStalled("order-1"))
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 2) { factory.create(any()) }
-        collector.cancelAndJoin()
-    }
-
-    @Test fun `foreground actions and health checks share one budget throughout continued silence`() = runTest(dispatcher) {
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        advanceTimeBy(90_000L)
-        val first = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-        assertEquals(2, listeners.size)
-        first.cancelAndJoin()
-
-        advanceTimeBy(90_000L)
-        assertTrue(manager.isSamplingStalled("order-1"))
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        val second = async { manager.acquireServiceOrderLocation() }
-        runCurrent()
-        assertEquals(2, listeners.size)
-        second.cancelAndJoin()
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 2) { factory.create(any()) }
-        verify(exactly = 1) { client.onDestroy() }
-        collector.cancelAndJoin()
-    }
-
-    @Test fun `action callback bursts and returning foreground do not replenish the recovery budget`() = runTest(dispatcher) {
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        advanceTimeBy(90_000L)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-
-        repeat(2) {
-            // Each action must await a new point; virtual delay does not age the wall clock.
-            listeners.last().onLocationChanged(sample().also { every { it.errorCode } returns 4 })
-            val action = async { manager.acquireServiceOrderLocation() }
-            runCurrent()
-            assertEquals(3_000L, options.last().interval)
-            listeners.last().onLocationChanged(sample())
-            assertTrue(action.await() is LocationAcquisition.Success)
-            assertEquals(30_000L, options.last().interval)
-            // Changing the option can cause a further immediate SDK callback.
-            listeners.last().onLocationChanged(sample())
-            every { runtimeReadiness.isAppVisible() } returns false
-            manager.syncAppVisibility()
-            every { runtimeReadiness.isAppVisible() } returns true
-            manager.syncAppVisibility()
-            advanceTimeBy(90_000L)
-            assertTrue(manager.isSamplingStalled("order-1"))
-            assertFalse(manager.recoverStalledSampling("order-1"))
-        }
-        verify(exactly = 2) { factory.create(any()) }
-        verify(exactly = 1) { client.onDestroy() }
-        collector.cancelAndJoin()
-    }
-
-    @Test fun `same owner recollection retains spent budget while a new owner gets its own budget`() = runTest(dispatcher) {
-        val first = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        advanceTimeBy(90_000L)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        first.cancelAndJoin()
-
-        val recollected = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        advanceTimeBy(90_000L)
-        assertTrue(manager.isSamplingStalled("order-1"))
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 3) { factory.create(any()) }
-        recollected.cancelAndJoin()
-
-        val next = backgroundScope.launch { manager.startContinuousLocation("order-2").collect() }
-        runCurrent()
-        advanceTimeBy(90_000L)
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        assertTrue(manager.recoverStalledSampling("order-2"))
-        verify(exactly = 5) { factory.create(any()) }
-        next.cancelAndJoin()
-    }
-
-    @Test fun `pause resume grants a new silence budget and full client startup grace`() = runTest(dispatcher) {
-        val collector = backgroundScope.launch { manager.startContinuousLocation("order-1").collect() }
-        runCurrent()
-        advanceTimeBy(90_000L)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        manager.setSamplingEnabled("order-1", false)
-        manager.setSamplingEnabled("order-1", true)
-        advanceTimeBy(89_999L)
-        assertFalse(manager.isSamplingStalled("order-1"))
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        advanceTimeBy(1L)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 4) { factory.create(any()) }
-        collector.cancelAndJoin()
-    }
-
     @Test fun `cancel while key lookup is pending never creates a late continuous client`() = runTest(dispatcher) {
         val keyResponse = CompletableDeferred<String>()
         val keyProvider = mockk<AmapApiKeyProvider>()
@@ -855,7 +663,7 @@ class AmapLocationAcquisitionTest {
         oldCallback.onLocationChanged(sample().also { every { it.errorCode } returns 4 })
         runCurrent()
         assertEquals(pausedCount, events.size)
-        assertFalse(manager.recoverStalledSampling("order-1"))
+        assertFalse(manager.isSamplingStalled("order-1"))
         manager.setSamplingEnabled("other-order", true)
         verify(exactly = 1) { factory.create(any()) }
 
@@ -1064,29 +872,13 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 1) { client.onDestroy() }
     }
 
-    @Test fun `only 90 seconds without raw callbacks rebuilds owned SDK sampling`() = runTest(dispatcher) {
-        var elapsed = 10_000L
-        mockkStatic(SystemClock::class)
-        every { SystemClock.elapsedRealtime() } answers { elapsed }
-        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "order-1").collect() }
-        runCurrent()
-        elapsed += 89_999
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        elapsed += 1
-        assertFalse(manager.recoverStalledSampling("other-owner"))
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 2) { factory.create(any()) }
-        verify(exactly = 1) { client.onDestroy() }
-        elapsed += 30_000
-        // Network failure is a raw SDK callback, not a dead client.
-        listeners.last().onLocationChanged(sample().also { every { it.errorCode } returns 4 })
-        elapsed += 60_000
-        assertFalse(manager.recoverStalledSampling("order-1"))
-        collector.cancelAndJoin()
-    }
-
     @Test fun `closing diagnostics retain the client purpose after reporting owner is released`() = runTest(dispatcher) {
         val events = mutableListOf<Map<String, Any?>>()
+        every { runtimeReadiness.diagnosticSnapshot() } returns mapOf(
+            "backgroundRestricted" to true,
+            "restrictBackgroundStatus" to ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
+            "lowPowerStandbyEnabled" to true,
+        )
         mockkObject(DiagnosticEventTracker)
         every { DiagnosticEventTracker.currentUserId() } returns "123"
         every { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) } answers {
@@ -1104,6 +896,12 @@ class AmapLocationAcquisitionTest {
         collector.cancelAndJoin()
         assertEquals("order_reporting", events.single { it["stage"] == "first" }["clientPurpose"])
         assertEquals("order_reporting", events.single { it["stage"] == "finished" }["clientPurpose"])
+        events.forEach { fields ->
+            assertEquals("bg=1,ds=3,lps=1", fields["backgroundPolicy"])
+            assertFalse(fields.containsKey("backgroundRestricted"))
+            assertFalse(fields.containsKey("restrictBackgroundStatus"))
+            assertFalse(fields.containsKey("lowPowerStandbyEnabled"))
+        }
     }
 
     @Test fun `repeated SDK network failures keep the same client and resume successful sampling`() = runTest(dispatcher) {
@@ -1119,7 +917,7 @@ class AmapLocationAcquisitionTest {
             runCurrent()
             assertEquals(LocationFailure.NETWORK, (manager.latestEvent() as LocationAcquisition.Failure).reason)
             advanceTimeBy(30_000)
-            assertFalse(manager.recoverStalledSampling("order-1"))
+            assertFalse(manager.isSamplingStalled("order-1"))
         }
         assertTrue("SDK failures must not enter the coordinate upload stream", received.isEmpty())
         callback.onLocationChanged(sample())
@@ -1160,27 +958,6 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 1) { client.startLocation() }
         verify(exactly = 1) { client.stopLocation() }
         verify(exactly = 1) { client.onDestroy() }
-    }
-
-    @Test fun `null callbacks cannot hide 90 seconds without SDK results`() = runTest(dispatcher) {
-        var elapsed = 10_000L
-        every { SystemClock.elapsedRealtime() } answers { elapsed }
-        val collector = backgroundScope.launch { manager.startContinuousLocation(owner = "order-1").collect() }
-        runCurrent()
-        val callback = listeners.single()
-        repeat(2) {
-            elapsed += 30_000
-            callback.onLocationChanged(null)
-            assertFalse(manager.recoverStalledSampling("order-1"))
-        }
-        elapsed += 30_000
-        callback.onLocationChanged(null)
-        assertTrue(manager.recoverStalledSampling("order-1"))
-        verify(exactly = 2) { factory.create(any()) }
-        verify(exactly = 1) { client.onDestroy() }
-        assertNull(manager.latestEvent())
-        collector.cancelAndJoin()
-        verify(exactly = 2) { client.onDestroy() }
     }
 
     @Test fun `silent startup has one visibility compensation then waits without SDK polling`() = runTest(dispatcher) {
@@ -1289,6 +1066,65 @@ class AmapLocationAcquisitionTest {
         verify(exactly = 3) { client.notifyAppEnterForeBack(false) }
         verify(exactly = 2) { client.startLocation() }
         collector.cancelAndJoin()
+    }
+
+    @Test fun `background or screen off silence refreshes active SDK session in place with cooldown`() = runTest(dispatcher) {
+        val received = mutableListOf<LocationAcquisition>()
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect { received += it } }
+        runCurrent()
+        val clientId = manager.diagnosticSnapshot()["clientId"]
+        val callback = listeners.single()
+        callback.onLocationChanged(sample().also {
+            every { it.locationTickTime } returns TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime())
+        })
+        runCurrent()
+        assertEquals(1, received.size)
+
+        every { runtimeReadiness.isAppVisible() } returns false
+        every { runtimeReadiness.diagnosticSnapshot() } returns mapOf("screenOn" to false)
+
+        // Before 45s silence threshold: health timer only syncs visibility without restarting SDK session.
+        advanceTimeBy(30_000L)
+        manager.syncAppVisibility(fromHealthTimer = true)
+        verify(exactly = 1) { client.startLocation() }
+        verify(exactly = 0) { client.stopLocation() }
+
+        // At 45s silence in background/screen-off: health timer performs in-place stop+start on same client.
+        advanceTimeBy(15_000L)
+        manager.syncAppVisibility(fromHealthTimer = true)
+        verify(exactly = 1) { client.stopLocation() }
+        verify(exactly = 2) { client.startLocation() }
+        assertEquals(clientId, manager.diagnosticSnapshot()["clientId"])
+        verify(exactly = 1) { factory.create(any()) }
+        verify(exactly = 0) { client.onDestroy() }
+
+        // Cooldown prevents another stop+start on the next 15s and 30s health ticks, and 90s stall diagnostic remains accurate.
+        advanceTimeBy(15_000L)
+        manager.syncAppVisibility(fromHealthTimer = true)
+        advanceTimeBy(15_000L)
+        manager.syncAppVisibility(fromHealthTimer = true)
+        verify(exactly = 1) { client.stopLocation() }
+        verify(exactly = 2) { client.startLocation() }
+        assertFalse(manager.isSamplingStalled("order"))
+
+        // At 90s total silence without a new callback: stall diagnostic is still true and cooldown allows next refresh.
+        advanceTimeBy(15_000L)
+        assertTrue(manager.isSamplingStalled("order"))
+        manager.syncAppVisibility(fromHealthTimer = true)
+        verify(exactly = 2) { client.stopLocation() }
+        verify(exactly = 3) { client.startLocation() }
+
+        // Fresh callback from the refreshed session resumes reporting on the same client.
+        callback.onLocationChanged(sample().also {
+            every { it.locationTickTime } returns TimeUnit.MILLISECONDS.toNanos(SystemClock.elapsedRealtime())
+        })
+        runCurrent()
+        assertEquals(2, received.size)
+        assertEquals(clientId, (received.last() as LocationAcquisition.Success).location.requestId)
+        assertFalse(manager.isSamplingStalled("order"))
+
+        collector.cancelAndJoin()
+        verify(exactly = 1) { client.onDestroy() }
     }
 
     private fun sample(): AMapLocation = mockk {

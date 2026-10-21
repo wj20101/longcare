@@ -8,6 +8,7 @@ import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
@@ -41,7 +42,12 @@ class NfcLocationFreshnessTest {
     @Before fun setup() {
         mockkStatic(SystemClock::class)
         every { SystemClock.elapsedRealtime() } returns 1_000L
-        every { facade.serviceOrderLocationFailure(any()) } returns null
+        every { facade.serviceOrderLocationFailure(any()) } answers {
+            val location = firstArg<LocationResult>()
+            ServiceOrderLocationQuality.rejection(
+                location, System.currentTimeMillis(), SystemClock.elapsedRealtime(),
+            )?.let { ServiceOrderLocationQuality.failure(location, it) }
+        }
         coEvery { facade.acquireServiceOrderLocation() } returns LocationAcquisition.Success(sample)
         every { details.getCachedOrderInfo(any()) } returns ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31"))
     }
@@ -180,6 +186,75 @@ class NfcLocationFreshnessTest {
         coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
         delegate.startOrder(key, "tag", precise)
         coVerify(exactly = 1) { orders.checkOrder(1, "tag", precise.longitude.toString(), precise.latitude.toString()) }
+    }
+
+    @Test fun `start submits fresh GPS coordinates despite UTC and phone wall clock differences`() = runTest {
+        coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        for ((index, offset) in listOf(5_000L, -60_000L).withIndex()) {
+            val receivedAt = System.currentTimeMillis()
+            val location = sample.copy(
+                provider = "gps", locationType = 1, sourceElapsedRealtime = 1_000L,
+                receivedAt = receivedAt, locationTime = receivedAt + offset,
+                latitude = 31.23456789012345, longitude = 121.98765432109876,
+            )
+            val orderKey = OrderKey(index + 1L)
+
+            assertTrue(delegate.startOrder(orderKey, "tag", location))
+
+            coVerify(exactly = 1) {
+                orders.checkOrder(orderKey.orderId, "tag", location.longitude.toString(), location.latitude.toString())
+            }
+        }
+        verify(exactly = 0) { lifecycle.onOrderEnded(any()) }
+    }
+
+    @Test fun `end submits fresh GPS coordinates and waits for API success before ending lifecycle`() = runTest {
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        for ((index, offset) in listOf(5_000L, -60_000L).withIndex()) {
+            val receivedAt = System.currentTimeMillis()
+            val location = sample.copy(
+                provider = "gps", locationType = 1, sourceElapsedRealtime = 1_000L,
+                receivedAt = receivedAt, locationTime = receivedAt + offset,
+                latitude = 31.23456789012345, longitude = 121.98765432109876,
+            )
+            val orderKey = OrderKey(index + 1L)
+            val response = CompletableDeferred<ApiResult<EndOrderResultModel>>()
+            coEvery { facade.acquireServiceOrderLocation() } returns LocationAcquisition.Success(location)
+            coEvery { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers { response.await() }
+            val job = launch { delegate.endOrder(orderKey, "tag", listOf(7), listOf("before"), listOf("after"), listOf("middle")) }
+            runCurrent()
+
+            coVerify(exactly = 1) {
+                orders.endOrder(orderKey.orderId, "tag", listOf(7), listOf("before"), listOf("middle"), listOf("after"),
+                    location.longitude.toString(), location.latitude.toString(), 1)
+            }
+            verify(exactly = 0) { lifecycle.onOrderEnded(orderKey.orderId) }
+
+            response.complete(ApiResult.Success(EndOrderResultModel(60)))
+            job.join()
+
+            verify(exactly = 1) { lifecycle.onOrderEnded(orderKey.orderId) }
+            assertTrue(state.value is NfcSignInUiState.Success)
+        }
+    }
+
+    @Test fun `failed end submission with fresh GPS leaves the order lifecycle active`() = runTest {
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        coEvery { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns ApiResult.Failure(4001, "not ended")
+        for ((index, offset) in listOf(5_000L, -60_000L).withIndex()) {
+            val receivedAt = System.currentTimeMillis()
+            val location = sample.copy(
+                provider = "gps", locationType = 1, sourceElapsedRealtime = 1_000L,
+                receivedAt = receivedAt, locationTime = receivedAt + offset,
+            )
+            coEvery { facade.acquireServiceOrderLocation() } returns LocationAcquisition.Success(location)
+
+            delegate.endOrder(OrderKey(index + 1L), "tag", emptyList(), emptyList(), emptyList())
+
+            assertEquals("not ended", (state.value as NfcSignInUiState.Error).message)
+        }
+        coVerify(exactly = 2) { orders.endOrder(any(), any(), any(), any(), any(), any(), "121.0", "31.0", 1) }
+        verify(exactly = 0) { lifecycle.onOrderEnded(any()) }
     }
 
     private fun CoroutineScope.scan(bus: AppEventBus, pending: MutableStateFlow<PendingNfcData?> = MutableStateFlow(null), request: suspend () -> LocationRequestResult) =

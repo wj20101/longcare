@@ -1,0 +1,26 @@
+{
+  "hostWall": 1792600726.4805171,
+  "hostMonotonic": 451490.7303945,
+  "uid": 10216,
+  "batteryExemptObservedInLiveWhitelist": true,
+  "providers": "network",
+  "powerSaveSetting": "0",
+  "dataSaverRestricted": "false",
+  "installedApkSha256ByFile": {
+    "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+  },
+  "foregroundServices": [
+    {
+      "component": "com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService",
+      "isForeground": true,
+      "foregroundId": 1,
+      "bound": false
+    },
+    {
+      "component": "com.ytone.longcare/com.amap.api.location.APSService",
+      "isForeground": false,
+      "foregroundId": null,
+      "bound": true
+    }
+  ]
+}

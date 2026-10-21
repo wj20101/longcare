@@ -1,0 +1,36 @@
+{
+  "isolatedAction": [
+    {
+      "start": 2946464303,
+      "end": 2946464778,
+      "durationMs": 475,
+      "pid": 6891,
+      "clientAtStart": 1,
+      "clientAtEnd": 1,
+      "outcome": "success",
+      "reason": null,
+      "accuracyMeters": 39
+    }
+  ],
+  "stickyRecovery": {
+    "oldPid": 6891,
+    "newPid": 7672,
+    "restoredOrderId": 9000001,
+    "clientAfter": 2,
+    "serviceCreateToFirstLocalSuccessMs": 886,
+    "preKillSnapshotToFirstLocalSuccessMs": 3324,
+    "preKillSnapshotTimingNote": "Includes snapshot capture and kill command dispatch; not exact kill latency",
+    "bothForegroundServicesObserved": true
+  },
+  "endVerification": {
+    "naturalServiceDestructionRecorded": true,
+    "servicesEmptyBeforeForceStop": true,
+    "observedNoUploadIncreaseMs": 171720,
+    "uploadsAtBothObservations": [
+      "7",
+      "7"
+    ],
+    "ownActiveNotificationsAfterEnd": 0
+  },
+  "scope": "Real AMap, isolated order/local repository. No actual nursing sign-out or NFC API closure."
+}

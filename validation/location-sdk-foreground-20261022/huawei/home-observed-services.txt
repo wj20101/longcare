@@ -1,0 +1,43 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{213124c u0 com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService}
+    intent={act=debug.location.PROBE_START cmp=com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService}
+    packageName=com.ytone.longcare
+    processName=com.ytone.longcare
+    baseDir=/data/app/com.ytone.longcare-oF0DfNWeUcgmV_9xTrbW-A==/base.apk
+    dataDir=/data/user/0/com.ytone.longcare
+    app=ProcessRecord{7e8b84 5908:com.ytone.longcare/u0a131}
+    isForeground=true foregroundId=1 foregroundNoti=Notification(channel=location_tracking_channel pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x62 color=0x00000000 vis=PRIVATE)
+    createTime=-2m2s352ms startingBgTimeout=--
+    lastActivity=-2m2s246ms restartTime=-2m2s351ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=false callStart=true lastStartId=2
+
+  * ServiceRecord{f0be79b u0 com.ytone.longcare/com.amap.api.location.APSService}
+    intent={cmp=com.ytone.longcare/com.amap.api.location.APSService}
+    packageName=com.ytone.longcare
+    processName=com.ytone.longcare
+    baseDir=/data/app/com.ytone.longcare-oF0DfNWeUcgmV_9xTrbW-A==/base.apk
+    dataDir=/data/user/0/com.ytone.longcare
+    app=ProcessRecord{7e8b84 5908:com.ytone.longcare/u0a131}
+    isForeground=true foregroundId=9001 foregroundNoti=Notification(channel=location_probe_sdk_foreground pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x62 color=0x00000000 vis=PRIVATE)
+    createTime=-2m2s71ms startingBgTimeout=--
+    lastActivity=-2m1s998ms restartTime=-2m2s71ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=true callStart=true lastStartId=1
+    Delivered Starts:
+    #0 id=1 dur=-2m1s998ms dxc=1
+      intent=Intent { cmp=com.ytone.longcare/com.amap.api.location.APSService (has extras) }
+    Bindings:
+    * IntentBindRecord{3ce217a CREATE}:
+      intent={cmp=com.ytone.longcare/com.amap.api.location.APSService}
+      binder=android.os.BinderProxy@b539d2b
+      requested=true received=true hasBound=true doRebind=false
+      * Client AppBindRecord{6bf3588 ProcessRecord{7e8b84 5908:com.ytone.longcare/u0a131}}
+        Per-process Connections:
+          ConnectionRecord{2c84faa u0 CR com.ytone.longcare/com.amap.api.location.APSService:@47a2295}
+    All Connections:
+      ConnectionRecord{2c84faa u0 CR com.ytone.longcare/com.amap.api.location.APSService:@47a2295}
+
+  Connection bindings to services:
+  * ConnectionRecord{2c84faa u0 CR com.ytone.longcare/com.amap.api.location.APSService:@47a2295}
+    binding=AppBindRecord{6bf3588 com.ytone.longcare/com.amap.api.location.APSService:com.ytone.longcare}
+    conn=android.os.BinderProxy@47a2295 flags=0x1

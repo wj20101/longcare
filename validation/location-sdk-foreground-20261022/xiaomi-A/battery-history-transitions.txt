@@ -1,0 +1,32 @@
+Battery History (0% used, 556 used of 512KB, 23 strings using 1110):
+                    0 (10) RESET:TIME: 2026-10-22-00-31-35
+                    0 (2) 097 status=discharging health=good plug=none temp=293 volt=4287 charge=3164 +running +wake_lock +wifi_scan +wifi_radio +screen phone_signal_strength=excellent brightness=dim +wifi_running +wifi +usb_data wifi_signal_strength=4 wifi_suppl=completed [package-specific trailing detail omitted]
+            +10s303ms (3) 097 -wake_lock -screen stats=0:"screen-state"
+            +12s841ms (1) 097 -running
+            +16s516ms (2) 097 +running [package-specific trailing detail omitted]
+            +17s108ms (1) 097 -running
+            +52s546ms (3) 097 +running -wifi_radio [package-specific trailing detail omitted]
+            +53s141ms (1) 097 -running
+          +1m16s680ms (2) 097 +running +wifi_radio wakeupap=u0a85:""
+          +1m16s758ms (2) 097 -running stats=0:"wifi-data: active"
+          +1m43s623ms (3) 097 +running -wifi_radio [package-specific trailing detail omitted]
+          +1m44s277ms (1) 097 -running
+          +2m32s477ms (3) 097 +running +wake_lock=1000:"*alarm*:android.intent.action.TIME_TICK" +wifi_radio [package-specific trailing detail omitted]
+          +2m32s503ms (2) 097 -running -wake_lock stats=0:"wifi-data: active"
+          +3m12s508ms (3) 097 +running +wake_lock=1001:"NotifyRegistrantLock" -wifi_radio [package-specific trailing detail omitted]
+          +3m12s710ms (2) 097 -running -wake_lock stats=0:"wakelock-change"
+          +3m22s504ms (2) 097 +running [package-specific trailing detail omitted]
+          +3m23s097ms (1) 097 -running
+          +3m34s464ms (2) 097 +running +wake_lock=1000:"*walarm*:DeviceIdleController.light" device_idle=light [package-specific trailing detail omitted]
+          +3m34s492ms (1) 097 -running -wake_lock
+          +4m03s942ms (2) 097 +running [package-specific trailing detail omitted]
+          +4m04s553ms (1) 097 -running
+          +4m20s482ms (2) 097 +running [package-specific trailing detail omitted]
+          +4m22s164ms (1) 097 -running
+          +4m42s735ms (2) 097 +running [package-specific trailing detail omitted]
+          +4m43s363ms (1) 097 -running
+          +6m27s471ms (3) 097 +running +wake_lock=1000:"*alarm*:android.intent.action.TIME_TICK" +wifi_radio [package-specific trailing detail omitted]
+          +6m27s502ms (2) 097 -running -wake_lock stats=0:"wifi-data: active"
+          +7m01s795ms (3) 097 +running -wifi_radio [package-specific trailing detail omitted]
+          +7m01s978ms (5) 097 status=charging volt=4265 +wake_lock=-1:"screen" +screen screenwake=1000:"android.server.power:POWER"
+          +7m02s200ms (4) 097 plug=ac temp=278 volt=4279 +plugged stats=0:"screen-state"

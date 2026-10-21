@@ -4,6 +4,8 @@ import android.os.SystemClock
 import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.diagnostics.locationDiagnosticExtras
+import com.ytone.longcare.common.diagnostics.locationTimeDiagnostic
+import com.ytone.longcare.domain.location.LocationQuality
 import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.domain.location.ServiceOrderLocationQuality
 import kotlinx.coroutines.currentCoroutineContext
@@ -208,7 +210,7 @@ private val allowedNfcExtraKeys = setOf(
     "longitude", "latitude", "coordType", "locationTime", "sampleAgeMs", "accuracy",
     "accuracyBand", "requestId",
     "provider", "locationType", "trustedLevel", "isMock", "isLastLocation", "qualityReason",
-    "amapErrorCode", "amapErrorInfo",
+    "amapErrorCode", "amapErrorInfo", "time",
 )
 
 /** Reports each NFC acquisition once, including permission waits and fresh samples after confirmation. */
@@ -300,6 +302,7 @@ internal fun nfcLocationExtras(
     elapsedRealtime: Long = SystemClock.elapsedRealtime(),
 ): Map<String, Any?> = locationDiagnosticExtras(location, now) + mapOf(
     "qualityReason" to ServiceOrderLocationQuality.rejection(location, now, elapsedRealtime)?.name,
+    "time" to locationTimeDiagnostic(location, now, elapsedRealtime, LocationQuality.timeIssue(location, now, elapsedRealtime)?.name),
     "accuracyBand" to ServiceOrderLocationQuality.accuracyBand(location.accuracy).name,
 )
 
@@ -371,7 +374,7 @@ internal class EndOrderDiagnostics(
     private companion object {
         // Keep exact submitted coordinates and quality evidence within the common payload size limit.
         val evidenceKeys = setOf("longitude", "latitude", "coordType", "locationTime", "sampleAgeMs",
-            "accuracy", "requestId", "locationType", "trustedLevel", "isMock", "amapErrorCode")
+            "accuracy", "requestId", "locationType", "trustedLevel", "isMock", "amapErrorCode", "time")
     }
 }
 

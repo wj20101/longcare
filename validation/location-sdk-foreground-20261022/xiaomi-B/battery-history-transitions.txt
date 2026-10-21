@@ -1,0 +1,26 @@
+Battery History (0% used, 440 used of 512KB, 20 strings using 956):
+                    0 (10) RESET:TIME: 2026-10-22-00-40-23
+                    0 (2) 097 status=discharging health=good plug=none temp=281 volt=4309 charge=3164 +running +wake_lock +wifi_scan +wifi_radio +screen phone_signal_strength=excellent brightness=dim +wifi_running +wifi +usb_data wifi_signal_strength=4 wifi_suppl=completed [package-specific trailing detail omitted]
+             +2s237ms (3) 097 -screen stats=0:"screen-state"
+             +3s578ms (1) 097 -running -wake_lock
+             +7s831ms (2) 097 +running [package-specific trailing detail omitted]
+             +8s424ms (1) 097 -running
+            +33s599ms (3) 097 +running -wifi_radio [package-specific trailing detail omitted]
+            +34s189ms (1) 097 -running
+          +1m24s909ms (2) 097 +running [package-specific trailing detail omitted]
+          +1m25s547ms (1) 097 -running
+          +1m34s799ms (3) 097 +running +wake_lock=1000:"*alarm*:android.intent.action.TIME_TICK" +wifi_radio [package-specific trailing detail omitted]
+          +1m34s828ms (2) 097 -running -wake_lock stats=0:"wifi-data: active"
+          +1m45s174ms (2) 097 +running [package-specific trailing detail omitted]
+          +1m45s776ms (1) 097 -running
+          +2m15s958ms (3) 097 +running -wifi_radio [package-specific trailing detail omitted]
+          +2m16s550ms (1) 097 -running
+          +3m07s001ms (3) 097 +running [package-specific trailing detail omitted]
+          +3m07s655ms (1) 097 -running
+          +3m58s065ms (2) 097 +running [package-specific trailing detail omitted]
+          +3m58s698ms (1) 097 -running
+          +4m46s804ms (2) 097 +running +wake_lock=1000:"deviceidle_going_idle" device_idle=light [package-specific trailing detail omitted]
+          +4m46s838ms (1) 097 -running -wake_lock
+          +5m26s849ms (3) 097 volt=4255 +running [package-specific trailing detail omitted]
+          +5m27s557ms (4) 097 status=charging +wake_lock=-1:"screen" +wifi_scan +screen screenwake=1000:"android.server.power:POWER"
+          +5m27s788ms (4) 097 plug=ac temp=275 volt=4280 +plugged stats=0:"screen-state"

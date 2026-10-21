@@ -123,7 +123,6 @@ class LocationTrackingServiceSamplingRecoveryTest {
             }
             assertEquals(1, subscriptions)
             assertEquals(1, startedSubscriptions)
-            assertEquals(0, recoveries)
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
@@ -162,23 +161,20 @@ class LocationTrackingServiceSamplingRecoveryTest {
         }
     }
 
-    @Test fun `health checks retain a spent recovery budget after error and successful callbacks`() = runTest {
+    @Test fun `errors and successful callbacks do not change the subscription after long callback gaps`() = runTest {
         withFixture {
             start()
-            // The same owner's foreground action/previous collector already used its recovery.
-            recoveryAttempted = true
             repeat(8) { tick() }
-            assertEquals(0, recoveries)
             assertEquals(1, subscriptions)
             assertFalse(shadowOf(service).isStoppedBySelf)
 
             failure(LocationFailure.NETWORK, errorCode = 4)
             repeat(3) { tick() }
-            assertEquals(0, recoveries)
             sample()
             repeat(3) { tick() }
-            assertEquals(0, recoveries)
             assertEquals(1, subscriptions)
+            assertEquals(1, startedSubscriptions)
+            verify(exactly = 0) { controller.stop() }
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
         }
     }
@@ -253,84 +249,52 @@ class LocationTrackingServiceSamplingRecoveryTest {
         }
     }
 
-    @Test fun `continued silence after one rebuild keeps listening and a late sample resumes upload`() = runTest {
+    @Test fun `five minute callback silence retains the live subscription and a late sample resumes upload`() = runTest {
         withFixture {
             start()
-            repeat(8) { tick() }
-            assertEquals(1, recoveries)
+            repeat(10) { tick() }
             assertEquals(1, subscriptions)
+            assertEquals(1, startedSubscriptions)
             assertFalse(shadowOf(service).isStoppedBySelf)
+            assertEquals(LocationReportingStatus.LOCATING, manager.status.value)
             verify(exactly = 0) { controller.stop() }
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+            coVerify(exactly = 1) { service.continuousAmapLocationManager.setSamplingEnabled(any(), true) }
+            coVerify(exactly = 0) { service.continuousAmapLocationManager.setSamplingEnabled(any(), false) }
 
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
             verify(exactly = 1) { controller.start(any(), any(), 10) }
             repeat(3) { tick() }
-            assertEquals(1, recoveries)
             assertEquals(1, subscriptions)
+            assertEquals(1, startedSubscriptions)
             assertFalse(shadowOf(service).isStoppedBySelf)
         }
     }
 
-    @Test fun `battery exempt idle service repairs silence once and resumes correct uploads`() = runTest {
-        withFixture {
-            val power = shadowOf(service.getSystemService(PowerManager::class.java))
-            power.setIsDeviceIdleMode(true)
-            power.setIgnoringBatteryOptimizations(service.packageName, true)
-            start()
-            repeat(8) { tick() }
-            assertEquals(1, recoveries)
-            assertEquals(1, subscriptions)
-            assertTrue(shadowOf(service).lastForegroundNotification != null)
-            sample()
-            coVerify(exactly = 1) { service.locationRepository.addPosition(10, 31.0, 121.0) }
-            assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
-        }
-    }
+    @Test fun `idle entry and exit preserve the SDK subscription regardless of battery exemption`() = runTest {
+        for (exempt in listOf(false, true)) {
+            withFixture {
+                val power = shadowOf(service.getSystemService(PowerManager::class.java))
+                power.setIsDeviceIdleMode(true)
+                power.setIgnoringBatteryOptimizations(service.packageName, exempt)
+                start()
+                repeat(10) { tick() }
+                assertEquals(1, subscriptions)
+                assertEquals(1, startedSubscriptions)
+                assertTrue(shadowOf(service).lastForegroundNotification != null)
+                coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
 
-    @Test fun `restricted idle service waits without repeated SDK rebuilds then repairs on exit`() = runTest {
-        withFixture {
-            val power = shadowOf(service.getSystemService(PowerManager::class.java))
-            power.setIsDeviceIdleMode(true)
-            power.setIgnoringBatteryOptimizations(service.packageName, false)
-            start()
-            repeat(8) { tick() }
-            assertEquals(0, recoveries)
-            assertEquals(1, subscriptions)
-            power.setIsDeviceIdleMode(false)
-            tick()
-            assertEquals(1, recoveries)
-            sample()
-            coVerify(exactly = 1) { service.locationRepository.addPosition(10, 31.0, 121.0) }
-        }
-    }
-
-    @Test fun `synchronous callback during rebuild cannot grant another automatic rebuild`() = runTest {
-        withFixture {
-            coEvery { service.continuousAmapLocationManager.recoverStalledSampling(any()) } coAnswers {
-                if (recoveryAttempted || testScheduler.currentTime - lastCallback < 90_000L) false
-                else {
-                    recoveryAttempted = true
-                    recoveries += 1
-                    // The SDK can invoke its listener inside startLocation, before recovery returns.
-                    recordCallback()
-                    true
-                }
+                power.setIsDeviceIdleMode(false)
+                tick()
+                sample()
+                coVerify(exactly = 1) { service.locationRepository.addPosition(10, 31.0, 121.0) }
+                assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
+                assertEquals(1, startedSubscriptions)
+                verify(exactly = 1) { controller.start(any(), any(), 10) }
+                verify(exactly = 0) { controller.stop() }
             }
-            start()
-            repeat(3) { tick() }
-            assertEquals(1, recoveries)
-            assertEquals(1L, callbacks)
-            assertEquals(90_000L, lastCallback)
-
-            repeat(3) { tick() }
-            assertEquals(1, recoveries)
-            assertEquals(1L, callbacks)
-            assertEquals(90_000L, lastCallback)
-            assertEquals(1, subscriptions)
-            assertFalse(shadowOf(service).isStoppedBySelf)
-            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         }
     }
 
@@ -433,11 +397,8 @@ class LocationTrackingServiceSamplingRecoveryTest {
         var consent = true
         var subscriptions = 0
         var startedSubscriptions = 0
-        var recoveries = 0
-        var recoveryAttempted = false
         var samplingEnabled = true
         var lastCallback = 0L
-        var callbacks = 0L
         private var owner = ""
         private var generation = 0L
         val service = Robolectric.buildService(LocationTrackingService::class.java).get()
@@ -478,23 +439,11 @@ class LocationTrackingServiceSamplingRecoveryTest {
             }
             coEvery { service.continuousAmapLocationManager.setSamplingEnabled(any(), any()) } coAnswers {
                 val enabled = secondArg<Boolean>()
-                if (samplingEnabled != enabled) {
-                    recoveryAttempted = false
-                    if (enabled) lastCallback = testScheduler.currentTime
-                }
+                if (!samplingEnabled && enabled) lastCallback = testScheduler.currentTime
                 samplingEnabled = enabled
             }
             coEvery { service.continuousAmapLocationManager.isSamplingStalled(any()) } coAnswers {
                 samplingEnabled && testScheduler.currentTime - lastCallback >= 90_000L
-            }
-            coEvery { service.continuousAmapLocationManager.recoverStalledSampling(any()) } coAnswers {
-                if (recoveryAttempted || testScheduler.currentTime - lastCallback < 90_000L) false
-                else {
-                    recoveryAttempted = true
-                    recoveries += 1
-                    lastCallback = testScheduler.currentTime
-                    true
-                }
             }
             coEvery { service.locationRepository.addPosition(any(), any(), any()) } returns ApiResult.Success(Unit)
             manager.setAccount(LocationAccount(1, 2, 3))
@@ -530,20 +479,15 @@ class LocationTrackingServiceSamplingRecoveryTest {
 
         suspend fun sample() {
             val value = location()
-            recordCallback()
+            lastCallback = testScheduler.currentTime
             samples.emit(LocationAcquisition.Success(value))
             scope.runCurrent()
         }
 
         suspend fun failure(reason: LocationFailure, errorCode: Int) {
-            recordCallback()
+            lastCallback = testScheduler.currentTime
             samples.emit(LocationAcquisition.Failure(reason, location().copy(errorCode = errorCode)))
             scope.runCurrent()
-        }
-
-        fun recordCallback() {
-            lastCallback = testScheduler.currentTime
-            callbacks += 1L
         }
 
         fun location() = LocationResult(

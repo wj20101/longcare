@@ -1,0 +1,4 @@
+<resources>
+    <string name="location_probe_sdk_channel">高德前台服务验证</string>
+    <string name="location_probe_sdk_notification">高德前台定位验证中</string>
+</resources>

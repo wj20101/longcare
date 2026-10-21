@@ -29,9 +29,9 @@ class LocationDiagnosticsRegressionTest {
     }
 
     @Test
-    fun `routine lifecycle event must not be reported as a caught exception`() {
+    fun `successful SDK callback recovery must not be reported as a caught exception`() {
         LocationEventTracker.trackEvent(
-            eventType = LocationEventTracker.EventType.SDK_RECOVERED,
+            eventType = LocationEventTracker.EventType.AMAP_CONTINUOUS_LOCATION_RECOVERED,
             extras = mapOf("orderId" to 42L),
         )
 

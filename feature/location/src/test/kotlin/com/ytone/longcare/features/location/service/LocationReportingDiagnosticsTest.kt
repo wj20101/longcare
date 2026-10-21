@@ -4,10 +4,12 @@ import com.ytone.longcare.domain.location.LocationAcquisition
 import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.diagnostics.DiagnosticException
+import com.ytone.longcare.common.network.ApiRequestException
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.model.LocationResult
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.mockk.unmockkObject
@@ -49,26 +51,41 @@ class LocationReportingDiagnosticsTest {
         every { CrashReportGateway.postCaughtException(any()) } answers { delivered += firstArg<DiagnosticException>() }
         val runtime = mapOf(
             "clientId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe302",
-            "runtime" to "idle=false,screen=false,net=true,validated=true,exempt=false,save=false",
-            "sdkState" to "count=10000,null=0,ageMs=1200000,intervalMs=30000,visible=false,recoveryUsed=true",
+            "runtime" to "idle=?/?,screen=?,net=?,validated=?,exempt=?,save=?,bg=?,ds=?,lps=?",
+            "sdkState" to "count=10000,null=0,ageMs=1200000,intervalMs=30000,visible=false",
         )
-        val actual = LocationReportingDiagnostics(1234567890123L, "cd47d834-d58a-45f8-9c0b-0f7bcf1fe301",
-            "2147483647", { elapsed }, { uptime }, { runtime })
-        actual.onAcquisition(LocationAcquisition.Success(sample().copy(sourceElapsedRealtime = elapsed)))
-        actual.onCandidate("source_before_resume")
-        elapsed += 1_200_000
-        actual.onUploadFailure(LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR, null,
-            java.net.SocketTimeoutException("private information must not displace evidence".repeat(20)))
-        val report = delivered.single()
         val required = setOf("orderId", "sessionId", "stage", "reason", "reportSequence", "successGapMs",
-            "maxSuccessGapMs", "observedMs", "rawGapMs", "sourceAgeMs", "sampleAgeMs", "accuracy",
+            "maxSuccessGapMs", "observedMs", "time", "accuracy",
             "locationType", "sdkErrorCode", "qualityReason", "apiFailure", "maxTickGapMs", "maxSleepGapMs",
             "counts", "clientId", "runtime", "sdkState")
-        required.forEach { assertNotNull("Missing diagnostic field $it: ${report.message}", report.fields[it]) }
-        assertTrue(requireNotNull(report.message).length <= 950)
-        assertTrue(report.fields.size <= 30)
-        assertFalse(report.fields.containsKey("latitude"))
-        assertFalse(report.fields.containsKey("longitude"))
+        // The production adapter wraps failures in this longer class name; it must not crowd out evidence.
+        val error = mockk<ApiRequestException>(relaxed = true)
+        every { error.stackTrace } returns emptyArray()
+        every { error.message } returns "private information must not displace evidence".repeat(20)
+        assertEquals(ApiRequestException::class.java, error.javaClass)
+        val samples = listOf(
+            sample().copy(sourceElapsedRealtime = 1_000L) to "none",
+            sample().copy(sourceElapsedRealtime = 1_001_000L) to "SOURCE_AFTER_RECEIPT",
+            sample().copy(receivedElapsedRealtime = -1L, sourceElapsedRealtime = 1_000L) to "RECEIPT_ELAPSED_INVALID",
+            sample().copy(receivedElapsedRealtime = 1_201_001L, sourceElapsedRealtime = 1_000L) to "ELAPSED_BEFORE_RECEIPT",
+        )
+        for ((location, issue) in samples) {
+            elapsed = 1_000L
+            val actual = LocationReportingDiagnostics(1234567890123L, "cd47d834-d58a-45f8-9c0b-0f7bcf1fe301",
+                "2147483647", { elapsed }, { uptime }, { runtime })
+            actual.onAcquisition(LocationAcquisition.Success(location))
+            actual.onCandidate(if (issue == "none") "before_resume" else "TIME")
+            elapsed += 1_200_000
+            actual.onUploadFailure(LocationEventTracker.EventType.API_UPLOAD_NETWORK_ERROR, null, error)
+            val report = delivered.last()
+            required.forEach { assertNotNull("$issue missing diagnostic field $it: ${report.message}", report.fields[it]) }
+            assertTrue(report.fields.getValue("time").contains("issue=$issue,"))
+            assertTrue(requireNotNull(report.message).length <= 950)
+            assertTrue(report.fields.size <= 30)
+            assertFalse(report.fields.containsKey("latitude"))
+            assertFalse(report.fields.containsKey("longitude"))
+        }
+        assertEquals(samples.size, delivered.size)
     }
 
     @Test fun `missing callbacks and delayed health tick report once during idle without claiming a cause`() {
@@ -186,7 +203,7 @@ class LocationReportingDiagnosticsTest {
         diagnostics.onAcquisition(LocationAcquisition.Success(sample().copy(receivedElapsedRealtime = 1_000L)))
         diagnostics.onHealthTick(null)
         assertEquals("callback_silence", reports.single().fields["reason"])
-        assertEquals(90_000L, reports.single().fields["rawGapMs"])
+        assertTrue(reports.single().fields["time"].toString().contains("elapsed=90000"))
     }
 
     @Test fun `terminal permission or privacy loss reports once even without an open gap`() {
@@ -230,16 +247,15 @@ class LocationReportingDiagnosticsTest {
         diagnostics.onAcquisition(LocationAcquisition.Success(sample().copy(sourceElapsedRealtime = 500L)))
         elapsed += 30_000
         diagnostics.onAcquisition(LocationAcquisition.Success(sample().copy(sourceElapsedRealtime = 500L)))
-        diagnostics.onCandidate("SOURCE_BEFORE_RESUME")
+        diagnostics.onCandidate("before_resume")
         elapsed += 30_000
         diagnostics.onHealthTick(null)
         val fields = reports.single().fields
-        assertEquals(30_000L, fields["rawGapMs"])
-        assertEquals(60_500L, fields["sourceAgeMs"])
-        assertEquals(30_000L, fields["sampleAgeMs"])
+        assertTrue(fields["time"].toString().contains("source=30500"))
+        assertTrue(fields["time"].toString().contains("elapsed=30000"))
         assertEquals(50f, fields["accuracy"])
         assertEquals(5, fields["locationType"])
-        assertEquals("SOURCE_BEFORE_RESUME", fields["qualityReason"])
+        assertEquals("before_resume", fields["qualityReason"])
         assertEquals(2L, count(fields, "cb"))
         assertEquals(1L, count(fields, "reuse"))
     }

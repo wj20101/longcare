@@ -46,9 +46,7 @@ class LocationQualityTest {
         assertEquals(Rejection.TIME, reason(sample.copy(locationTime = 0)))
         assertEquals(Rejection.TIME, reason(sample.copy(locationTime = 100_001)))
         assertEquals(Rejection.TIME, reason(sample.copy(receivedAt = 0)))
-        assertEquals(Rejection.ORDER, LocationQuality.rejection(sample, 100_000, 1_000, notBefore = 100_001))
-        assertEquals(Rejection.ORDER, LocationQuality.rejection(sample, 100_000, 1_000, previousSampleTime = 100_000))
-        assertNull(LocationQuality.rejection(sample, 100_000, 1_000, previousSampleTime = 99_999))
+        assertEquals(Rejection.ORDER, LocationQuality.rejection(sample, 100_000, 1_000, notBeforeElapsedRealtime = 1_001))
     }
 
     @Test fun `fifteen second boundary includes age before receipt and time waiting`() {
@@ -104,13 +102,13 @@ class LocationQualityTest {
 
     @Test fun `action cutoff uses source age when SDK wall time has been refreshed`() {
         val reused = sample.copy(receivedElapsedRealtime = 100_000, sourceElapsedRealtime = 97_000)
-        assertNull(ServiceOrderLocationQuality.rejection(reused, 100_000, 100_000, notBefore = 97_000))
+        assertNull(ServiceOrderLocationQuality.rejection(reused, 100_000, 100_000, notBeforeElapsedRealtime = 97_000))
         assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
-            reused.copy(sourceElapsedRealtime = 96_999), 100_000, 100_000, notBefore = 97_000,
+            reused.copy(sourceElapsedRealtime = 96_999), 100_000, 100_000, notBeforeElapsedRealtime = 97_000,
         ))
         // Removing the service action's age limit must not remove its order isolation.
         assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
-            reused.copy(sourceElapsedRealtime = 1), 100_000, 100_000, notBefore = 97_000,
+            reused.copy(sourceElapsedRealtime = 1), 100_000, 100_000, notBeforeElapsedRealtime = 97_000,
         ))
     }
 
@@ -121,20 +119,20 @@ class LocationQualityTest {
             receivedElapsedRealtime = 110_000, sourceElapsedRealtime = 90_000,
         )
         assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
-            received, 200_000, 110_000, notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+            received, 200_000, 110_000, notBeforeElapsedRealtime = 97_000,
         ))
         // 仍允许动作前 3 秒的预热边界；缺失源时钟时保持原来的兼容路径。
         assertNull(ServiceOrderLocationQuality.rejection(
             received.copy(sourceElapsedRealtime = 97_000), 200_000, 110_000,
-            notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+            notBeforeElapsedRealtime = 97_000,
         ))
         assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
             received.copy(sourceElapsedRealtime = 96_999), 200_000, 110_000,
-            notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+            notBeforeElapsedRealtime = 97_000,
         ))
         assertNull(ServiceOrderLocationQuality.rejection(
             received.copy(sourceElapsedRealtime = 0), 200_000, 110_000,
-            notBefore = 97_000, notBeforeElapsedRealtime = 97_000,
+            notBeforeElapsedRealtime = 97_000,
         ))
     }
 
@@ -143,18 +141,57 @@ class LocationQualityTest {
         assertNull(reason(sample))
         assertEquals(Rejection.STALE, reason(sample.copy(locationTime = 84_999)))
         assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
-            sample.copy(locationTime = 96_999), 100_000, 1_000, notBefore = 97_000,
+            sample.copy(locationTime = 96_999, receivedElapsedRealtime = 100_000), 100_000, 100_000,
+            notBeforeElapsedRealtime = 97_000,
         ))
         assertNull(ServiceOrderLocationQuality.rejection(sample, 160_001, 61_001))
     }
 
-    @Test fun `source tick supplements rather than replaces GPS corrected wall time checks`() {
+    @Test fun `fresh GPS source time accepts independent wall clocks without modifying coordinates or time`() {
         val gps = sample.copy(locationType = 1, receivedElapsedRealtime = 100_000, sourceElapsedRealtime = 100_000)
-        assertNull(LocationQuality.rejection(gps, 100_000, 100_000))
-        assertEquals(Rejection.STALE, LocationQuality.rejection(gps.copy(locationTime = 84_999), 100_000, 100_000))
-        assertEquals(Rejection.TIME, LocationQuality.rejection(gps.copy(locationTime = 100_001), 100_000, 100_000))
+        listOf(40_000L, 100_001L, 105_000L).forEach { fixTime ->
+            val fix = gps.copy(locationTime = fixTime)
+            assertNull(LocationQuality.rejection(fix, 100_000, 100_000))
+            assertNull(ServiceOrderLocationQuality.rejection(fix, 100_000, 100_000,
+                notBeforeElapsedRealtime = 97_000))
+            // 校时只改变墙钟，既不能更新旧源点，也不能拒绝新的源点。
+            assertNull(LocationQuality.rejection(fix, 90_000, 100_000))
+            assertEquals(Rejection.STALE, LocationQuality.rejection(fix, 90_000, 115_001))
+            assertEquals(fixTime, fix.locationTime)
+            assertEquals(sample.longitude, fix.longitude, 0.0)
+        }
         assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
-            gps.copy(locationTime = 96_999), 100_000, 100_000, notBefore = 97_000,
+            gps.copy(sourceElapsedRealtime = 96_999), 100_000, 100_000,
+            notBeforeElapsedRealtime = 97_000,
         ))
+    }
+
+    @Test fun `zero action cutoff rejects pre boot fallback points and keeps the warm boundary`() {
+        // 动作发生于开机 1 秒，3 秒预热窗口下界为 0，不能把 0 当作未设置。
+        val old = sample.copy(locationTime = 90_000, sourceElapsedRealtime = 0)
+        assertNull(ServiceOrderLocationQuality.rejection(old, 100_000, 1_000))
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            old, 100_000, 1_000, notBeforeElapsedRealtime = 0,
+        ))
+        val warm = sample.copy(locationTime = 99_000, sourceElapsedRealtime = 0)
+        assertEquals(0L, LocationQuality.sampleElapsedRealtime(warm))
+        assertNull(ServiceOrderLocationQuality.rejection(warm, 100_000, 1_000, notBeforeElapsedRealtime = 0))
+        assertEquals(Rejection.ORDER, ServiceOrderLocationQuality.rejection(
+            warm.copy(locationTime = 98_999), 100_000, 1_000, notBeforeElapsedRealtime = 0,
+        ))
+    }
+
+    @Test fun `time issues distinguish missing metadata future source clocks and fallback wall clocks`() {
+        fun issue(fix: LocationResult, now: Long = 100_000L, elapsed: Long = 1_000L) =
+            LocationQuality.timeIssue(fix, now, elapsed)
+        assertEquals(LocationQuality.TimeIssue.FIX_MISSING, issue(sample.copy(locationTime = 0)))
+        assertEquals(LocationQuality.TimeIssue.RECEIPT_MISSING, issue(sample.copy(receivedAt = 0)))
+        assertEquals(LocationQuality.TimeIssue.RECEIPT_ELAPSED_INVALID, issue(sample.copy(receivedElapsedRealtime = -1)))
+        assertEquals(LocationQuality.TimeIssue.SOURCE_INVALID, issue(sample.copy(sourceElapsedRealtime = -1)))
+        assertEquals(LocationQuality.TimeIssue.SOURCE_AFTER_RECEIPT, issue(sample.copy(sourceElapsedRealtime = 1_001)))
+        assertEquals(LocationQuality.TimeIssue.ELAPSED_BEFORE_RECEIPT, issue(sample, elapsed = 999))
+        assertEquals(LocationQuality.TimeIssue.FIX_AFTER_RECEIPT, issue(sample.copy(locationTime = 100_001)))
+        assertEquals(LocationQuality.TimeIssue.WALL_BEFORE_RECEIPT, issue(sample, now = 99_999))
+        assertNull(issue(sample.copy(sourceElapsedRealtime = 1_000, locationTime = 105_000), now = 90_000))
     }
 }

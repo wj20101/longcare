@@ -24,12 +24,10 @@ object ServiceOrderLocationQuality {
         sample: LocationResult,
         now: Long,
         elapsedRealtime: Long,
-        notBefore: Long = 0L,
-        previousSampleTime: Long = 0L,
         maxAgeMs: Long? = null,
-        notBeforeElapsedRealtime: Long = 0L,
+        notBeforeElapsedRealtime: Long? = null,
     ): LocationQuality.Rejection? = LocationQuality.rejection(
-        sample, now, elapsedRealtime, notBefore, previousSampleTime,
+        sample, now, elapsedRealtime,
         maxAgeMs = maxAgeMs, maxAccuracyMeters = MAX_ACCURACY_METERS,
         allowNormalTrust = true, notBeforeElapsedRealtime = notBeforeElapsedRealtime,
     )

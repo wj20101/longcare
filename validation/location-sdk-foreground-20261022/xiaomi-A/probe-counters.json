@@ -1,0 +1,56 @@
+{
+  "before-unplug-probe.xml": {
+    "httpRequests": "1",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600231513",
+    "sdkForeground": "false",
+    "uploads": "1"
+  },
+  "ended-probe.xml": {
+    "httpRequests": "3",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "true",
+    "lastUpload": "1792600729590",
+    "sdkForeground": "false",
+    "uploads": "3"
+  },
+  "home-probe.xml": {
+    "httpRequests": "1",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600231513",
+    "sdkForeground": "false",
+    "uploads": "1"
+  },
+  "reconnected-probe.xml": {
+    "httpRequests": "2",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600264082",
+    "sdkForeground": "false",
+    "uploads": "2"
+  },
+  "start-probe.xml": {
+    "httpRequests": "0",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "sdkForeground": "false",
+    "uploads": "0"
+  }
+}

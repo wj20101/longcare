@@ -96,6 +96,40 @@ class ServiceLocationSessionTest {
     }
 
     @Test
+    fun `fresh source points continue reporting each interval across GPS and device wall clock changes`() = runTest {
+        val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
+        val samples = Channel<LocationResult>(Channel.UNLIMITED)
+        val uploaded = mutableListOf<LocationResult>()
+        val job = backgroundScope.launch {
+            ServiceLocationSession(gate, samples.receiveAsFlow(), {
+                uploaded += it
+                ApiResult.Success(Unit)
+            }, LocationSampleEvaluator(elapsed, clock),
+                samplingEnabled = MutableStateFlow(LocationSamplingState(true, elapsed)),
+                elapsedRealtime = { elapsed }).run()
+        }
+        runCurrent()
+        // Reproduce the online six-minute window; GPS and phone clocks may diverge in either direction.
+        repeat(13) { index ->
+            val point = sample().let { it.copy(provider = "gps", locationType = 1,
+                locationTime = it.receivedAt + if (index % 2 == 0) 5_000L else -60_000L,
+                sourceElapsedRealtime = it.receivedElapsedRealtime) }
+            samples.send(point)
+            runCurrent()
+            assertEquals(index + 1, uploaded.size)
+            assertEquals(point, uploaded.last())
+            if (index < 12) {
+                advanceBy(30_000L)
+                if (index == 5) now -= 120_000L
+            }
+        }
+        job.cancelAndJoin()
+        assertTrue(uploadErrors.isEmpty())
+        assertTrue(healthDiagnostics.none { it.extras["reason"] == "sample_rejected" })
+        assertEquals(13, uploaded.map { it.sourceElapsedRealtime }.distinct().size)
+    }
+
+    @Test
     fun `inactive gate never uploads`() = runTest {
         val gate = LocationReportingSession(1, "owner", account)
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
@@ -623,7 +657,7 @@ class ServiceLocationSessionTest {
         val job = backgroundScope.launch {
             ServiceLocationSession(
                 gate, samples.receiveAsFlow(), { uploads++; ApiResult.Success(Unit) },
-                LocationSampleEvaluator(now + 10, clock),
+                LocationSampleEvaluator(elapsed + 10, clock),
                 samplingEnabled = MutableStateFlow(LocationSamplingState(true)),
             ).run()
         }
@@ -931,7 +965,7 @@ class ServiceLocationSessionTest {
     }
 
     @Test
-    fun `resuming rejects old source ticks but accepts fresh and unknown source ticks`() = runTest {
+    fun `resuming rejects pre resume samples for both known and missing source clocks`() = runTest {
         val gate = LocationReportingSession(1, "owner", account).apply { setEnabled(true) }
         val enabled = MutableStateFlow(LocationSamplingState(true, elapsed))
         val samples = Channel<LocationResult>(Channel.UNLIMITED)
@@ -954,6 +988,9 @@ class ServiceLocationSessionTest {
         samples.send(sample(31.0).copy(sourceElapsedRealtime = sourceBeforePause))
         runCurrent()
         assertTrue(uploaded.isEmpty())
+        samples.send(sample(31.05).let { it.copy(sourceElapsedRealtime = 0, locationTime = it.receivedAt - 5_000) })
+        runCurrent()
+        assertTrue("An unknown source must not bypass the resume boundary", uploaded.isEmpty())
         samples.send(sample(31.1).copy(sourceElapsedRealtime = elapsed))
         runCurrent()
         assertEquals(listOf(31.1), uploaded)
