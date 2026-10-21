@@ -48,13 +48,10 @@ class DocumentationVersionTest(unittest.TestCase):
         self.assertTrue(any('stale Gradle' in error for error in errors))
         self.assertTrue(any('stale Room' in error for error in errors))
 
-    def test_vendored_skill_examples_do_not_disable_project_link_validation(self):
+    def test_project_links_are_validated(self):
         index = self.root / 'docs/README.md'
         index.write_text('[Tech stack](architecture/tech-stack.md)\n')
-        skill = self.root / '.agents/skills/example/SKILL.md'
-        skill.parent.mkdir(parents=True)
-        skill.write_text('[Example screenshot](path/to/screenshot)\n')
-        files = [Path('docs/README.md'), Path('.agents/skills/example/SKILL.md')]
+        files = [Path('docs/README.md')]
         with patch('verify_documentation.markdown_files', return_value=files), \
                 patch('sys.argv', ['verify_documentation.py', '--root', str(self.root)]), \
                 redirect_stdout(StringIO()), redirect_stderr(StringIO()):

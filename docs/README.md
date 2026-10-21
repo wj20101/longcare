@@ -37,4 +37,4 @@ bash scripts/quality/preflight_local.sh --local-fast
 git diff --check
 ```
 
-文档脚本只读，排除已删除文件和 ignored 构建输出；`.agents/skills/` 是第三方技能及参考资料，保留在清单中，但不纳入项目文档的索引、链接和标题锚点检查，也不作为产品要求。脚本不访问外链，不验证全部 Markdown 方言、全部依赖或自然语言与代码的一致性，不能替代业务测试和线上合规复核。
+文档脚本只读，排除已删除文件和 ignored 构建输出。脚本不访问外链，不验证全部 Markdown 方言、全部依赖或自然语言与代码的一致性，不能替代业务测试和线上合规复核。

@@ -38,9 +38,9 @@ App 保留启动、导航、平台组装和多数 route UI；Core/Feature 渐进
 
 ## Android CLI
 
-使用 `android-cli` 技能前，先检查本地命令：macOS/Linux 用 `command -v android`，Windows 用 `Get-Command android` 或 `where android`；缺少时按技能的[安装说明](.agents/skills/android-cli/SKILL.md#installation)选择对应平台安装。安装后按提示刷新 PATH 或使用安装器给出的路径，运行 `android --version` 和 `android info`，两者成功后才继续依赖 CLI 的工作；已有安装可用时直接复用，失败时先排查错误，不能只凭安装脚本退出码认定可用。SDK 和设备连接按具体任务另行检查。
+使用全局 `android-cli` 技能前，先检查本地命令：macOS/Linux 用 `command -v android`，Windows 用 `Get-Command android` 或 `where android`；缺少时按当前会话提供的全局技能 `SKILL.md` 安装说明选择对应平台安装。安装后按提示刷新 PATH 或使用安装器给出的路径，运行 `android --version` 和 `android info`，两者成功后才继续依赖 CLI 的工作；已有安装可用时直接复用，失败时先排查错误，不能只凭安装脚本退出码认定可用。SDK 和设备连接按具体任务另行检查。
 
-`.agents/skills/` 保持上游内容；项目补充约束放在 `AGENT.md`，避免技能更新覆盖本地修改。
+技能统一从当前会话可用的全局目录加载，项目不维护 `.agents/` 副本。项目补充约束放在 `AGENT.md`，避免技能更新覆盖本地修改。
 
 Android 平台行为容易随版本变化。涉及 targetSdk、权限、前台服务、大屏、SDK 或推荐 API 时，先使用 Android CLI 官方知识库核对：
 

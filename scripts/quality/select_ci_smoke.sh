@@ -43,7 +43,7 @@ else
     while IFS= read -r file; do
       [[ -z "$file" ]] && continue
       case "$file" in
-        *.md|docs/*|.agents/*) continue ;;
+        *.md|docs/*) continue ;;
       esac
       run_build=true
       case "$file" in

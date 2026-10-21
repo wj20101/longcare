@@ -60,7 +60,6 @@ def check_links(root: Path, files: list[Path]) -> list[str]:
 def document_group(path: Path) -> str:
     name = path.as_posix()
     for prefix, group in (
-        (".agents/skills/", "工具技能"),
         ("docs/compliance/", "历史合规"),
         ("docs/analysis/", "分析基线"),
     ):
@@ -78,12 +77,7 @@ def check_index(root: Path, files: list[Path]) -> list[str]:
         url = urlsplit(target)
         if not url.scheme and not url.netloc:
             linked.add((index.parent / unquote(url.path)).resolve())
-    required = []
-    for path in files:
-        group = document_group(path)
-        if group in {"当前说明", "分析基线", "历史合规"}:
-            required.append(path)
-    return [f"index: missing {path}" for path in required if (root / path).resolve() not in linked]
+    return [f"index: missing {path}" for path in files if (root / path).resolve() not in linked]
 
 
 def check_versions(root: Path) -> list[str]:
@@ -125,10 +119,7 @@ def main() -> int:
                 print(f"{document_group(path)}\t{path.as_posix()}")
             print(f"[docs][LIST] {len(files)} Markdown files")
             return 0
-        # Vendored skills include upstream examples and anchor conventions; the
-        # repository's link/index contract applies to project documentation.
-        project_files = [path for path in files if document_group(path) != "工具技能"]
-        errors = check_links(root, project_files) + check_index(root, project_files) + check_versions(root)
+        errors = check_links(root, files) + check_index(root, files) + check_versions(root)
     except (OSError, subprocess.CalledProcessError, KeyError, ValueError) as error:
         print(f"[docs][FAIL] unable to check: {error}", file=sys.stderr)
         return 1
@@ -136,9 +127,7 @@ def main() -> int:
         print(f"[docs][FAIL] {error}", file=sys.stderr)
     if errors:
         return 1
-    print(f"[docs][PASS] {len(project_files)} project Markdown files: local links/anchors, index coverage, selected live versions")
-    if len(files) != len(project_files):
-        print(f"[docs][NOTE] {len(files) - len(project_files)} vendored skill documents excluded from project link checks.")
+    print(f"[docs][PASS] {len(files)} project Markdown files: local links/anchors, index coverage, selected live versions")
     print("[docs][NOTE] External URLs, reference-style links and prose semantics require separate review.")
     return 0
 
