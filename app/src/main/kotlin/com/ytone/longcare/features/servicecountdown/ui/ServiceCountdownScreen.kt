@@ -126,8 +126,7 @@ fun ServiceCountdownScreen(
             showBackgroundSettings = true
         },
         onOpenPhotoUpload = {
-            val existingImages = countdownViewModel.getCurrentUploadedImages()
-            actions.onNavigateToPhotoUpload(orderKey, existingImages)
+            actions.onNavigateToPhotoUpload(orderKey)
         },
         onBottomActionClick = {
             handleServiceCountdownBottomAction(

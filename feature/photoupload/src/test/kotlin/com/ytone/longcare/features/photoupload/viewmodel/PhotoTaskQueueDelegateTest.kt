@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.photoupload.viewmodel
 
 import android.net.Uri
+import androidx.lifecycle.ViewModelStore
 import com.ytone.longcare.common.diagnostics.CrashReportGateway
 import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.common.utils.KLogger
@@ -14,9 +15,18 @@ import com.ytone.longcare.model.OrderImageEntity
 import io.mockk.*
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -127,7 +137,112 @@ class PhotoTaskQueueDelegateTest {
     }
 
     @Test
-    fun `delayed initial Room snapshot keeps a newly captured and persisted photo`() = runTest {
+    fun `capture arriving before Room waits and counts persisted photos against category limit`() = runTest {
+        val initialLoad = CompletableDeferred<List<OrderImageEntity>>()
+        val images = mockk<OrderImageRepository>(relaxed = true)
+        coEvery { images.getImagesByOrderId(orderKey) } coAnswers { initialLoad.await() }
+        val pipeline = mockk<UnifiedImagePipeline>(relaxed = true)
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, pipeline, messages)
+        val incomingUri = Uri.parse(localUri)
+        queue.setOrderKey(orderKey)
+        val adding = async {
+            queue.addImagesToProcess(listOf(incomingUri), ImageTaskType.BEFORE_CARE,
+                "", maxPhotosPerCategory = 1)
+        }
+        runCurrent()
+
+        assertFalse("Existing photos must be loaded before calculating available slots", adding.isCompleted)
+        coVerify(exactly = 0) { images.addImage(any(), any(), any(), any()) }
+        initialLoad.complete(listOf(OrderImageEntity(
+            id = 5L, orderId = orderKey.orderId, imageType = ImageType.BEFORE_CARE.value,
+            localUri = "file:///managed/existing.jpg",
+        )))
+        runCurrent()
+
+        assertEquals(1, adding.await().rejectedCount)
+        assertEquals(listOf("5"), queue.imageTasks.value.map { it.id })
+        coVerify(exactly = 0) { images.addImage(any(), any(), any(), any()) }
+        coVerify(exactly = 1) { pipeline.deleteManagedImages(listOf(incomingUri)) }
+    }
+
+    @Test
+    fun `failed initial read never permits capture as if history were empty`() = runTest {
+        val initialLoad = CompletableDeferred<List<OrderImageEntity>>()
+        val images = mockk<OrderImageRepository>()
+        coEvery { images.getImagesByOrderId(orderKey) } coAnswers { initialLoad.await() }
+        // Match the production viewModelScope: await observes the failed async query.
+        val queueScope = CoroutineScope(backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]))
+        val queue = PhotoTaskQueueDelegate(queueScope, images, mockk(), messages)
+        queue.setOrderKey(orderKey)
+        val adding = async {
+            runCatching { queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "") }
+        }
+        runCurrent()
+        val failure = IOException("Room read failed")
+        initialLoad.completeExceptionally(failure)
+        runCurrent()
+
+        val actualFailure = adding.await().exceptionOrNull()
+        assertTrue(actualFailure is IOException)
+        assertEquals(failure.message, actualFailure?.message)
+        assertTrue(queue.imageTasks.value.isEmpty())
+        coVerify(exactly = 1) { images.getImagesByOrderId(orderKey) }
+        coVerify(exactly = 0) { images.addImage(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `changing order cancels an early capture awaiting the old order history`() = runTest {
+        val oldLoad = CompletableDeferred<List<OrderImageEntity>>()
+        val nextOrder = OrderKey(43)
+        val images = mockk<OrderImageRepository>()
+        coEvery { images.getImagesByOrderId(orderKey) } coAnswers { oldLoad.await() }
+        coEvery { images.getImagesByOrderId(nextOrder) } returns emptyList()
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), messages)
+        queue.setOrderKey(orderKey)
+        val adding = async {
+            queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "", orderKey)
+        }
+        runCurrent()
+        queue.setOrderKey(nextOrder)
+        runCurrent()
+
+        assertTrue(adding.isCancelled)
+        assertEquals(nextOrder, queue.currentOrderKey.value)
+        assertTrue(queue.imageTasks.value.isEmpty())
+        coVerify(exactly = 0) { images.addImage(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `ViewModel reports initial read failure through the existing UI event channel`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val store = ViewModelStore()
+        try {
+            val images = mockk<OrderImageRepository>()
+            coEvery { images.getImagesByOrderId(orderKey) } throws IOException("Room read failed")
+            val config = mockk<com.ytone.longcare.domain.system.ServicePhotoConfigProvider> {
+                coEvery { getMaxServicePhotoCount() } returns 1
+            }
+            val text = mockk<com.ytone.longcare.common.text.ResourceTextResolver> {
+                every { text(any()) } returns "save failed"
+            }
+            val vm = PhotoProcessingViewModel(mockk(), mockk(), mockk(), mockk(), images, config, text)
+            store.put("photos", vm)
+            vm.setOrderKey(orderKey)
+            vm.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "")
+            val event = async { vm.events.first() }
+            runCurrent()
+
+            assertEquals(PhotoProcessingEvent.PhotoProcessingFailed("save failed"), event.await())
+            assertTrue(vm.imageTasks.value.isEmpty())
+            coVerify(exactly = 0) { images.addImage(any(), any(), any(), any()) }
+        } finally {
+            store.clear()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun `early capture waits for initial Room restoration before persistence`() = runTest {
         val initialLoad = CompletableDeferred<List<OrderImageEntity>>()
         val images = mockk<OrderImageRepository>()
         coEvery { images.getImagesByOrderId(orderKey) } coAnswers { initialLoad.await() }
@@ -135,10 +250,13 @@ class PhotoTaskQueueDelegateTest {
         val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), messages)
         queue.setOrderKey(orderKey)
         runCurrent()
-        queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "")
+        val adding = async { queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "") }
         runCurrent()
+        assertFalse(adding.isCompleted)
+        coVerify(exactly = 0) { images.addImage(any(), any(), any(), any()) }
         initialLoad.complete(emptyList())
         runCurrent()
+        adding.await()
 
         assertEquals("7", queue.imageTasks.value.single().id)
         assertEquals(ImageTaskStatus.SUCCESS, queue.imageTasks.value.single().status)
@@ -146,7 +264,7 @@ class PhotoTaskQueueDelegateTest {
     }
 
     @Test
-    fun `initial query seeing committed row before insert returns cannot duplicate pending photo`() = runTest {
+    fun `restored rows remain while a new photo insert is pending`() = runTest {
         val initialLoad = CompletableDeferred<List<OrderImageEntity>>()
         val insertedId = CompletableDeferred<Long>()
         val images = mockk<OrderImageRepository>()
@@ -155,23 +273,25 @@ class PhotoTaskQueueDelegateTest {
         val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), messages)
         queue.setOrderKey(orderKey)
         runCurrent()
-        queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "")
+        val adding = async { queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "") }
         runCurrent()
         initialLoad.complete(listOf(OrderImageEntity(
-            id = 7L, orderId = 42L, imageType = ImageType.BEFORE_CARE.value, localUri = localUri,
+            id = 5L, orderId = 42L, imageType = ImageType.BEFORE_CARE.value,
+            localUri = "file:///managed/existing.jpg",
         )))
         runCurrent()
+        adding.await()
 
-        assertEquals(1, queue.imageTasks.value.size)
-        assertEquals(ImageTaskStatus.PROCESSING, queue.imageTasks.value.single().status)
+        assertEquals(2, queue.imageTasks.value.size)
+        assertEquals(ImageTaskStatus.PROCESSING, queue.imageTasks.value.single { it.id != "5" }.status)
         insertedId.complete(7L)
         runCurrent()
-        assertEquals("7", queue.imageTasks.value.single().id)
-        assertEquals(ImageTaskStatus.SUCCESS, queue.imageTasks.value.single().status)
+        assertEquals(listOf("5", "7"), queue.imageTasks.value.map { it.id })
+        assertTrue(queue.imageTasks.value.all { it.status == ImageTaskStatus.SUCCESS })
     }
 
     @Test
-    fun `initial query cannot resurrect removed photo while insert return is delayed`() = runTest {
+    fun `removing a restored photo is preserved when new photo insertion completes`() = runTest {
         val initialLoad = CompletableDeferred<List<OrderImageEntity>>()
         val insertedId = CompletableDeferred<Long>()
         val images = mockk<OrderImageRepository>(relaxed = true)
@@ -180,18 +300,18 @@ class PhotoTaskQueueDelegateTest {
         val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(relaxed = true), messages)
         queue.setOrderKey(orderKey)
         runCurrent()
-        queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "")
-        runCurrent()
-        queue.removeTask(queue.imageTasks.value.single().id)
         initialLoad.complete(listOf(OrderImageEntity(
-            id = 7L, orderId = 42L, imageType = ImageType.BEFORE_CARE.value, localUri = localUri,
+            id = 5L, orderId = 42L, imageType = ImageType.BEFORE_CARE.value, localUri = localUri,
         )))
         runCurrent()
+        queue.removeTask("5")
         assertTrue(queue.imageTasks.value.isEmpty())
-
+        queue.addImagesToProcess(listOf(Uri.parse(localUri)), ImageTaskType.BEFORE_CARE, "")
+        runCurrent()
         insertedId.complete(7L)
         runCurrent()
-        assertTrue(queue.imageTasks.value.isEmpty())
-        coVerify(exactly = 1) { images.deleteImage(7L) }
+        assertEquals(listOf("7"), queue.imageTasks.value.map { it.id })
+        coVerify(exactly = 1) { images.deleteImage(5L) }
+        coVerify(exactly = 0) { images.deleteImage(7L) }
     }
 }

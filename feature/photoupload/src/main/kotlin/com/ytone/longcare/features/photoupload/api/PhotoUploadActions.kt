@@ -9,8 +9,6 @@ data class PhotoUploadActions(
     val onNavigateBack: () -> Unit,
     val onNavigateToCamera: (WatermarkData) -> Unit,
     val onPublishPhotoUploadResultAndNavigateBack: (Map<ImageTaskType, List<ImageTask>>) -> Unit,
-    val existingImagesFlow: StateFlow<Map<ImageTaskType, List<ImageTask>>?>,
-    val clearExistingImages: () -> Unit,
     val capturedImageUriFlow: StateFlow<String?>,
     val clearCapturedImageUri: () -> Unit
 )

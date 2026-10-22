@@ -13,11 +13,14 @@ import com.ytone.longcare.model.ImageUploadStatus
 import com.ytone.longcare.model.OrderImageEntity
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.logD
-import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,6 +38,7 @@ internal class PhotoTaskQueueDelegate(
     val isProcessing = MutableStateFlow(false)
     val currentTaskType = MutableStateFlow<ImageTaskType?>(null)
     private val addImagesMutex = Mutex()
+    private var initialLoad: Deferred<Unit>? = null
     // Keep the managed image visible/retryable if its first Room insert fails.
     private val pendingPersistence = mutableMapOf<String, OrderKey>()
     private val localTaskOrders = mutableMapOf<String, OrderKey>()
@@ -47,8 +51,9 @@ internal class PhotoTaskQueueDelegate(
     fun setOrderKey(orderKey: OrderKey) {
         logD("setOrderKey: $orderKey (current: ${currentOrderKey.value})", tag = "PhotoVM")
         if (currentOrderKey.value == orderKey) return
+        initialLoad?.cancel()
         currentOrderKey.value = orderKey
-        loadImagesFromRoom(orderKey)
+        initialLoad = loadImagesFromRoom(orderKey)
     }
 
     suspend fun addImagesToProcess(
@@ -57,46 +62,54 @@ internal class PhotoTaskQueueDelegate(
         address: String,
         orderKey: OrderKey? = null,
         maxPhotosPerCategory: Int? = null,
-    ): AddImagesResult = addImagesMutex.withLock {
-        val currentCount = imageTasks.value.count { it.taskType == taskType }
-        val acceptedCount = ServicePhotoLimitPolicy.allowedIncomingCount(
-            currentCount = currentCount,
-            requestedCount = uris.size,
-            maxCount = maxPhotosPerCategory,
-        )
-        val acceptedUris = uris.take(acceptedCount)
-        val rejectedUris = uris.drop(acceptedCount)
-        val effectiveOrderKey = orderKey ?: currentOrderKey.value
-        logD(
-            "addImagesToProcess: requested=${uris.size}, accepted=${acceptedUris.size}, key=$effectiveOrderKey",
-            tag = "PhotoVM",
-        )
-        val newTasks = mutableListOf<ImageTask>()
+    ): AddImagesResult {
+        val owner = currentOrderKey.value
+        val load = initialLoad
+        return addImagesMutex.withLock {
+            awaitInitialLoad(owner, load)
+            if (orderKey != null && owner != null && orderKey != owner) {
+                throw CancellationException("Photo order changed")
+            }
+            val currentCount = imageTasks.value.count { it.taskType == taskType }
+            val acceptedCount = ServicePhotoLimitPolicy.allowedIncomingCount(
+                currentCount = currentCount,
+                requestedCount = uris.size,
+                maxCount = maxPhotosPerCategory,
+            )
+            val acceptedUris = uris.take(acceptedCount)
+            val rejectedUris = uris.drop(acceptedCount)
+            val effectiveOrderKey = orderKey ?: currentOrderKey.value
+            logD(
+                "addImagesToProcess: requested=${uris.size}, accepted=${acceptedUris.size}, key=$effectiveOrderKey",
+                tag = "PhotoVM",
+            )
+            val newTasks = mutableListOf<ImageTask>()
 
-        for (uri in acceptedUris) {
-            val taskId = UUID.randomUUID().toString()
-            if (effectiveOrderKey != null) {
-                pendingPersistence[taskId] = effectiveOrderKey
-                localTaskOrders[taskId] = effectiveOrderKey
-            } else {
-                logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
+            for (uri in acceptedUris) {
+                val taskId = UUID.randomUUID().toString()
+                if (effectiveOrderKey != null) {
+                    pendingPersistence[taskId] = effectiveOrderKey
+                    localTaskOrders[taskId] = effectiveOrderKey
+                } else {
+                    logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
+                }
+
+                newTasks += ImageTask(
+                    id = taskId,
+                    originalUri = uri.toString(),
+                    taskType = taskType,
+                    status = ImageTaskStatus.PROCESSING
+                )
             }
 
-            newTasks += ImageTask(
-                id = taskId,
-                originalUri = uri.toString(),
-                taskType = taskType,
-                status = ImageTaskStatus.PROCESSING
+            imageTasks.update { it + newTasks }
+            newTasks.forEach { processImageTask(it) }
+            if (rejectedUris.isNotEmpty()) imagePipeline.deleteManagedImages(rejectedUris)
+
+            AddImagesResult(
+                rejectedCount = rejectedUris.size,
             )
         }
-
-        imageTasks.update { it + newTasks }
-        newTasks.forEach { processImageTask(it) }
-        if (rejectedUris.isNotEmpty()) imagePipeline.deleteManagedImages(rejectedUris)
-
-        AddImagesResult(
-            rejectedCount = rejectedUris.size,
-        )
     }
 
     fun retryTask(taskId: String) {
@@ -159,10 +172,6 @@ internal class PhotoTaskQueueDelegate(
     fun hasProcessingTasks(): Boolean = imageTasks.value.any { it.status == ImageTaskStatus.PROCESSING }
     fun hasFailedTasks(): Boolean = imageTasks.value.any { it.status == ImageTaskStatus.FAILED }
 
-    fun loadExistingImageTasks(existingImageTasks: Map<ImageTaskType, List<ImageTask>>) {
-        imageTasks.value = imageTasks.value + existingImageTasks.values.flatten()
-    }
-
     fun getTaskStats(): TaskStats {
         val tasks = imageTasks.value
         return TaskStats(
@@ -174,6 +183,17 @@ internal class PhotoTaskQueueDelegate(
     }
 
     fun getTasksSnapshot(): List<ImageTask> = imageTasks.value
+
+    suspend fun awaitInitialLoad() = awaitInitialLoad(currentOrderKey.value, initialLoad)
+
+    private suspend fun awaitInitialLoad(owner: OrderKey?, load: Deferred<Unit>?) {
+        // Share the original query; failed or cancelled reads must not become empty history.
+        load?.await()
+        currentCoroutineContext().ensureActive()
+        if (currentOrderKey.value != owner || initialLoad !== load) {
+            throw CancellationException("Photo order changed")
+        }
+    }
 
     suspend fun updateTaskUploadStatus(taskId: String, key: String) {
         check(imageTasks.value.any { it.id == taskId }) { "Order photo task no longer exists" }
@@ -187,11 +207,12 @@ internal class PhotoTaskQueueDelegate(
         }
     }
 
-    private fun loadImagesFromRoom(orderKey: OrderKey) {
-        scope.launch {
+    private fun loadImagesFromRoom(orderKey: OrderKey): Deferred<Unit> =
+        scope.async {
             val entities = imageRepository.getImagesByOrderId(orderKey)
+            currentCoroutineContext().ensureActive()
             logD("loadImagesFromRoom: orderId=${orderKey.orderId}, found ${entities.size} entities", tag = "PhotoVM")
-            if (currentOrderKey.value != orderKey) return@launch
+            if (currentOrderKey.value != orderKey) throw CancellationException("Photo order changed")
             imageTasks.update { current ->
                 // A delayed initial query must not discard photos captured while it was loading.
                 val localTasks = current.filter { localTaskOrders[it.id] == orderKey }
@@ -206,7 +227,6 @@ internal class PhotoTaskQueueDelegate(
                     .map { it.toImageTask() } + localTasks
             }
         }
-    }
 
     private fun processImageTask(task: ImageTask) {
         val userId = DiagnosticEventTracker.currentUserId()

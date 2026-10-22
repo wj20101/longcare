@@ -7,6 +7,7 @@ data class ServicePhotoLimitState(
 
 sealed interface PhotoProcessingEvent {
     data class PhotoLimitReached(val maxCount: Int) : PhotoProcessingEvent
+    data class PhotoProcessingFailed(val message: String) : PhotoProcessingEvent
 }
 
 internal data class AddImagesResult(

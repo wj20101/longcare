@@ -21,9 +21,11 @@ internal fun PhotoUploadScreenEffects(
     sharedViewModel: SharedOrderDetailViewModel,
     currentTaskType: ImageTaskType?,
     onPhotoLimitReached: (Int) -> Unit,
+    onPhotoProcessingFailed: (String) -> Unit,
 ) {
     val latestTaskType by rememberUpdatedState(currentTaskType)
     val latestOnPhotoLimitReached by rememberUpdatedState(onPhotoLimitReached)
+    val latestOnPhotoProcessingFailed by rememberUpdatedState(onPhotoProcessingFailed)
 
     DisposableEffect(Unit) {
         com.ytone.longcare.common.utils.KLogger.w("NavigationDebug", "PhotoUploadScreen: 🟢 Enter Composition")
@@ -35,15 +37,6 @@ internal fun PhotoUploadScreenEffects(
     LaunchedEffect(orderKey) {
         viewModel.setOrderKey(orderKey)
         sharedViewModel.getOrderInfo(orderKey)
-    }
-
-    LaunchedEffect(actions.existingImagesFlow) {
-        actions.existingImagesFlow.collect { existingImages ->
-            existingImages?.let {
-                viewModel.loadExistingImageTasks(it)
-                actions.clearExistingImages()
-            }
-        }
     }
 
     LaunchedEffect(actions.capturedImageUriFlow) {
@@ -67,6 +60,7 @@ internal fun PhotoUploadScreenEffects(
         viewModel.events.collect { event ->
             when (event) {
                 is PhotoProcessingEvent.PhotoLimitReached -> latestOnPhotoLimitReached(event.maxCount)
+                is PhotoProcessingEvent.PhotoProcessingFailed -> latestOnPhotoProcessingFailed(event.message)
             }
         }
     }

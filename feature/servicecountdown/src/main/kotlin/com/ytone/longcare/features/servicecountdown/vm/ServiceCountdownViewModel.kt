@@ -121,7 +121,6 @@ class ServiceCountdownViewModel @Inject constructor(
     fun clearOrderStateError() = orderStatePollingDelegate.clearOrderStateError()
 
     fun handlePhotoUploadResult(uploadResult: Map<ImageTaskType, List<ImageTask>>) = imageDelegate.handlePhotoUploadResult(uploadResult)
-    fun getCurrentUploadedImages(): Map<ImageTaskType, List<ImageTask>> = imageDelegate.getCurrentUploadedImages()
     fun validatePhotosUploaded(): Boolean = imageDelegate.validatePhotosUploaded()
     suspend fun getUploadedImagesSuspend(orderKey: OrderKey): Map<ImageTaskType, List<ImageTask>> = imageDelegate.getUploadedImagesSuspend(orderKey)
     fun loadUploadedImagesFromRepository(orderKey: OrderKey) = imageDelegate.loadUploadedImagesFromRepository(orderKey)

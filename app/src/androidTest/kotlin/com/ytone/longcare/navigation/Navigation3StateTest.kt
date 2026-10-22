@@ -96,14 +96,9 @@ class Navigation3StateTest {
                 }
                 destination<PhotoUploadRoute> { entry ->
                     val page = nav.forEntry(entry.id)
-                    val inputFlow = remember(entry.id) {
-                        page.previousBackStackEntry?.results?.getStateFlow<Map<ImageTaskType, List<ImageTask>>>(NavigationConstants.EXISTING_IMAGES_KEY, null)
-                            ?: kotlinx.coroutines.flow.MutableStateFlow(null)
-                    }
-                    val input by inputFlow.collectAsState()
                     val captured by entry.results.getStateFlow<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY, null).collectAsState()
                     Column {
-                        Text("INPUT ${input?.size}")
+                        Text("PHOTO ORDER ${entry.route<PhotoUploadRoute>().orderParams.orderId}")
                         Text(captured ?: "NO CAPTURE")
                         Button(onClick = { page.navigate(camera) }) { Text("NESTED CAMERA") }
                         Button(onClick = { page.returnResult(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, photoMap) }) { Text("PUBLISH") }
@@ -133,7 +128,6 @@ class Navigation3StateTest {
             Button(onClick = { page.navigate(ManualFaceCaptureRoute) }) { Text("MANUAL") }
             Button(onClick = { page.navigate(DefaultFaceVerificationRoute(OrderNavParams(1))) }) { Text("VERIFY") }
             Button(onClick = {
-                entry.results.set(NavigationConstants.EXISTING_IMAGES_KEY, photoMap)
                 page.navigate(PhotoUploadRoute(OrderNavParams(1)))
             }) { Text("UPLOAD") }
             Button(onClick = { entry.results.remove<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY) }) { Text("CONSUME") }
@@ -340,7 +334,7 @@ class Navigation3StateTest {
         compose.onNodeWithText("VERIFY").performClick()
         compose.onNodeWithText("VERIFY SUCCESS").performClick()
         compose.onNodeWithText("UPLOAD").performClick()
-        compose.onNodeWithText("INPUT 1").assertExists()
+        compose.onNodeWithText("PHOTO ORDER 1").assertExists()
         compose.onNodeWithText("NESTED CAMERA").performClick()
         compose.onNodeWithText("CAPTURE").performClick()
         compose.onNodeWithText("content://same").assertExists()

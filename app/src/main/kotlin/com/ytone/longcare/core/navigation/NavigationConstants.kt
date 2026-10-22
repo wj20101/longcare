@@ -12,12 +12,6 @@ object NavigationConstants {
     const val PHOTO_UPLOAD_RESULT_KEY = "photo_upload_result"
 
     /**
-     * 用于将现有图像任务传递到照片上传屏幕的键。
-     * 数据是一个 `Map<ImageTaskType, List<ImageTask>>`，表示已与订单关联的图像。
-     */
-    const val EXISTING_IMAGES_KEY = "existing_images"
-
-    /**
      * 用于通过 `SavedStateHandle` 从 `CameraScreen` 检索新捕获图像的 URI 的键。
      * 该值为图像 URI 的 `String` 表示形式。
      */

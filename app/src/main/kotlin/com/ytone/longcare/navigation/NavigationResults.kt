@@ -42,7 +42,7 @@ internal class NavigationResults(
             NavigationConstants.CAPTURED_IMAGE_URI_KEY, NavigationConstants.FACE_IMAGE_PATH_KEY ->
                 Json.encodeToString(value as String)
             NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY -> Json.encodeToString(value as Boolean)
-            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, NavigationConstants.EXISTING_IMAGES_KEY -> {
+            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY -> {
                 @Suppress("UNCHECKED_CAST")
                 val images = value as Map<ImageTaskType, List<ImageTask>>
                 Json.encodeToString(images.mapKeys { it.key.name }.mapValues { (_, list) -> list.map(ImageResult::from) })
@@ -54,7 +54,7 @@ internal class NavigationResults(
             NavigationConstants.CAPTURED_IMAGE_URI_KEY, NavigationConstants.FACE_IMAGE_PATH_KEY ->
                 Json.decodeFromString<String>(value)
             NavigationConstants.DEFAULT_FACE_VERIFICATION_RESULT_KEY -> Json.decodeFromString<Boolean>(value)
-            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, NavigationConstants.EXISTING_IMAGES_KEY ->
+            NavigationConstants.PHOTO_UPLOAD_RESULT_KEY ->
                 Json.decodeFromString<Map<String, List<ImageResult>>>(value)
                     .mapKeys { ImageTaskType.valueOf(it.key) }.mapValues { (_, list) -> list.map { it.toTask() } }
             else -> error("Unsupported navigation result key: $key")

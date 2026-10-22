@@ -11,19 +11,154 @@ import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskStatus
 import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.model.ImageType
+import com.ytone.longcare.model.ImageUploadStatus
+import com.ytone.longcare.model.OrderImageEntity
 import com.ytone.longcare.model.OrderKey
 import io.mockk.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class PhotoUploadDelegateTest {
     @After
     fun cleanup() { unmockkAll() }
+
+    @Test
+    fun `restored Room photos confirm once without reuploading existing cloud objects`() = runTest {
+        assertRestoredRoomPhotos(captureBeforeRoom = false)
+    }
+
+    @Test
+    fun `new capture before Room restoration uploads only the newly persisted photo`() = runTest {
+        assertRestoredRoomPhotos(captureBeforeRoom = true)
+    }
+
+    @Test
+    fun `confirmation waits for Room restoration before returning existing uploaded keys`() = runTest {
+        KLogger.updateConfig { enabled = false }
+        mockkObject(CrashReportGateway)
+        every { CrashReportGateway.userId } returns "123"
+        every { CrashReportGateway.postCaughtException(any()) } just Runs
+        val orderKey = OrderKey(42)
+        val loaded = CompletableDeferred<List<OrderImageEntity>>()
+        val images = mockk<OrderImageRepository>()
+        coEvery { images.getImagesByOrderId(orderKey) } coAnswers { loaded.await() }
+        val messages = PhotoUploadMessages("", "", "", "", "", "upload failed", "save failed")
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), messages)
+        val uploader = mockk<PhotoCloudUploader>()
+        val delegate = PhotoUploadDelegate(uploader, mockk(), mockk(), queue, messages)
+        queue.setOrderKey(orderKey)
+        val confirming = async { delegate.uploadSuccessfulImagesToCloud() }
+        runCurrent()
+
+        assertFalse("Confirmation must not publish an empty history while Room is loading", confirming.isCompleted)
+        loaded.complete(listOf(OrderImageEntity(
+            id = 7L, orderId = orderKey.orderId, imageType = ImageType.BEFORE_CARE.value,
+            localUri = "file:///managed/before.jpg", uploadStatus = ImageUploadStatus.SUCCESS.value,
+            cloudKey = "saved-cloud-key",
+        )))
+        runCurrent()
+
+        assertEquals(listOf("saved-cloud-key"), confirming.await().getOrThrow()[ImageTaskType.BEFORE_CARE])
+        coVerify(exactly = 0) { uploader.upload(any(), any()) }
+        coVerify(exactly = 0) { images.markAsSuccess(any(), any()) }
+    }
+
+    @Test
+    fun `confirmation preserves initial read failure instead of publishing empty photos`() = runTest {
+        KLogger.updateConfig { enabled = false }
+        mockkObject(CrashReportGateway)
+        every { CrashReportGateway.userId } returns "123"
+        every { CrashReportGateway.postCaughtException(any()) } just Runs
+        val images = mockk<OrderImageRepository>()
+        val orderKey = OrderKey(42)
+        val failure = java.io.IOException("Room read failed")
+        coEvery { images.getImagesByOrderId(orderKey) } throws failure
+        // Match the production viewModelScope: await observes the failed async query.
+        val queueScope = CoroutineScope(backgroundScope.coroutineContext + SupervisorJob(backgroundScope.coroutineContext[Job]))
+        val queue = PhotoTaskQueueDelegate(queueScope, images, mockk(), mockk())
+        val uploader = mockk<PhotoCloudUploader>()
+        val delegate = PhotoUploadDelegate(uploader, mockk(), mockk(), queue, mockk())
+        queue.setOrderKey(orderKey)
+
+        val result = delegate.uploadSuccessfulImagesToCloud()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is java.io.IOException)
+        assertEquals(failure.message, result.exceptionOrNull()?.message)
+        assertFalse(delegate.isUploading.value)
+        coVerify(exactly = 1) { images.getImagesByOrderId(orderKey) }
+        coVerify(exactly = 0) { uploader.upload(any(), any()) }
+    }
+
+    private suspend fun TestScope.assertRestoredRoomPhotos(captureBeforeRoom: Boolean) {
+        KLogger.updateConfig { enabled = false }
+        mockkObject(CrashReportGateway)
+        every { CrashReportGateway.userId } returns "123"
+        every { CrashReportGateway.postCaughtException(any()) } just Runs
+        val orderKey = OrderKey(42)
+        val localUri = "file:///managed/before.jpg"
+        val loaded = CompletableDeferred<List<OrderImageEntity>>()
+        val images = mockk<OrderImageRepository>()
+        coEvery { images.getImagesByOrderId(orderKey) } coAnswers { loaded.await() }
+        val messages = PhotoUploadMessages("", "", "", "", "", "upload failed", "save failed")
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), messages)
+        val uploader = mockk<PhotoCloudUploader>()
+        queue.setOrderKey(orderKey)
+        runCurrent()
+        var adding: kotlinx.coroutines.Deferred<AddImagesResult>? = null
+        if (captureBeforeRoom) {
+            val freshUriString = "file:///managed/after.jpg"
+            val freshPath = "/managed/after.jpg"
+            val freshUri = mockk<Uri>()
+            every { freshUri.toString() } returns freshUriString
+            every { freshUri.path } returns freshPath
+            mockkStatic(Uri::class)
+            every { Uri.parse(freshUriString) } returns freshUri
+            coEvery { images.addImage(orderKey, ImageType.AFTER_CARE, freshUriString, freshPath) } returns 8L
+            coEvery { images.markAsSuccess(8L, "new-cloud-key") } just Runs
+            coEvery { uploader.upload(freshUri, any()) } returns UploadedPhoto("new-cloud-key")
+            adding = async { queue.addImagesToProcess(listOf(freshUri), ImageTaskType.AFTER_CARE, "") }
+            runCurrent()
+            assertFalse(adding.isCompleted)
+        }
+        loaded.complete(listOf(OrderImageEntity(
+            id = 7L,
+            orderId = orderKey.orderId,
+            imageType = ImageType.BEFORE_CARE.value,
+            localUri = localUri,
+            uploadStatus = ImageUploadStatus.SUCCESS.value,
+            cloudKey = "saved-cloud-key",
+        )))
+        runCurrent()
+        adding?.await()
+
+        val delegate = PhotoUploadDelegate(uploader, mockk(), mockk(), queue, messages)
+        val result = delegate.uploadSuccessfulImagesToCloud()
+
+        assertEquals(listOf("saved-cloud-key"), result.getOrThrow()[ImageTaskType.BEFORE_CARE])
+        assertEquals(if (captureBeforeRoom) 2 else 1, queue.imageTasks.value.size)
+        assertTrue(queue.imageTasks.value.all { it.isUploaded })
+        assertEquals(queue.imageTasks.value.size, queue.imageTasks.value.map { it.id }.distinct().size)
+        coVerify(exactly = 0) { images.markAsSuccess(7L, any()) }
+        coVerify(exactly = if (captureBeforeRoom) 1 else 0) { uploader.upload(any(), any()) }
+        if (captureBeforeRoom) {
+            assertEquals(listOf("new-cloud-key"), result.getOrThrow()[ImageTaskType.AFTER_CARE])
+            coVerify(exactly = 1) { images.markAsSuccess(8L, "new-cloud-key") }
+        }
+    }
 
     @Test
     fun `retry after Room failure reuses cloud object and commits before success`() = runTest {
@@ -144,6 +279,7 @@ class PhotoUploadDelegateTest {
         val uploader = mockk<PhotoCloudUploader>()
         coEvery { uploader.upload(any(), any()) } throws uploadError
         val queue = mockk<PhotoTaskQueueDelegate>()
+        coEvery { queue.awaitInitialLoad() } just Runs
         every { queue.currentOrderKey } returns MutableStateFlow(OrderKey(42))
         every { queue.getTasksSnapshot() } returns listOf(
             ImageTask("1", "file:///photo.jpg", ImageTaskType.BEFORE_CARE,

@@ -46,6 +46,7 @@ internal class PhotoUploadDelegate(
         val userId = DiagnosticEventTracker.currentUserId()
         return try {
             isUploading.value = true
+            taskQueueDelegate.awaitInitialLoad()
             val allTasks = taskQueueDelegate.getTasksSnapshot()
             check(allTasks.all { it.status == ImageTaskStatus.SUCCESS }) {
                 userMessages.imageProcessingFailed
