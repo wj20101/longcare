@@ -58,7 +58,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         var callbackCount = 0L
         var nullCallbackCount = 0L
         var lastCallbackAt: Long? = null
-        var staleSuccessSinceEffectiveSample = false
+        var staleSuccessSinceSourceProgress = false
     }
 
     // SDK lifecycle and owner state are confined to Main.immediate.
@@ -90,8 +90,11 @@ class ContinuousAmapLocationManager @Inject constructor(
     private var samplingStartedAt = 0L
     private var recoveryAttempts = 0
     private var lastRecoveryAt: Long? = null
-    private var lastEffectiveCallbackAt = 0L
-    private var lastEffectiveSource: Long? = null
+    private var lastSourceProgressAt = 0L
+    private var lastSourceAnchor: Long? = null
+    private var lastEligibleSampleAt: Long? = null
+    private var lastEligibleSourceAnchor: Long? = null
+    private var lastRecoveryReason: String? = null
     @Volatile private var lastCallbackElapsed = 0L
     fun latestEvent(): LocationAcquisition? = samples.replayCache.lastOrNull()
 
@@ -227,20 +230,30 @@ class ContinuousAmapLocationManager @Inject constructor(
             }
             val sample = raw.toSample(request.requestId)
             if (raw.errorCode == AMapLocation.LOCATION_SUCCESS) {
-                val rejection = ServiceOrderLocationQuality.rejection(sample, sample.receivedAt, sample.receivedElapsedRealtime,
-                    maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
+                // Source liveness is not business eligibility: a trustworthy new fix with >200m
+                // accuracy proves SDK progress, but still cannot qualify for an action or upload.
+                val sourceRejection = LocationQuality.rejection(sample, sample.receivedAt, sample.receivedElapsedRealtime,
+                    maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS, maxAccuracyMeters = null, allowNormalTrust = true,
                     notBeforeElapsedRealtime = samplingStartedAt.takeIf { trackingOwner != null })
                 val source = LocationQuality.sampleElapsedRealtime(sample)
-                val advances = lastEffectiveSource?.let { source > it } ?: true
-                if (rejection == null && advances) {
-                    lastEffectiveCallbackAt = sample.receivedElapsedRealtime
-                    lastEffectiveSource = source
-                    request.staleSuccessSinceEffectiveSample = false
+                val advances = lastSourceAnchor?.let { source > it } ?: true
+                if (sourceRejection == null && advances) {
+                    lastSourceProgressAt = sample.receivedElapsedRealtime
+                    lastSourceAnchor = source
+                    request.staleSuccessSinceSourceProgress = false
                 } else {
-                    // Poor accuracy, permissions and SDK/network errors are not evidence of a stuck client.
-                    request.staleSuccessSinceEffectiveSample = request.staleSuccessSinceEffectiveSample ||
-                        rejection == LocationQuality.Rejection.STALE || rejection == LocationQuality.Rejection.ORDER ||
-                        (rejection == null && !advances)
+                    // Errors and invalid metadata do not clear prior stale evidence. Repeated
+                    // trustworthy sources remain unproductive even when their accuracy is poor.
+                    request.staleSuccessSinceSourceProgress = request.staleSuccessSinceSourceProgress ||
+                        sourceRejection == LocationQuality.Rejection.STALE || sourceRejection == LocationQuality.Rejection.ORDER ||
+                        (sourceRejection == null && !advances)
+                }
+                val eligible = ServiceOrderLocationQuality.rejection(sample, sample.receivedAt, sample.receivedElapsedRealtime,
+                    maxAgeMs = ServiceOrderLocationQuality.REPORTING_MAX_AGE_MS,
+                    notBeforeElapsedRealtime = samplingStartedAt.takeIf { trackingOwner != null }) == null
+                if (eligible && (lastEligibleSourceAnchor?.let { source > it } ?: true)) {
+                    lastEligibleSampleAt = sample.receivedElapsedRealtime
+                    lastEligibleSourceAnchor = source
                 }
             }
             val event = if (raw.errorCode == AMapLocation.LOCATION_SUCCESS) LocationAcquisition.Success(sample) else {
@@ -282,24 +295,28 @@ class ContinuousAmapLocationManager @Inject constructor(
         samplingStartedAt = SystemClock.elapsedRealtime()
         recoveryAttempts = 0
         lastRecoveryAt = null
-        lastEffectiveCallbackAt = samplingStartedAt
-        lastEffectiveSource = null
+        lastSourceProgressAt = samplingStartedAt
+        lastSourceAnchor = null
+        lastEligibleSampleAt = null
+        lastEligibleSourceAnchor = null
+        lastRecoveryReason = null
     }
 
-    private fun needsSamplingRecovery(request: ContinuousClient, now: Long): Boolean {
+    private fun samplingRecoveryReason(request: ContinuousClient, now: Long): String? {
         if (!request.active.get() || continuousClient !== request || trackingOwner == null ||
-            !samplingEnabled || highRequested || recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) return false
-        if (lastRecoveryAt?.let { now - it < BACKGROUND_SILENCE_REFRESH_MS } == true) return false
+            !samplingEnabled || highRequested || recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) return null
+        if (lastRecoveryAt?.let { now - it < BACKGROUND_SILENCE_REFRESH_MS } == true) return null
+        if (request.staleSuccessSinceSourceProgress && now - lastSourceProgressAt >= CALLBACK_SILENCE_DIAGNOSTIC_MS)
+            return "s"
         val silence = now - lastCallbackElapsed
         val backgroundOrScreenOff = runtimeReadiness.isAppVisible() == false ||
             runtimeReadiness.diagnosticSnapshot()["screenOn"] == false
-        return silence >= CALLBACK_SILENCE_DIAGNOSTIC_MS ||
-            (backgroundOrScreenOff && silence >= BACKGROUND_SILENCE_REFRESH_MS) ||
-            (request.staleSuccessSinceEffectiveSample && now - lastEffectiveCallbackAt >= CALLBACK_SILENCE_DIAGNOSTIC_MS)
+        return if (silence >= CALLBACK_SILENCE_DIAGNOSTIC_MS ||
+            (backgroundOrScreenOff && silence >= BACKGROUND_SILENCE_REFRESH_MS)) "c" else null
     }
 
     private suspend fun recoverUnproductiveSampling(request: ContinuousClient) {
-        if (!needsSamplingRecovery(request, SystemClock.elapsedRealtime())) return
+        if (samplingRecoveryReason(request, SystemClock.elapsedRealtime()) == null) return
         val owner = trackingOwner
         val generation = samplingGeneration
         // Keep the existing listener alive while configuration can suspend. Fresh progress, pause,
@@ -307,11 +324,13 @@ class ContinuousAmapLocationManager @Inject constructor(
         val keyResult = runCatching { amapApiKeyProvider.getAmapApiKey() }
         currentCoroutineContext().ensureActive()
         keyResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
-        if (trackingOwner != owner || samplingGeneration != generation ||
-            !needsSamplingRecovery(request, SystemClock.elapsedRealtime())) return
+        if (trackingOwner != owner || samplingGeneration != generation) return
+        val recoveryAt = SystemClock.elapsedRealtime()
+        val reason = samplingRecoveryReason(request, recoveryAt) ?: return
         val key = keyResult.getOrThrow()?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("amap_api_key_unavailable")
-        lastRecoveryAt = SystemClock.elapsedRealtime()
+        lastRecoveryAt = recoveryAt
+        lastRecoveryReason = reason
         releaseContinuousClient(request)
         // Never stop/set/start a logically active instance: invalidate before stopping so delayed
         // old callbacks cannot revive it. Startup failure also clears the replacement instance.
@@ -383,7 +402,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         val now = SystemClock.elapsedRealtime()
         trackingOwner == owner && samplingEnabled && request != null &&
             (now - lastCallbackElapsed >= CALLBACK_SILENCE_DIAGNOSTIC_MS ||
-                (request.staleSuccessSinceEffectiveSample && now - lastEffectiveCallbackAt >= CALLBACK_SILENCE_DIAGNOSTIC_MS))
+                (request.staleSuccessSinceSourceProgress && now - lastSourceProgressAt >= CALLBACK_SILENCE_DIAGNOSTIC_MS))
     }
 
     /** Read only by bounded diagnostic reports; never changes SDK options or lifecycle. */
@@ -399,12 +418,26 @@ class ContinuousAmapLocationManager @Inject constructor(
                 "net=${bit(runtime, "networkAvailable")},validated=${bit(runtime, "networkValidated")}," +
                 "exempt=${bit(runtime, "batteryExempt")},save=${bit(runtime, "powerSave")},${backgroundPolicy(runtime)}",
             "sdkState" to request?.let {
-                "count=${it.callbackCount},null=${it.nullCallbackCount}," +
-                    "ageMs=${it.lastCallbackAt?.let { at -> (now - at).coerceAtLeast(0L) } ?: "?"}," +
-                    "intervalMs=${it.appliedIntervalMs ?: "?"},visible=${it.lastAttemptedVisibility ?: "?"}"
+                "count=${boundedMetric(it.callbackCount)},null=${boundedMetric(it.nullCallbackCount)}," +
+                    "ageMs=${progressGap(it.lastCallbackAt, now)}," +
+                    "intervalMs=${it.appliedIntervalMs ?: "?"},visible=${it.lastAttemptedVisibility ?: "?"}," +
+                    "gS=${progressGapSeconds(lastSourceProgressAt.takeIf { lastSourceAnchor != null }, now)}/${progressGapSeconds(lastEligibleSampleAt, now)}," +
+                    "r=${lastRecoveryReason ?: "n"}:$recoveryAttempts/$MAX_RECOVERY_ATTEMPTS"
             },
         )
     }
+
+    // gS is source/eligible observation gaps in seconds, not fix age or HTTP success. Unknown is ?;
+    // + denotes a saturated lower bound. r is the last attempted trigger (n=none/s=source/c=callback)
+    // and used/max attempts. Short, bounded values also preserve the shared 950-character budget.
+    private fun progressGap(at: Long?, now: Long): String = at?.let { boundedMetric((now - it).coerceAtLeast(0L)) } ?: "?"
+
+    private fun progressGapSeconds(at: Long?, now: Long): String = at?.let {
+        val seconds = (now - it).coerceAtLeast(0L) / 1_000L
+        if (seconds >= 999_999L) "999999+" else seconds.toString()
+    } ?: "?"
+
+    private fun boundedMetric(value: Long): String = if (value > 999_999_999L) "999999999+" else value.toString()
 
     private fun bit(runtime: Map<String, Any?>, key: String): String =
         when (runtime[key]) { true -> "1"; false -> "0"; else -> "?" }

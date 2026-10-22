@@ -52,7 +52,7 @@ class LocationReportingDiagnosticsTest {
         val runtime = mapOf(
             "clientId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe302",
             "runtime" to "idle=?/?,screen=?,net=?,validated=?,exempt=?,save=?,bg=?,ds=?,lps=?",
-            "sdkState" to "count=10000,null=0,ageMs=1200000,intervalMs=30000,visible=false",
+            "sdkState" to "count=999999999+,null=999999999+,ageMs=999999999+,intervalMs=30000,visible=false,gS=999999+/999999+,r=s:2/2",
         )
         val required = setOf("orderId", "sessionId", "stage", "reason", "reportSequence", "successGapMs",
             "maxSuccessGapMs", "observedMs", "time", "accuracy",
@@ -80,6 +80,9 @@ class LocationReportingDiagnosticsTest {
             val report = delivered.last()
             required.forEach { assertNotNull("$issue missing diagnostic field $it: ${report.message}", report.fields[it]) }
             assertTrue(report.fields.getValue("time").contains("issue=$issue,"))
+            assertEquals(runtime["sdkState"], report.fields["sdkState"])
+            assertEquals("api_network,code=?", report.fields["apiFailure"])
+            assertEquals(ApiRequestException::class.java.name, report.fields["errorType"])
             assertTrue(requireNotNull(report.message).length <= 950)
             assertTrue(report.fields.size <= 30)
             assertFalse(report.fields.containsKey("latitude"))

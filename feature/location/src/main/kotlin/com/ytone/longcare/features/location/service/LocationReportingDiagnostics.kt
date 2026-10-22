@@ -30,6 +30,7 @@ internal class LocationReportingDiagnostics(
     private var sourceRepeatCount = 0L
     private var apiErrorCode: Int? = null
     private var apiErrorType: String? = null
+    private var apiErrorClassName: String? = null
     private var lastApiFailure: String? = null
     private var qualityReason: String? = null
     private var gateReason: String? = null
@@ -81,6 +82,7 @@ internal class LocationReportingDiagnostics(
         // Failure classes remain visible in the next aggregate without one remote exception per point.
         apiErrorCode = errorCode
         apiErrorType = error?.javaClass?.simpleName
+        apiErrorClassName = error?.javaClass?.name
         if (!hasReportedIssue || due()) {
             val stage = if (hasReportedIssue) "summary" else "first"
             hasReportedIssue = true
@@ -172,7 +174,12 @@ internal class LocationReportingDiagnostics(
             "accuracy" to sample?.accuracy?.takeIf { it.isFinite() },
             "locationType" to sample?.locationType,
             "sdkErrorCode" to sample?.errorCode, "qualityReason" to qualityReason,
-            "apiFailure" to lastApiFailure?.let { "$it,code=${apiErrorCode ?: "?"},type=${apiErrorType ?: "?"}" },
+            "apiFailure" to lastApiFailure?.let {
+                // A contemporaneous Throwable already supplies the exact class as errorType.
+                // Keep type in later aggregates without that Throwable; do not lose the cause.
+                "$it,code=${apiErrorCode ?: "?"}" + if (error != null && error.javaClass.name == apiErrorClassName)
+                    "" else ",type=${apiErrorType ?: "?"}"
+            },
             "maxTickGapMs" to maxTickGap, "maxSleepGapMs" to maxSleepGap,
             // Fixed labels and lifetime counters fit one bounded scalar; differences give window counts.
             "counts" to "cb=$callbackCount,rej=$rejectedCount,ok=$successCount,fail=$failureCount,cancel=$cancelledCount,reuse=$sourceRepeatCount",
@@ -188,6 +195,7 @@ internal class LocationReportingDiagnostics(
         lastApiFailure = null
         apiErrorCode = null
         apiErrorType = null
+        apiErrorClassName = null
         runCatching {
             if (error != null || type == LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR) {
                 LocationEventTracker.trackError(type, error, extras, userId)
