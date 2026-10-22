@@ -173,11 +173,13 @@ open class LocationTrackingService : Service() {
     private fun enterForeground() {
         if (foregroundEntered) return
         createNotificationChannel()
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, createNotification(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        } else 0
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, createNotification(), type)
         // AOSP may silently ignore promotion (for example a restricted app-op). A normal
         // startForeground return alone must not authorize SDK collection without a real FGS.
-        check(foregroundStateVerifier.isForeground(this, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)) {
+        check(foregroundStateVerifier.isForeground(this, type)) {
             "location_foreground_promotion_rejected"
         }
         foregroundEntered = true

@@ -434,7 +434,7 @@ class CountdownNotificationManager @Inject constructor(
                 return false
             }
             ServiceCompat.startForeground(service, COUNTDOWN_NOTIFICATION_ID, notification, type)
-            check(foregroundStateVerifier.isForeground(service, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)) {
+            check(foregroundStateVerifier.isForeground(service, type)) {
                 "Alarm ringtone service was not promoted to foreground"
             }
             true

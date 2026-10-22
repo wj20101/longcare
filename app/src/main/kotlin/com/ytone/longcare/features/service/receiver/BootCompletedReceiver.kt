@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -54,7 +55,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
         logI("收到设备重启完成广播: ${intent.action}")
         
         // 验证广播Action
-        val exactPermissionGranted = intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
+        val exactPermissionGranted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
         if (!exactPermissionGranted && intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
             intent.action != "android.intent.action.QUICKBOOT_POWERON") {

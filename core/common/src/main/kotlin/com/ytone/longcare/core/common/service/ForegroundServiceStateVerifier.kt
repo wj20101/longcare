@@ -11,11 +11,10 @@ import javax.inject.Inject
 /** Confirms this Service's promotion once, not process importance or notification visibility. */
 class ForegroundServiceStateVerifier @Inject constructor() {
     fun isForeground(service: Service, requiredType: Int): Boolean =
-        if (requiredType == 0) {
-            false
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            service.foregroundServiceType and requiredType == requiredType
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            requiredType != 0 && (service.foregroundServiceType and requiredType) == requiredType
         } else {
+            // Older platforms have no foreground service types; callers pass zero to startForeground.
             isLegacyServiceForeground(service)
         }
 

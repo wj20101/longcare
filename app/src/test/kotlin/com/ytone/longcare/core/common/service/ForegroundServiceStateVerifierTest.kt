@@ -45,16 +45,20 @@ class ForegroundServiceStateVerifierTest {
             }
         every { manager.getRunningServices(Int.MAX_VALUE) } returns emptyList()
         assertFalse(verifier.isForeground(service, locationType))
+        assertFalse(verifier.isForeground(service, 0))
         every { manager.getRunningServices(Int.MAX_VALUE) } returns listOf(record(foreground = false))
         assertFalse(verifier.isForeground(service, locationType))
+        assertFalse(verifier.isForeground(service, 0))
         every { manager.getRunningServices(Int.MAX_VALUE) } returns listOf(
             record(component = ComponentName("com.ytone.longcare", "OtherService")),
             record(uid = Process.myUid() + 1),
             record(pid = Process.myPid() + 1),
         )
         assertFalse(verifier.isForeground(service, locationType))
+        assertFalse(verifier.isForeground(service, 0))
         every { manager.getRunningServices(Int.MAX_VALUE) } returns listOf(record())
         assertTrue(verifier.isForeground(service, locationType))
+        assertTrue(verifier.isForeground(service, 0))
     }
 
     @Test
