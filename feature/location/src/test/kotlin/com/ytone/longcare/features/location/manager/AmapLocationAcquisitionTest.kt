@@ -343,17 +343,28 @@ class AmapLocationAcquisitionTest {
         every { SystemClock.elapsedRealtime() } answers { initialElapsedRealtime + currentTime + sleepElapsed }
         val action = async { singleSource.acquireCurrentLocation() }
         runCurrent()
-        listeners.single().onLocationChanged(freshSample().also { every { it.accuracy } returns 500f })
+        // Generic acquisition has no service-order 200m ceiling; low trust must trigger this retry.
+        listeners.single().onLocationChanged(freshSample().also {
+            every { it.accuracy } returns 500f
+            every { it.trustedLevel } returns AMapLocation.TRUSTED_LEVEL_LOW
+        })
         runCurrent()
         assertEquals(2, listeners.size)
+        assertFalse(action.isCompleted)
+        verify(exactly = 2) { factory.create(any()) }
+        verify(exactly = 2) { client.startLocation() }
+        verify(exactly = 1) { client.onDestroy() }
         sleepElapsed = 60_000L
-        listeners.last().onLocationChanged(freshSample().also { every { it.errorCode } returns 4 })
+        val late = freshSample().also { every { it.errorCode } returns 4 }
+        listeners.last().onLocationChanged(late)
         runCurrent()
 
         val failure = action.await() as LocationAcquisition.Failure
         assertEquals(LocationFailure.TIMEOUT, failure.reason)
         assertEquals(500f, requireNotNull(failure.location).accuracy)
+        assertEquals(AMapLocation.TRUSTED_LEVEL_LOW, requireNotNull(failure.location).trustedLevel)
         assertEquals(0, requireNotNull(failure.location).errorCode)
+        verify(exactly = 0) { late.errorCode }
         verify(exactly = 2) { client.onDestroy() }
     }
 

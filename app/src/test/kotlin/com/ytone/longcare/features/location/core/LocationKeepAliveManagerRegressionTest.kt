@@ -153,9 +153,8 @@ class LocationKeepAliveManagerRegressionTest {
         val manager = LocationKeepAliveManager(LocationForegroundServiceController(context, readiness))
 
         org.junit.Assert.assertFalse(manager.acquireOrderTracking("owner", 1))
-        org.junit.Assert.assertFalse(manager.hasAcceptedStart())
+        // The two native dispatches verified below prove that the rejected start was rolled back.
         org.junit.Assert.assertTrue(manager.acquireOrderTracking("owner", 1))
-        org.junit.Assert.assertTrue(manager.hasAcceptedStart())
         // A genuinely accepted second dispatch remains idempotent.
         org.junit.Assert.assertTrue(manager.acquireOrderTracking("owner", 1))
 

@@ -35,10 +35,10 @@ class PhotoTaskQueueDelegateTest {
         every { CrashReportGateway.userId } returns "test-user"
         every { CrashReportGateway.postCaughtException(any()) } just Runs
         mockkStatic(Uri::class)
-        every { Uri.parse(localUri) } returns mockk {
-            every { toString() } returns localUri
-            every { path } returns "/managed/photo.jpg"
-        }
+        val uri = mockk<Uri>()
+        every { uri.toString() } returns localUri
+        every { uri.path } returns "/managed/photo.jpg"
+        every { Uri.parse(localUri) } returns uri
     }
 
     @After

@@ -103,16 +103,19 @@ class LocationTrackingServiceRecoveryRaceTest {
             runCurrent()
 
             assertTrue(shadowOf(service).isStoppedBySelf)
-            assertFalse(keepAlive.hasAcceptedStart())
             assertEquals(LocationReportingStatus.INTERRUPTED, manager.status.value)
             verify(exactly = 0) {
                 service.continuousAmapLocationManager.startContinuousLocation(any(), any())
             }
             coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
 
+            verify(exactly = 1) { controller.start(any(), any(), 10) }
+            // A new dispatch before onDestroy proves cleanup released the rejected acceptance.
             manager.onAppVisible()
             verify(exactly = 2) { controller.start(any(), any(), 10) }
             assertEquals(LocationReportingStatus.PREPARING, manager.status.value)
+            manager.onAppVisible()
+            verify(exactly = 2) { controller.start(any(), any(), 10) }
         } finally {
             manager.stopReporting()
             service.onDestroy()

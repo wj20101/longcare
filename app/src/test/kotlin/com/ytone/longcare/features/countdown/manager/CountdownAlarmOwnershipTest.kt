@@ -364,7 +364,7 @@ class CountdownAlarmOwnershipTest {
         val manager = newManager(backgroundScope)
         val trigger = System.currentTimeMillis() + 60_000L
         manager.scheduleCountdownAlarm(firstOrder, "原护理", trigger)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         val recreated = newManager(backgroundScope)
 
         assertTrue(recreated.restorePendingCountdownAlarm({ true }))
@@ -382,7 +382,7 @@ class CountdownAlarmOwnershipTest {
         val manager = newManager(backgroundScope)
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000L)
         val original = alarmIntent(firstOrder)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
         assertFalse(manager.restorePendingCountdownAlarm({ true }, requireExactAlarm = true))
         assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
@@ -399,10 +399,10 @@ class CountdownAlarmOwnershipTest {
         manager.cancelCountdownAlarmForOrder(firstOrder)
         assertFalse(manager.restorePendingCountdownAlarm({ true }))
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() - 1L)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         assertFalse(manager.restorePendingCountdownAlarm({ true }))
         manager.scheduleCountdownAlarm(firstOrder, "护理", trigger)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         session.value = SessionState.LoggedIn(user.copy(userId = 99))
         assertFalse(manager.restorePendingCountdownAlarm({ true }))
         session.value = SessionState.LoggedOut
@@ -417,7 +417,7 @@ class CountdownAlarmOwnershipTest {
         val trigger = System.currentTimeMillis() + 60_000L
         manager.scheduleCountdownAlarm(firstOrder, "旧护理", trigger)
         manager.scheduleCountdownAlarm(secondOrder, "新护理", trigger + 30_000L)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         assertFalse(manager.restorePendingCountdownAlarm({ false }))
         orderState.value = ServiceOrderStateModel(secondOrder.orderId, ServiceOrderStateModel.STATE_COMPLETED)
         assertFalse(manager.restorePendingCountdownAlarm({ true }))
@@ -431,7 +431,7 @@ class CountdownAlarmOwnershipTest {
     @Test fun `initial resolved session retries restoration once after a slow cold start`() = runTest {
         val manager = newManager(backgroundScope)
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000L)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         session.value = SessionState.Unknown
         manager.startSessionObservation { true }
         runCurrent()
@@ -440,7 +440,7 @@ class CountdownAlarmOwnershipTest {
         session.value = SessionState.LoggedIn(user)
         runCurrent()
         assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         orderState.value = ServiceOrderStateModel(firstOrder.orderId, ServiceOrderStateModel.STATE_IN_PROGRESS)
         runCurrent()
         assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())

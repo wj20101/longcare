@@ -439,7 +439,7 @@ class CountdownAlarmDeliveryTest {
         createManager(backgroundScope)
         val intent = schedule()
         val trigger = intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L)
-        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
         manager.onAlarmTriggered(intent)
         manager.onAlarmTriggered(intent)
         // A future deadline plus accepted delivery is also the post-rollback persistent state.

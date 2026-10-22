@@ -22,6 +22,7 @@ all_smoke() {
   add_class com.ytone.longcare.platform.webview.WebViewPresentationTest
   add_class com.ytone.longcare.features.sales.SalesEvaluationMockFlowTest
   add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest
+  add_class com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
@@ -68,9 +69,10 @@ else
         core/common/src/*/com/ytone/longcare/common/utils/DeviceCompatibilityHelper*|core/common/src/main/res/*|core/ui/src/main/*/com/ytone/longcare/core/ui/permission/*|core/ui/src/main/res/*|app/src/main/*/com/ytone/longcare/features/selectservice/*|app/src/androidTest/*/com/ytone/longcare/core/ui/permission/*)
           run_instrumentation=true
           add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest ;;
-        app/src/main/*/com/ytone/longcare/features/service/*|app/src/main/*/com/ytone/longcare/features/servicecountdown/*|app/src/main/*/com/ytone/longcare/features/countdown/*|feature/servicecountdown/*|feature/location/*|app/src/androidTest/*/com/ytone/longcare/features/service/*|app/src/androidTest/*/com/ytone/longcare/features/servicecountdown/*)
+        app/src/main/*/com/ytone/longcare/features/service/*|app/src/main/*/com/ytone/longcare/features/servicecountdown/*|app/src/main/*/com/ytone/longcare/features/countdown/*|feature/servicecountdown/*|feature/location/*|app/src/androidTest/*/com/ytone/longcare/features/service/*|app/src/androidTest/*/com/ytone/longcare/features/servicecountdown/*|app/src/androidTest/*/com/ytone/longcare/features/countdown/*)
           run_instrumentation=true
           add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest
+          add_class com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
