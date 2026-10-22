@@ -23,6 +23,7 @@ all_smoke() {
   add_class com.ytone.longcare.features.sales.SalesEvaluationMockFlowTest
   add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest
   add_class com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest
+  add_class com.ytone.longcare.features.countdown.service.AlarmRingtonePlaybackIntegrationTest
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
   add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest
@@ -73,6 +74,7 @@ else
           run_instrumentation=true
           add_class com.ytone.longcare.features.service.ServiceTimeNotificationIntegrationTest
           add_class com.ytone.longcare.features.countdown.manager.CountdownAlarmPermissionFallbackIntegrationTest
+          add_class com.ytone.longcare.features.countdown.service.AlarmRingtonePlaybackIntegrationTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownPermissionFlowTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownDialogsTest
           add_class com.ytone.longcare.features.servicecountdown.ui.ServiceCountdownBackgroundInitializationTest

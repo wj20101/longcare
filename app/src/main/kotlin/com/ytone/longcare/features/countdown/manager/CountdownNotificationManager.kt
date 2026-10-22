@@ -447,6 +447,8 @@ class CountdownNotificationManager @Inject constructor(
         }
     }
 
+    internal fun publishPlaybackFallback(alarm: CountdownAlarm): Boolean = publishAlarmNotification(alarm)
+
     @Synchronized
     private fun publishAlarmNotification(alarm: CountdownAlarm): Boolean {
         if (!ownsAlarm(alarm)) return false
@@ -508,10 +510,13 @@ class CountdownNotificationManager @Inject constructor(
     }
 
 
-    internal fun trackDeliveryResult(alarm: CountdownAlarm, outcome: String, failureType: String? = null) {
+    internal fun trackDeliveryResult(
+        alarm: CountdownAlarm, outcome: String, failureType: String? = null,
+        playbackStartupDurationMs: Long? = null,
+    ) {
         CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_DELIVERY_RESULT,
             alarm.orderKey.orderId,
-            mapOf("failureType" to failureType) +
+            mapOf("failureType" to failureType, "playbackStartupDurationMs" to playbackStartupDurationMs) +
                 CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, outcome),
             reportToServer = true,
             userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))

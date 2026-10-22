@@ -93,6 +93,36 @@ class CountdownAlarmDeliveryTest {
         verify(exactly = 0) { notifications.notify(any<Int>(), any<Notification>()) }
     }
 
+    @Test fun `playback failure fallback preserves identity and rejects cancellation or ownership replacement`() = runTest {
+        createManager(backgroundScope)
+        val intent = schedule()
+        val alarm = requireNotNull(manager.extractAlarm(intent))
+        val published = slot<Notification>()
+        every { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, capture(published)) } just runs
+        assertTrue(manager.publishPlaybackFallback(alarm))
+        assertEquals(CountdownNotificationManager.COUNTDOWN_FALLBACK_CHANNEL_ID, published.captured.channelId)
+        val content = shadowOf(published.captured.contentIntent).savedIntent
+        assertEquals(alarm.owner, content.getStringExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER))
+        assertEquals(alarm.triggerTimeMillis, content.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+        session.value = SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 999))
+        assertFalse(manager.publishPlaybackFallback(alarm))
+        manager.cancelCountdownAlarmForOrder(order)
+        assertFalse(manager.publishPlaybackFallback(alarm))
+        verify(exactly = 1) { notifications.notify(any<Int>(), any<Notification>()) }
+    }
+
+    @Test
+    @Config(sdk = [28, 34])
+    fun `playback fallback respects a user-blocked primary reminder channel`() = runTest {
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            android.app.NotificationChannel(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID,
+                "blocked", NotificationManager.IMPORTANCE_NONE))
+        createManager(backgroundScope)
+        val alarm = requireNotNull(manager.extractAlarm(schedule()))
+        assertFalse(manager.publishPlaybackFallback(alarm))
+        verify(exactly = 0) { notifications.notify(any<Int>(), any<Notification>()) }
+    }
+
     @Test fun `confirmed terminal state prevents delivery before the cleanup observer runs`() = runTest {
         createManager(backgroundScope)
         val intent = schedule()
@@ -214,7 +244,7 @@ class CountdownAlarmDeliveryTest {
             assertEquals(CountdownNotificationManager.COUNTDOWN_FALLBACK_CHANNEL_ID, published.captured.channelId)
             assertTrue(shadowOf(service).isStoppedBySelf)
             assertFalse(ReflectionHelpers.getField<PowerManager.WakeLock>(service, "wakeLock").isHeld)
-            verify(exactly = 0) { playback.start() }
+            verify(exactly = 0) { playback.prepare(any(), any(), any(), any(), any()) }
             verify(exactly = 1) { playback.stop() }
         } finally {
             controller.destroy()
@@ -238,7 +268,7 @@ class CountdownAlarmDeliveryTest {
         try {
             service.onStartCommand(intent, 0, 1)
 
-            verify(exactly = 0) { playback.start() }
+            verify(exactly = 0) { playback.prepare(any(), any(), any(), any(), any()) }
             verify(exactly = 1) { playback.stop() }
             verify(exactly = 1) { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, any<Notification>()) }
             assertTrue(shadowOf(service).isStoppedBySelf)

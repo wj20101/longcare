@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -17,6 +18,8 @@ import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics
 import com.ytone.longcare.features.countdown.manager.CountdownAlarm
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import java.util.concurrent.atomic.AtomicLong
+import com.ytone.longcare.features.countdown.service.AlarmRingtonePlaybackController.PlaybackEvent
 
 /**
  * 闹铃响铃服务
@@ -35,9 +38,14 @@ class AlarmRingtoneService : Service() {
     private var resourcesCleanedUp = false
     private val ringingHandler = Handler(Looper.getMainLooper())
     private var ringingTimeout: Runnable? = null
+    private var preparationTimeout: Runnable? = null
+    private val playbackGeneration = AtomicLong()
+    private var playAuthorized = false
     
     companion object {
         internal const val RINGING_TIMEOUT_MS = 30_000L
+        internal const val PREPARATION_TIMEOUT_MS = 5_000L
+        internal const val TOTAL_TIMEOUT_MS = PREPARATION_TIMEOUT_MS + RINGING_TIMEOUT_MS
         internal const val ACTION_START_RINGTONE = "com.ytone.longcare.action.START_RINGTONE"
         
         /**
@@ -102,8 +110,13 @@ class AlarmRingtoneService : Service() {
                 it.triggerTimeMillis == alarm.triggerTimeMillis } == true && !resourcesCleanedUp) {
             return START_NOT_STICKY
         }
+        if (activeAlarm != null && !resourcesCleanedUp) cleanupAlarmResources("replaced")
         activeAlarm = alarm
         resourcesCleanedUp = false
+        playAuthorized = false
+        val generation = playbackGeneration.incrementAndGet()
+        val preparationDeadline = SystemClock.elapsedRealtime() + PREPARATION_TIMEOUT_MS
+        val playbackDeadline = preparationDeadline + RINGING_TIMEOUT_MS
 
         acquireWakeLock()
         
@@ -121,20 +134,62 @@ class AlarmRingtoneService : Service() {
             return START_NOT_STICKY
         }
         
-        // 启动响铃和震动
-        if (!playbackController.isPlaying && !playbackController.start()) {
-            logE("AlarmRingtoneService: 响铃播放启动失败，停止响铃服务")
-            countdownNotificationManager.trackDeliveryResult(alarm, "playback_start_failed", playbackController.lastStartFailureType)
-            stopAlarmAndSelf("playback_start_failed")
-            return START_NOT_STICKY
-        }
-        
-        // This confirms start() returned successfully, not that the user physically heard audio.
-        countdownNotificationManager.trackDeliveryResult(alarm, "playback_started")
+        // Both watchdogs are armed before any potentially blocking media work is dispatched.
+        scheduleRingingTimeout(playbackDeadline, "playback_total_timeout")
+        preparationTimeout = Runnable {
+            if (isActive(generation, alarm)) {
+                countdownNotificationManager.trackDeliveryResult(alarm, "playback_prepare_timeout")
+                stopAlarmAndSelf("playback_prepare_timeout")
+                // No play was authorized. Invalidate first so even a racing prepared callback
+                // cannot start; an older stuck native start can still make audible fallback unsafe.
+                if (!playAuthorized && playbackController.isAudibleFallbackSafe) {
+                    countdownNotificationManager.publishPlaybackFallback(alarm)
+                }
+            }
+        }.also { ringingHandler.postDelayed(it, (preparationDeadline - SystemClock.elapsedRealtime()).coerceAtLeast(0L)) }
+        // Capture app-scoped manager + atomic token, not the Service, in the worker-side gate.
+        val generationState = playbackGeneration
+        val manager = countdownNotificationManager
+        playbackController.prepare(preparationDeadline, playbackDeadline,
+            isCurrent = { generationState.get() == generation && manager.ownsAlarm(alarm) },
+            onPrepared = { token ->
+                if (isActive(generation, alarm)) {
+                    if (!manager.ownsAlarm(alarm)) {
+                        stopAlarmAndSelf("playback_ownership_rejected")
+                    } else if (SystemClock.elapsedRealtime() >= preparationDeadline) {
+                        preparationTimeout?.run()
+                    } else if (playbackController.play(token)) {
+                        // Only a successfully accepted token ends preparation. A boundary rejection
+                        // keeps the original watchdog (and any queued actual failure) intact.
+                        cancelPreparationTimeout()
+                        playAuthorized = true
+                    }
+                }
+            },
+            onEvent = { event ->
+                if (isActive(generation, alarm)) {
+                    if (!manager.ownsAlarm(alarm)) {
+                        stopAlarmAndSelf("playback_ownership_rejected")
+                    } else when (event) {
+                        is PlaybackEvent.Started -> {
+                            // Native start returned successfully; this is not proof of audible sound.
+                            manager.trackDeliveryResult(alarm, "playback_started",
+                                playbackStartupDurationMs = event.startupDurationMs)
+                            scheduleRingingTimeout(minOf(playbackDeadline,
+                                event.startedAtElapsedMs + RINGING_TIMEOUT_MS), "ringing_timeout")
+                        }
+                        is PlaybackEvent.Failed -> {
+                            manager.trackDeliveryResult(alarm, event.outcome, event.failureType)
+                            stopAlarmAndSelf(event.outcome)
+                            if ((!playAuthorized || event.releaseSucceeded) && playbackController.isAudibleFallbackSafe) {
+                                manager.publishPlaybackFallback(alarm)
+                            }
+                        }
+                        PlaybackEvent.Finished -> stopAlarmAndSelf("ringing_timeout")
+                    }
+                }
+            })
 
-        // 锁屏弹页仅由系统 fullScreenIntent 处理，权限不足时保留通知供用户点击。
-        scheduleRingingTimeout()
-        
         return START_NOT_STICKY
     }
     
@@ -156,7 +211,9 @@ class AlarmRingtoneService : Service() {
             return
         }
         resourcesCleanedUp = true
+        playbackGeneration.incrementAndGet()
 
+        cancelPreparationTimeout()
         cancelRingingTimeout()
         playbackController.stop()
         detachForegroundNotification()
@@ -173,11 +230,19 @@ class AlarmRingtoneService : Service() {
         )
     }
 
-    private fun scheduleRingingTimeout() {
+    private fun isActive(generation: Long, alarm: CountdownAlarm): Boolean =
+        !resourcesCleanedUp && playbackGeneration.get() == generation && activeAlarm === alarm
+
+    private fun scheduleRingingTimeout(deadlineElapsedMs: Long, reason: String) {
         cancelRingingTimeout()
-        val timeout = Runnable { stopAlarmAndSelf("ringing_timeout") }
+        val timeout = Runnable { stopAlarmAndSelf(reason) }
         ringingTimeout = timeout
-        ringingHandler.postDelayed(timeout, RINGING_TIMEOUT_MS)
+        ringingHandler.postDelayed(timeout, (deadlineElapsedMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L))
+    }
+
+    private fun cancelPreparationTimeout() {
+        preparationTimeout?.let(ringingHandler::removeCallbacks)
+        preparationTimeout = null
     }
 
     private fun cancelRingingTimeout() {
@@ -192,7 +257,7 @@ class AlarmRingtoneService : Service() {
 
     private fun acquireWakeLock() {
         try {
-            wakeLock?.acquire(RINGING_TIMEOUT_MS + 5_000L /* 留出启动与资源释放预算 */)
+            wakeLock?.acquire(TOTAL_TIMEOUT_MS /* 包含准备与播放预算 */)
         } catch (e: Exception) {
             logE("AlarmRingtoneService: 获取WakeLock失败 - ${e.message}", throwable = e)
         }
