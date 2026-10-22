@@ -51,7 +51,7 @@ class LocationReportingDiagnosticsTest {
         every { CrashReportGateway.postCaughtException(any()) } answers { delivered += firstArg<DiagnosticException>() }
         val runtime = mapOf(
             "clientId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe302",
-            "runtime" to "idle=?/?,screen=?,net=?,validated=?,exempt=?,save=?,bg=?,ds=?,lps=?",
+            "runtime" to "cpu=1,idle=?/?,screen=?,net=?,validated=?,exempt=?,save=?,bg=?,ds=?,lps=?",
             "sdkState" to "count=999999999+,null=999999999+,ageMs=999999999+,intervalMs=30000,visible=false,gS=999999+/999999+",
         )
         val required = setOf("orderId", "sessionId", "stage", "reason", "reportSequence", "successGapMs",
@@ -81,6 +81,7 @@ class LocationReportingDiagnosticsTest {
             required.forEach { assertNotNull("$issue missing diagnostic field $it: ${report.message}", report.fields[it]) }
             assertTrue(report.fields.getValue("time").contains("issue=$issue,"))
             assertEquals(runtime["sdkState"], report.fields["sdkState"])
+            assertEquals(runtime["runtime"], report.fields["runtime"])
             assertEquals("api_network,code=?", report.fields["apiFailure"])
             assertEquals(ApiRequestException::class.java.name, report.fields["errorType"])
             assertTrue(requireNotNull(report.message).length <= 950)
@@ -353,7 +354,7 @@ class LocationReportingDiagnosticsTest {
 
     @Test fun `cancellation counter records only a pending request and runtime keys are bounded`() {
         diagnostics = LocationReportingDiagnostics(17, "service-run", "3", { elapsed }, { uptime }) {
-            mapOf("clientId" to "client", "runtime" to "idle=1", "sdkState" to "count=1",
+            mapOf("clientId" to "client", "runtime" to "cpu=1,idle=1", "sdkState" to "count=1",
                 "unexpected" to "must not consume payload budget")
         }
         diagnostics.onUploadCancelled()
@@ -365,6 +366,7 @@ class LocationReportingDiagnosticsTest {
         assertEquals(1L, count(fields, "cancel"))
         assertEquals("client", fields["clientId"])
         assertEquals("count=1", fields["sdkState"])
+        assertEquals("cpu=1,idle=1", fields["runtime"])
         assertFalse(fields.containsKey("unexpected"))
         assertTrue(fields.size <= 25)
     }
