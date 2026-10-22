@@ -52,7 +52,7 @@ class LocationReportingDiagnosticsTest {
         val runtime = mapOf(
             "clientId" to "cd47d834-d58a-45f8-9c0b-0f7bcf1fe302",
             "runtime" to "idle=?/?,screen=?,net=?,validated=?,exempt=?,save=?,bg=?,ds=?,lps=?",
-            "sdkState" to "count=999999999+,null=999999999+,ageMs=999999999+,intervalMs=30000,visible=false,gS=999999+/999999+,r=s:2/2",
+            "sdkState" to "count=999999999+,null=999999999+,ageMs=999999999+,intervalMs=30000,visible=false,gS=999999+/999999+",
         )
         val required = setOf("orderId", "sessionId", "stage", "reason", "reportSequence", "successGapMs",
             "maxSuccessGapMs", "observedMs", "time", "accuracy",

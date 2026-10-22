@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.os.PowerManager
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -89,7 +88,6 @@ open class LocationTrackingService : Service() {
     // Android commands, SDK state and notifications share the Service's main-thread lifecycle.
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var collectorJob: Job? = null
-    private var samplingWakeLock: PowerManager.WakeLock? = null
     private var currentGeneration: Long = 0L
     private var currentOwner: String? = null
     private var cleanupCompleted = false
@@ -313,14 +311,11 @@ open class LocationTrackingService : Service() {
                         ).run()
                     } finally {
                         healthJob.cancel()
-                        releaseSamplingWakeLock()
                     }
                 }
             } catch (cancellation: CancellationException) {
-                releaseSamplingWakeLock()
                 throw cancellation
             } catch (error: Exception) {
-                releaseSamplingWakeLock()
                 LocationEventTracker.trackError(
                     LocationEventTracker.EventType.REPORTING_TASK_ERROR,
                     throwable = error,
@@ -371,7 +366,6 @@ open class LocationTrackingService : Service() {
                 if (ready) locationClock.elapsedRealtime() else enabled.value.resumedAtElapsedRealtime)
             continuousAmapLocationManager.setSamplingEnabled(owner, ready)
         }
-        syncSamplingWakeLock(ready)
         if (!ready) {
             reportingManager.updateStatus(owner, LocationReportingStatus.PAUSED)
             updateNotification(if (locationEnabled) R.string.location_tracking_authorization_wait else R.string.location_tracking_location_off)
@@ -439,7 +433,6 @@ open class LocationTrackingService : Service() {
     }
 
     private fun stopKeepAlive(stopService: Boolean = false) {
-        releaseSamplingWakeLock()
         if (!cleanupCompleted) {
             collectorJob?.cancel()
             collectorJob = null
@@ -457,31 +450,6 @@ open class LocationTrackingService : Service() {
         }
         if (stopService) {
             cleanupStage(CleanupStage.STOP_SERVICE) { stopSelf() }
-        }
-    }
-
-    private fun syncSamplingWakeLock(active: Boolean) {
-        if (!active) {
-            releaseSamplingWakeLock()
-            return
-        }
-        runCatching {
-            val lock = samplingWakeLock ?: getSystemService(PowerManager::class.java)
-                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
-                ?.apply { setReferenceCounted(false) }
-                ?.also { samplingWakeLock = it }
-            lock?.acquire(WAKE_LOCK_LEASE_MS)
-        }.onFailure {
-            logI("定位采样唤醒锁获取失败，继续当前定位会话: ${it.javaClass.simpleName}")
-        }
-    }
-
-    private fun releaseSamplingWakeLock() {
-        val lock = samplingWakeLock ?: return
-        runCatching {
-            if (lock.isHeld) lock.release()
-        }.onFailure {
-            logI("定位采样唤醒锁释放异常: ${it.javaClass.simpleName}")
         }
     }
 
@@ -549,8 +517,6 @@ open class LocationTrackingService : Service() {
 
     companion object {
         private const val SAMPLING_HEALTH_INTERVAL_MS = 15_000L
-        private const val WAKE_LOCK_LEASE_MS = 180_000L
-        private const val WAKE_LOCK_TAG = "LongCare:LocationTrackingWakeLock"
         const val ACTION_ACQUIRE_KEEP_ALIVE = "ACTION_ACQUIRE_LOCATION_KEEPALIVE"
         const val EXTRA_OWNER = "EXTRA_OWNER"
         const val EXTRA_GENERATION = "EXTRA_GENERATION"

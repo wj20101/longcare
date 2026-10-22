@@ -73,10 +73,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         private const val ACTION_WARM_SAMPLE_TOLERANCE_MS = 3_000L
         // 高德错误码 4 官方建议保留默认 30 秒；业务动作仍由自己的 30 秒总预算取消。
         private const val CONTINUOUS_HTTP_TIMEOUT_MILLIS = 30_000L
-        private const val BACKGROUND_SILENCE_REFRESH_MS = 45_000L
         private const val CALLBACK_SILENCE_DIAGNOSTIC_MS = 90_000L
-        // A single callback from a restarted SDK does not replenish this per-enabled-phase budget.
-        private const val MAX_RECOVERY_ATTEMPTS = 2
         private const val MAX_SDK_VERSION_LENGTH = 32
     }
 
@@ -89,13 +86,10 @@ class ContinuousAmapLocationManager @Inject constructor(
     private var ownerGeneration = 0L
     private var samplingGeneration = 0L
     private var samplingStartedAt = 0L
-    private var recoveryAttempts = 0
-    private var lastRecoveryAt: Long? = null
     private var lastSourceProgressAt = 0L
     private var lastSourceAnchor: Long? = null
     private var lastEligibleSampleAt: Long? = null
     private var lastEligibleSourceAnchor: Long? = null
-    private var lastRecoveryReason: String? = null
     @Volatile private var lastCallbackElapsed = 0L
     fun latestEvent(): LocationAcquisition? = samples.replayCache.lastOrNull()
 
@@ -287,74 +281,23 @@ class ContinuousAmapLocationManager @Inject constructor(
     /** Reuses the Service health/visible-return check; never creates another lifecycle observer. */
     suspend fun syncAppVisibility(fromHealthTimer: Boolean = false) = withContext(Dispatchers.Main.immediate) {
         continuousClient?.let { request ->
+            // An action's final cadence restore must not discard its accepted location. If that
+            // SDK call failed, this existing health path makes one ordinary restore attempt;
+            // another failure propagates to the Service interruption path, never a retry loop.
+            if (request.appliedIntervalMs == null) applySamplingOption(request)
             val initialCheck = fromHealthTimer && request.firstVisibilityCheckPending
             val attempted = updateAppVisibility(request, force = initialCheck)
             if (initialCheck && attempted) request.firstVisibilityCheckPending = false
-            if (fromHealthTimer) recoverUnproductiveSampling(request)
         }
     }
 
     private fun resetSamplingHealth() {
         samplingGeneration++
         samplingStartedAt = SystemClock.elapsedRealtime()
-        recoveryAttempts = 0
-        lastRecoveryAt = null
         lastSourceProgressAt = samplingStartedAt
         lastSourceAnchor = null
         lastEligibleSampleAt = null
         lastEligibleSourceAnchor = null
-        lastRecoveryReason = null
-    }
-
-    private fun samplingRecoveryReason(request: ContinuousClient, now: Long): String? {
-        if (!request.active.get() || continuousClient !== request || trackingOwner == null ||
-            !samplingEnabled || highRequested || recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) return null
-        if (lastRecoveryAt?.let { now - it < BACKGROUND_SILENCE_REFRESH_MS } == true) return null
-        if (request.staleSuccessSinceSourceProgress && now - lastSourceProgressAt >= CALLBACK_SILENCE_DIAGNOSTIC_MS)
-            return "s"
-        val silence = now - lastCallbackElapsed
-        val backgroundOrScreenOff = runtimeReadiness.isAppVisible() == false ||
-            runtimeReadiness.diagnosticSnapshot()["screenOn"] == false
-        return if (silence >= CALLBACK_SILENCE_DIAGNOSTIC_MS ||
-            (backgroundOrScreenOff && silence >= BACKGROUND_SILENCE_REFRESH_MS)) "c" else null
-    }
-
-    private suspend fun recoverUnproductiveSampling(request: ContinuousClient) {
-        if (samplingRecoveryReason(request, SystemClock.elapsedRealtime()) == null) return
-        val owner = trackingOwner
-        val generation = samplingGeneration
-        // Keep the existing listener alive while configuration can suspend. Fresh progress, pause,
-        // cancellation or an owner generation change must win over a late configuration response.
-        val keyResult = runCatching { amapApiKeyProvider.getAmapApiKey() }
-        currentCoroutineContext().ensureActive()
-        keyResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
-        if (trackingOwner != owner || samplingGeneration != generation) return
-        val recoveryAt = SystemClock.elapsedRealtime()
-        val reason = samplingRecoveryReason(request, recoveryAt) ?: return
-        val key = keyResult.getOrThrow()?.takeIf { it.isNotBlank() }
-            ?: throw IllegalStateException("amap_api_key_unavailable")
-        lastRecoveryAt = recoveryAt
-        lastRecoveryReason = reason
-        releaseContinuousClient(request)
-        // Never stop/set/start a logically active instance: invalidate before stopping so delayed
-        // old callbacks cannot revive it. Startup failure also clears the replacement instance.
-        while (recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-            currentCoroutineContext().ensureActive()
-            if (trackingOwner != owner || samplingGeneration != generation || !samplingEnabled) return
-            recoveryAttempts++
-            try {
-                startContinuousClient(key)
-                return
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                currentCoroutineContext().ensureActive()
-                if (trackingOwner != owner || samplingGeneration != generation || !samplingEnabled) return
-                if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) throw error
-                // One bounded replacement retry; exhaustion propagates to the Service's interruption path.
-                logI("高德恢复客户端启动失败，执行最后一次重建: ${error.javaClass.simpleName}")
-            }
-        }
     }
 
     private fun updateAppVisibility(request: ContinuousClient, force: Boolean = false): Boolean {
@@ -375,6 +318,8 @@ class ContinuousAmapLocationManager @Inject constructor(
         val interval = desiredInterval()
         if (request.appliedIntervalMs == interval) return
         // 当前 SDK 在运行中应用 option 会内部重启采集；相同配置不重复下发。
+        // A throwing SDK call may have changed state before failing; its cadence is now unknown.
+        request.appliedIntervalMs = null
         request.client.setLocationOption(buildContinuousLocationOption(interval))
         request.appliedIntervalMs = interval
     }
@@ -400,7 +345,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         samples.tryEmit(LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED))
     }
 
-    /** Reporting remains degraded after the replacement budget is exhausted; no false healthy state. */
+    /** Reports callback/source gaps without inferring a broken client or discarding in-flight fixes. */
     suspend fun isSamplingStalled(owner: String): Boolean = withContext(Dispatchers.Main.immediate) {
         val request = continuousClient
         val now = SystemClock.elapsedRealtime()
@@ -425,15 +370,13 @@ class ContinuousAmapLocationManager @Inject constructor(
                 "count=${boundedMetric(it.callbackCount)},null=${boundedMetric(it.nullCallbackCount)}," +
                     "ageMs=${progressGap(it.lastCallbackAt, now)}," +
                     "intervalMs=${it.appliedIntervalMs ?: "?"},visible=${it.lastAttemptedVisibility ?: "?"}," +
-                    "gS=${progressGapSeconds(lastSourceProgressAt.takeIf { lastSourceAnchor != null }, now)}/${progressGapSeconds(lastEligibleSampleAt, now)}," +
-                    "r=${lastRecoveryReason ?: "n"}:$recoveryAttempts/$MAX_RECOVERY_ATTEMPTS"
+                    "gS=${progressGapSeconds(lastSourceProgressAt.takeIf { lastSourceAnchor != null }, now)}/${progressGapSeconds(lastEligibleSampleAt, now)}"
             },
         )
     }
 
     // gS is source/eligible observation gaps in seconds, not fix age or HTTP success. Unknown is ?;
-    // + denotes a saturated lower bound. r is the last attempted trigger (n=none/s=source/c=callback)
-    // and used/max attempts. Short, bounded values also preserve the shared 950-character budget.
+    // + denotes a saturated lower bound. Short values preserve the shared 950-character budget.
     private fun progressGap(at: Long?, now: Long): String = at?.let { boundedMetric((now - it).coerceAtLeast(0L)) } ?: "?"
 
     private fun progressGapSeconds(at: Long?, now: Long): String = at?.let {
@@ -568,11 +511,28 @@ class ContinuousAmapLocationManager @Inject constructor(
         } finally {
             // Retain this client's state before standalone cleanup releases it. Cleanup can itself
             // resume after sleep, so settle the final deadline and outcome before logging/returning.
-            val closingSnapshot = runCatching { diagnosticSnapshot() }.getOrDefault(emptyMap())
+            var closingSnapshot = runCatching { diagnosticSnapshot() }.getOrDefault(emptyMap())
+            var cleanupErrorType: String? = null
             try {
                 withContext(NonCancellable + Dispatchers.Main.immediate) {
                     highRequested = false
-                    refreshOrRelease()
+                    try {
+                        refreshOrRelease()
+                    } catch (error: CancellationException) {
+                        cancelled = true
+                        throw error
+                    } catch (error: Exception) {
+                        // Cadence cleanup cannot replace a valid result or the caller's cancellation.
+                        // The live collector stays available; unknown cadence is reconciled by its
+                        // existing health check, whose failure still interrupts the Service.
+                        cleanupErrorType = error.javaClass.simpleName
+                        logI("定位动作结束后的采样间隔恢复失败: $cleanupErrorType")
+                    } finally {
+                        // Keep the pre-release snapshot for standalone requests. For a live client,
+                        // report the actual post-cleanup cadence, including an unknown failed state.
+                        if (continuousClient?.requestId == closingSnapshot["clientId"] && continuousClient != null)
+                            closingSnapshot = runCatching { diagnosticSnapshot() }.getOrDefault(closingSnapshot)
+                    }
                 }
             } finally {
                 if (!cancelled && outcome is LocationAcquisition.Success && deadlineReached()) {
@@ -601,6 +561,7 @@ class ContinuousAmapLocationManager @Inject constructor(
                             "qualityReason" to lastRejection, "callbackCount" to callbacks,
                             "errorCount" to errors, "rejectedCount" to rejected,
                             "errorCode" to lastSdkErrorCode, "failureType" to failureType, "accuracy" to location?.accuracy,
+                            "cleanupErrorType" to cleanupErrorType,
                             "locationType" to location?.locationType,
                             "time" to location?.let { locationTimeDiagnostic(
                                 it, diagnosticWallNow, diagnosticNow,
