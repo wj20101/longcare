@@ -101,13 +101,20 @@ class PhotoProcessingViewModel @Inject constructor(
     fun addImagesToProcess(uris: List<Uri>, taskType: ImageTaskType, address: String, orderKey: OrderKey? = null) {
         viewModelScope.launch {
             val limitState = photoLimitState.first { it.isLoaded }
-            val result = taskQueueDelegate.addImagesToProcess(
-                uris = uris,
-                taskType = taskType,
-                address = address,
-                orderKey = orderKey,
-                maxPhotosPerCategory = limitState.maxPhotosPerCategory,
-            )
+            val result = try {
+                taskQueueDelegate.addImagesToProcess(
+                    uris = uris,
+                    taskType = taskType,
+                    address = address,
+                    orderKey = orderKey,
+                    maxPhotosPerCategory = limitState.maxPhotosPerCategory,
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                eventChannel.send(PhotoProcessingEvent.PhotoProcessingFailed(userMessages.imageProcessingFailed))
+                return@launch
+            }
             val maxCount = limitState.maxPhotosPerCategory
             if (result.rejectedCount > 0 && maxCount != null) {
                 eventChannel.send(PhotoProcessingEvent.PhotoLimitReached(maxCount))
@@ -169,10 +176,6 @@ class PhotoProcessingViewModel @Inject constructor(
 
     fun hasFailedTasks(): Boolean {
         return taskQueueDelegate.hasFailedTasks()
-    }
-
-    fun loadExistingImageTasks(existingImageTasks: Map<ImageTaskType, List<ImageTask>>) {
-        taskQueueDelegate.loadExistingImageTasks(existingImageTasks)
     }
 
     fun getTaskStats(): TaskStats {

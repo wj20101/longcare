@@ -1,0 +1,20 @@
+{
+  "servicesEmpty": true,
+  "pid": null,
+  "probePreferencesRestored": true,
+  "dataStoreUnchanged": true,
+  "dataStoreSha256": "dad3996f47f4c483c6335dc99319943a50041e7cb08c3f44a8d0da519806d83a",
+  "hasRealRecoveryOrder": false,
+  "hasRealRecoverySession": false,
+  "systemBatteryExemption": true,
+  "oemPolicy": "unrestricted_retained_by_user",
+  "providers": "network",
+  "powerSaveSetting": "0",
+  "activeNotificationCheck": "order-ended-notifications.txt: own active records=0 before final force-stop",
+  "debugSdkNotificationChannel": {
+    "createdDuringTrial": true,
+    "deletionAttempted": false,
+    "currentPresence": "not_verified",
+    "note": "No active notification is not evidence that the notification channel was deleted."
+  }
+}

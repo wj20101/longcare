@@ -13,11 +13,14 @@ import com.ytone.longcare.model.ImageUploadStatus
 import com.ytone.longcare.model.OrderImageEntity
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.common.utils.logD
-import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logW
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,6 +38,11 @@ internal class PhotoTaskQueueDelegate(
     val isProcessing = MutableStateFlow(false)
     val currentTaskType = MutableStateFlow<ImageTaskType?>(null)
     private val addImagesMutex = Mutex()
+    private var initialLoad: Deferred<Unit>? = null
+    // Keep the managed image visible/retryable if its first Room insert fails.
+    private val pendingPersistence = mutableMapOf<String, OrderKey>()
+    private val localTaskOrders = mutableMapOf<String, OrderKey>()
+    private val removedLocalUris = mutableSetOf<Pair<OrderKey, String>>()
 
     fun setCurrentTaskType(taskType: ImageTaskType) {
         currentTaskType.value = taskType
@@ -43,8 +51,9 @@ internal class PhotoTaskQueueDelegate(
     fun setOrderKey(orderKey: OrderKey) {
         logD("setOrderKey: $orderKey (current: ${currentOrderKey.value})", tag = "PhotoVM")
         if (currentOrderKey.value == orderKey) return
+        initialLoad?.cancel()
         currentOrderKey.value = orderKey
-        loadImagesFromRoom(orderKey)
+        initialLoad = loadImagesFromRoom(orderKey)
     }
 
     suspend fun addImagesToProcess(
@@ -53,70 +62,54 @@ internal class PhotoTaskQueueDelegate(
         address: String,
         orderKey: OrderKey? = null,
         maxPhotosPerCategory: Int? = null,
-    ): AddImagesResult = addImagesMutex.withLock {
-        val userId = DiagnosticEventTracker.currentUserId()
-        val currentCount = imageTasks.value.count { it.taskType == taskType }
-        val acceptedCount = ServicePhotoLimitPolicy.allowedIncomingCount(
-            currentCount = currentCount,
-            requestedCount = uris.size,
-            maxCount = maxPhotosPerCategory,
-        )
-        val acceptedUris = uris.take(acceptedCount)
-        val rejectedUris = uris.drop(acceptedCount)
-        val effectiveOrderKey = orderKey ?: currentOrderKey.value
-        logD(
-            "addImagesToProcess: requested=${uris.size}, accepted=${acceptedUris.size}, key=$effectiveOrderKey",
-            tag = "PhotoVM",
-        )
-        val newTasks = mutableListOf<ImageTask>()
+    ): AddImagesResult {
+        val owner = currentOrderKey.value
+        val load = initialLoad
+        return addImagesMutex.withLock {
+            awaitInitialLoad(owner, load)
+            if (orderKey != null && owner != null && orderKey != owner) {
+                throw CancellationException("Photo order changed")
+            }
+            val currentCount = imageTasks.value.count { it.taskType == taskType }
+            val acceptedCount = ServicePhotoLimitPolicy.allowedIncomingCount(
+                currentCount = currentCount,
+                requestedCount = uris.size,
+                maxCount = maxPhotosPerCategory,
+            )
+            val acceptedUris = uris.take(acceptedCount)
+            val rejectedUris = uris.drop(acceptedCount)
+            val effectiveOrderKey = orderKey ?: currentOrderKey.value
+            logD(
+                "addImagesToProcess: requested=${uris.size}, accepted=${acceptedUris.size}, key=$effectiveOrderKey",
+                tag = "PhotoVM",
+            )
+            val newTasks = mutableListOf<ImageTask>()
 
-        for (uri in acceptedUris) {
-            val dbId = if (effectiveOrderKey != null) {
-                try {
-                    imageRepository.addImage(
-                        orderKey = effectiveOrderKey,
-                        imageType = taskType.toImageType(),
-                        localUri = uri.toString(),
-                        localPath = uri.path
-                    ).also { logD("Saved to DB: id=$it, type=$taskType", tag = "PhotoVM") }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logE("Failed to save image to DB", tag = "PhotoVM", throwable = e)
-                    DiagnosticEventTracker.trackError(
-                        userId = userId,
-                        category = PHOTO_DIAGNOSTIC_CATEGORY,
-                        event = "local_image_record_save_exception",
-                        description = "服务照片本地记录保存异常",
-                        throwable = e,
-                        extras = mapOf(
-                            "orderId" to effectiveOrderKey.orderId,
-                            "planId" to effectiveOrderKey.planId,
-                            "taskType" to taskType.name,
-                        ),
-                    )
-                    null
+            for (uri in acceptedUris) {
+                val taskId = UUID.randomUUID().toString()
+                if (effectiveOrderKey != null) {
+                    pendingPersistence[taskId] = effectiveOrderKey
+                    localTaskOrders[taskId] = effectiveOrderKey
+                } else {
+                    logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
                 }
-            } else {
-                logW("No effectiveOrderKey, using UUID", tag = "PhotoVM")
-                null
+
+                newTasks += ImageTask(
+                    id = taskId,
+                    originalUri = uri.toString(),
+                    taskType = taskType,
+                    status = ImageTaskStatus.PROCESSING
+                )
             }
 
-            newTasks += ImageTask(
-                id = dbId?.toString() ?: UUID.randomUUID().toString(),
-                originalUri = uri.toString(),
-                taskType = taskType,
-                status = ImageTaskStatus.PROCESSING
+            imageTasks.update { it + newTasks }
+            newTasks.forEach { processImageTask(it) }
+            if (rejectedUris.isNotEmpty()) imagePipeline.deleteManagedImages(rejectedUris)
+
+            AddImagesResult(
+                rejectedCount = rejectedUris.size,
             )
         }
-
-        imageTasks.update { it + newTasks }
-        newTasks.forEach { processImageTask(it) }
-        imagePipeline.deleteManagedImages(rejectedUris)
-
-        AddImagesResult(
-            rejectedCount = rejectedUris.size,
-        )
     }
 
     fun retryTask(taskId: String) {
@@ -129,6 +122,12 @@ internal class PhotoTaskQueueDelegate(
 
     fun removeTask(taskId: String) {
         val removedTask = imageTasks.value.find { it.id == taskId }
+        val orderKey = localTaskOrders[taskId] ?: currentOrderKey.value
+        if (removedTask != null && orderKey != null) {
+            removedLocalUris += orderKey to removedTask.originalUri
+        }
+        pendingPersistence.remove(taskId)
+        localTaskOrders.remove(taskId)
         imageTasks.value = imageTasks.value.filter { it.id != taskId }
         scope.launch {
             taskId.toLongOrNull()?.let { imageRepository.deleteImage(it) }
@@ -141,9 +140,15 @@ internal class PhotoTaskQueueDelegate(
 
     fun clearAllTasks() {
         val removedTasks = imageTasks.value
+        val orderKey = currentOrderKey.value
+        removedTasks.forEach { task ->
+            (localTaskOrders[task.id] ?: orderKey)?.let { removedLocalUris += it to task.originalUri }
+        }
+        pendingPersistence.clear()
+        localTaskOrders.clear()
         imageTasks.value = emptyList()
         scope.launch {
-            currentOrderKey.value?.let { imageRepository.deleteImagesByOrderId(it) }
+            orderKey?.let { imageRepository.deleteImagesByOrderId(it) }
             imagePipeline.deleteManagedImages(
                 removedTasks
                     .flatMap { task -> task.localUris() }
@@ -167,10 +172,6 @@ internal class PhotoTaskQueueDelegate(
     fun hasProcessingTasks(): Boolean = imageTasks.value.any { it.status == ImageTaskStatus.PROCESSING }
     fun hasFailedTasks(): Boolean = imageTasks.value.any { it.status == ImageTaskStatus.FAILED }
 
-    fun loadExistingImageTasks(existingImageTasks: Map<ImageTaskType, List<ImageTask>>) {
-        imageTasks.value = imageTasks.value + existingImageTasks.values.flatten()
-    }
-
     fun getTaskStats(): TaskStats {
         val tasks = imageTasks.value
         return TaskStats(
@@ -183,27 +184,85 @@ internal class PhotoTaskQueueDelegate(
 
     fun getTasksSnapshot(): List<ImageTask> = imageTasks.value
 
+    suspend fun awaitInitialLoad() = awaitInitialLoad(currentOrderKey.value, initialLoad)
+
+    private suspend fun awaitInitialLoad(owner: OrderKey?, load: Deferred<Unit>?) {
+        // Share the original query; failed or cancelled reads must not become empty history.
+        load?.await()
+        currentCoroutineContext().ensureActive()
+        if (currentOrderKey.value != owner || initialLoad !== load) {
+            throw CancellationException("Photo order changed")
+        }
+    }
+
     suspend fun updateTaskUploadStatus(taskId: String, key: String) {
-        taskId.toLongOrNull()?.let { imageRepository.markAsSuccess(it, key) }
+        check(imageTasks.value.any { it.id == taskId }) { "Order photo task no longer exists" }
+        val databaseId = taskId.toLongOrNull()?.takeIf { it > 0 }
+        check(databaseId != null || (currentOrderKey.value == null && taskId !in pendingPersistence)) {
+            "Order photo has no durable local record"
+        }
+        databaseId?.let { imageRepository.markAsSuccess(it, key) }
         imageTasks.value = imageTasks.value.map { task ->
             if (task.id == taskId) task.copy(isUploaded = true, cloudUrl = null, key = key) else task
         }
     }
 
-    private fun loadImagesFromRoom(orderKey: OrderKey) {
-        scope.launch {
+    private fun loadImagesFromRoom(orderKey: OrderKey): Deferred<Unit> =
+        scope.async {
             val entities = imageRepository.getImagesByOrderId(orderKey)
+            currentCoroutineContext().ensureActive()
             logD("loadImagesFromRoom: orderId=${orderKey.orderId}, found ${entities.size} entities", tag = "PhotoVM")
-            imageTasks.value = entities.map { it.toImageTask() }
+            if (currentOrderKey.value != orderKey) throw CancellationException("Photo order changed")
+            imageTasks.update { current ->
+                // A delayed initial query must not discard photos captured while it was loading.
+                val localTasks = current.filter { localTaskOrders[it.id] == orderKey }
+                val localIds = localTasks.mapTo(mutableSetOf()) { it.id }
+                // Room can expose a committed row before its insert continuation supplies the id.
+                val pendingUris = localTasks.filter { it.id in pendingPersistence }
+                    .mapTo(mutableSetOf()) { it.originalUri }
+                entities.filterNot {
+                    it.id.toString() in localIds || it.localUri in pendingUris ||
+                        (orderKey to it.localUri) in removedLocalUris
+                }
+                    .map { it.toImageTask() } + localTasks
+            }
         }
-    }
 
     private fun processImageTask(task: ImageTask) {
         val userId = DiagnosticEventTracker.currentUserId()
         scope.launch {
             isProcessing.value = true
             try {
-                updateTaskStatus(task.id, ImageTaskStatus.SUCCESS, resultUri = task.originalUri)
+                val orderKey = pendingPersistence[task.id]
+                if (orderKey == null) {
+                    updateTaskStatus(task.id, ImageTaskStatus.SUCCESS, resultUri = task.originalUri)
+                } else {
+                    val databaseId = imageRepository.addImage(
+                        orderKey = orderKey,
+                        imageType = task.taskType.toImageType(),
+                        localUri = task.originalUri,
+                        localPath = Uri.parse(task.originalUri).path,
+                    )
+                    check(databaseId > 0) { "Order photo insert did not create a local record" }
+                    if (pendingPersistence[task.id] != orderKey || imageTasks.value.none { it.id == task.id }) {
+                        // The user removed the task while Room was writing it.
+                        imageRepository.deleteImage(databaseId)
+                        return@launch
+                    }
+                    pendingPersistence.remove(task.id)
+                    localTaskOrders.remove(task.id)
+                    localTaskOrders[databaseId.toString()] = orderKey
+                    imageTasks.update { tasks ->
+                        tasks.map { current ->
+                            if (current.id == task.id) current.copy(
+                                id = databaseId.toString(),
+                                status = ImageTaskStatus.SUCCESS,
+                                resultUri = task.originalUri,
+                                errorMessage = null,
+                            ) else current
+                        }
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -21,7 +21,7 @@ class LocationSampleEvaluatorTest {
     @After fun cleanup() = unmockkAll()
 
     @Test fun `quality evaluation does not impose a second reporting interval`() {
-        val evaluator = LocationSampleEvaluator(now, clock)
+        val evaluator = LocationSampleEvaluator(elapsed, clock)
         assertNull(evaluator.rejection(sample()))
         evaluator.onUploadStarted(sample())
         now++; elapsed++
@@ -31,15 +31,15 @@ class LocationSampleEvaluatorTest {
     }
 
     @Test fun `rejected precision does not consume the next eligible sample and restart rejects old point`() {
-        val evaluator = LocationSampleEvaluator(now, clock)
+        val evaluator = LocationSampleEvaluator(elapsed, clock)
         assertNotNull(evaluator.rejection(sample().copy(accuracy = 1_000f)))
         assertNull(evaluator.rejection(sample()))
-        val next = LocationSampleEvaluator(now + 1, clock)
+        val next = LocationSampleEvaluator(elapsed + 1, clock)
         assertNotNull(next.rejection(sample()))
     }
 
     @Test fun `candidate checks do not consume the sample until actual dispatch`() {
-        val evaluator = LocationSampleEvaluator(now, clock)
+        val evaluator = LocationSampleEvaluator(elapsed, clock)
         val candidate = sample()
         repeat(3) { assertNull(evaluator.rejection(candidate)) }
         evaluator.onUploadStarted(candidate)
@@ -47,7 +47,7 @@ class LocationSampleEvaluatorTest {
     }
 
     @Test fun `valid candidate is rechecked after waiting beyond the age limit`() {
-        val evaluator = LocationSampleEvaluator(now, clock)
+        val evaluator = LocationSampleEvaluator(elapsed, clock)
         val candidate = sample()
         assertNull(evaluator.rejection(candidate))
         now += 60_001L
@@ -57,7 +57,7 @@ class LocationSampleEvaluatorTest {
     }
 
     @Test fun `refreshed wall time cannot resend the same or older consumed source tick`() {
-        val evaluator = LocationSampleEvaluator(now - 1_000L, clock)
+        val evaluator = LocationSampleEvaluator((elapsed - 1_000L).coerceAtLeast(0L), clock)
         val first = sample().copy(locationType = 2, sourceElapsedRealtime = elapsed)
         repeat(2) { assertNull(evaluator.rejection(first)) }
         evaluator.onUploadStarted(first)
@@ -70,11 +70,11 @@ class LocationSampleEvaluatorTest {
             evaluator.rejection(refreshed.copy(sourceElapsedRealtime = first.sourceElapsedRealtime - 1L)))
         assertNull(evaluator.rejection(refreshed.copy(sourceElapsedRealtime = elapsed)))
         // A different reporting owner has its own consumed-source watermark.
-        assertNull(LocationSampleEvaluator(now - 2_000L, clock).rejection(refreshed))
+        assertNull(LocationSampleEvaluator((elapsed - 2_000L).coerceAtLeast(0L), clock).rejection(refreshed))
     }
 
     @Test fun `unknown source tick remains compatible without clearing a positive consumed watermark`() {
-        val evaluator = LocationSampleEvaluator(now - 1_000L, clock)
+        val evaluator = LocationSampleEvaluator((elapsed - 1_000L).coerceAtLeast(0L), clock)
         val sourceTick = elapsed
         val first = sample().copy(sourceElapsedRealtime = sourceTick)
         assertNull(evaluator.rejection(first))
@@ -92,13 +92,37 @@ class LocationSampleEvaluatorTest {
     }
 
     @Test fun `original quality rejection takes priority over a repeated source tick`() {
-        val evaluator = LocationSampleEvaluator(now - 1_000L, clock)
+        val evaluator = LocationSampleEvaluator((elapsed - 1_000L).coerceAtLeast(0L), clock)
         val first = sample().copy(sourceElapsedRealtime = elapsed)
         evaluator.onUploadStarted(first)
         now++; elapsed++
         assertEquals(LocationQuality.Rejection.ACCURACY, evaluator.rejection(
             sample().copy(sourceElapsedRealtime = first.sourceElapsedRealtime, accuracy = 1_000f),
         ))
+    }
+
+    @Test fun `reporting uses one monotonic watermark across GPS clock offsets and phone clock changes`() {
+        now = 1_800_000_000_000L
+        val evaluator = LocationSampleEvaluator(elapsed, clock)
+        val first = sample().copy(locationType = 1, locationTime = now + 5_000, sourceElapsedRealtime = elapsed)
+        assertNull(evaluator.rejection(first))
+        evaluator.onUploadStarted(first)
+        now -= 60_000
+        elapsed += 30_000
+        val next = sample().copy(locationType = 1, locationTime = now - 60_000, sourceElapsedRealtime = elapsed)
+        assertNull(evaluator.rejection(next))
+        evaluator.onUploadStarted(next)
+        assertEquals(LocationQuality.Rejection.ORDER, evaluator.rejection(next.copy(locationTime = now + 5_000)))
+        assertEquals(LocationQuality.Rejection.ORDER, evaluator.rejection(next.copy(sourceElapsedRealtime = first.sourceElapsedRealtime)))
+    }
+
+    @Test fun `monotonic session boundary rejects old source after wall clock jumps`() {
+        val evaluator = LocationSampleEvaluator(elapsed, clock)
+        now += 60_000
+        elapsed += 30_000
+        val old = sample().copy(sourceElapsedRealtime = 999, locationTime = now + 5_000)
+        assertEquals(LocationQuality.Rejection.ORDER, evaluator.rejection(old))
+        assertNull(evaluator.rejection(old.copy(sourceElapsedRealtime = elapsed)))
     }
 
     private fun sample() = LocationResult(30.0, 120.0, "network", 50f, "GCJ02", 5, 2,

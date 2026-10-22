@@ -18,6 +18,7 @@ import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.R
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.core.common.di.ApplicationScope
+import com.ytone.longcare.core.common.service.ForegroundServiceStateVerifier
 import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
@@ -70,6 +71,7 @@ class CountdownNotificationManager @Inject constructor(
 
     companion object {
         internal const val COUNTDOWN_NOTIFICATION_CHANNEL_ID = "countdown_completion_channel_v2"
+        internal const val COUNTDOWN_FALLBACK_CHANNEL_ID = "countdown_completion_fallback_channel_v1"
         internal const val COUNTDOWN_NOTIFICATION_ID = 2001
         private const val COUNTDOWN_ALARM_REQUEST_CODE = 3001
         private const val DISMISS_ALARM_REQUEST_CODE = 3002
@@ -84,6 +86,8 @@ class CountdownNotificationManager @Inject constructor(
         internal const val EXTRA_ALARM_OWNER = "extra_countdown_owner"
         internal const val EXTRA_TRIGGER_TIME = "extra_countdown_trigger_time"
         private const val KEY_TRIGGER_TIME = "trigger_time"
+        private const val KEY_SERVICE_NAME = "service_name"
+        private const val KEY_DELIVERY_ACCEPTED = "delivery_accepted"
         private const val KEY_ALARM_OWNER = "alarm_owner"
         private const val KEY_ACTIVE_PLAN_ID = "active_plan_id"
         private const val KEY_LAST_SCHEDULED_ORDER_ID = "key_last_scheduled_order_id"
@@ -143,6 +147,7 @@ class CountdownNotificationManager @Inject constructor(
             channelId = COUNTDOWN_NOTIFICATION_CHANNEL_ID,
             dismissAlarmRequestCode = DISMISS_ALARM_REQUEST_CODE,
             countdownAlarmActivityRequestCode = COUNTDOWN_ALARM_ACTIVITY_REQUEST_CODE,
+            fallbackChannelId = COUNTDOWN_FALLBACK_CHANNEL_ID,
         )
     }
 
@@ -151,15 +156,22 @@ class CountdownNotificationManager @Inject constructor(
     }
 
     private val observingSession = AtomicBoolean(false)
+    private val foregroundStateVerifier = ForegroundServiceStateVerifier()
 
     /** 一份排程绑定一位登录用户；读取磁盘期间不清理，退出或换号统一释放。 */
-    fun startSessionObservation() {
+    fun startSessionObservation(canRestore: () -> Boolean = { false }) {
         if (!observingSession.compareAndSet(false, true)) return
         applicationScope.launch(Dispatchers.Main.immediate) {
+            var awaitingInitialSession = true
             combine(userSessionRepository.sessionState, serviceOrderLifecycle.orderState) { _, _ ->
                 Unit
             }.collect {
                 onSessionChanged()
+                if (awaitingInitialSession && userSessionRepository.sessionState.value !is SessionState.Unknown) {
+                    awaitingInitialSession = false
+                    // Also covers a boot/grant receiver whose bounded session wait timed out.
+                    restorePendingCountdownAlarm(canRestore)
+                }
             }
         }
     }
@@ -254,16 +266,41 @@ class CountdownNotificationManager @Inject constructor(
         if (prefs.getString(KEY_ALARM_OWNER, null) != owner || activeOrderKey() != orderKey ||
             prefs.getLong(KEY_TRIGGER_TIME, 0L) != triggerTimeMillis) {
             clearAlarm()
+        } else if (prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false)) {
+            // A wall-clock rollback or page resume must not re-arm an already accepted identity.
+            return
         }
         prefs.edit {
             putString(KEY_ALARM_OWNER, owner)
             putLong(KEY_LAST_SCHEDULED_ORDER_ID, orderKey.orderId)
             putInt(KEY_ACTIVE_PLAN_ID, orderKey.planId)
             putLong(KEY_TRIGGER_TIME, triggerTimeMillis)
+            putString(KEY_SERVICE_NAME, serviceName)
         }
         if (!alarmDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTimeMillis, owner)) {
             clearAlarm()
         }
+    }
+
+    /** Restore only the current, future, unconsumed identity; never start playback from boot. */
+    @Synchronized
+    fun restorePendingCountdownAlarm(canRestore: () -> Boolean, requireExactAlarm: Boolean = false): Boolean {
+        if (!canRestore() || (requireExactAlarm && !canScheduleExactAlarms())) return false
+        val orderKey = activeOrderKey() ?: return false
+        if (orderKey.orderId <= 0L) return false
+        val owner = prefs.getString(KEY_ALARM_OWNER, null) ?: return false
+        val triggerTime = prefs.getLong(KEY_TRIGGER_TIME, 0L)
+        if (triggerTime <= System.currentTimeMillis() || prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false) ||
+            !ownsAlarm(orderKey, owner, triggerTime)) return false
+        val serviceName = prefs.getString(KEY_SERVICE_NAME, null)
+            ?: context.getString(R.string.countdown_alarm_default_service)
+        // Do not call the public scheduler: it may assign a newly logged-in owner to old data.
+        val restored = alarmDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTime, owner)
+        if (!restored || !ownsAlarm(orderKey, owner, triggerTime)) {
+            clearAlarm()
+            return false
+        }
+        return true
     }
 
     @Synchronized
@@ -309,6 +346,8 @@ class CountdownNotificationManager @Inject constructor(
             remove(KEY_LAST_SCHEDULED_ORDER_ID)
             remove(KEY_ACTIVE_PLAN_ID)
             remove(KEY_TRIGGER_TIME)
+            remove(KEY_SERVICE_NAME)
+            remove(KEY_DELIVERY_ACCEPTED)
         }
         AlarmRingtoneService.stopRingtone(context)
         notificationManager.cancel(COUNTDOWN_NOTIFICATION_ID)
@@ -345,6 +384,10 @@ class CountdownNotificationManager @Inject constructor(
             trackDeliveryResult(alarm, "ownership_changed_before_service")
             return
         }
+        if (prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false)) return
+        // Acceptance is not proof of audible playback. Persist before dispatch to avoid replay
+        // after reboot/clock rollback; a new owner/order/deadline clears this same-record flag.
+        prefs.edit(commit = true) { putBoolean(KEY_DELIVERY_ACCEPTED, true) }
         CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_TRIGGERED,
             alarm.orderKey.orderId,
             CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, "validated"),
@@ -391,6 +434,9 @@ class CountdownNotificationManager @Inject constructor(
                 return false
             }
             ServiceCompat.startForeground(service, COUNTDOWN_NOTIFICATION_ID, notification, type)
+            check(foregroundStateVerifier.isForeground(service, type)) {
+                "Alarm ringtone service was not promoted to foreground"
+            }
             true
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -401,12 +447,14 @@ class CountdownNotificationManager @Inject constructor(
         }
     }
 
+    internal fun publishPlaybackFallback(alarm: CountdownAlarm): Boolean = publishAlarmNotification(alarm)
+
     @Synchronized
     private fun publishAlarmNotification(alarm: CountdownAlarm): Boolean {
         if (!ownsAlarm(alarm)) return false
         return try {
-            if (!notificationsEnabled()) return false
-            val notification = buildAlarmNotification(alarm)
+            if (!fallbackNotificationsEnabled()) return false
+            val notification = buildAlarmNotification(alarm, fallback = true)
             // SessionState 可能先于其清理观察回调变更，发布前仍复验原始身份。
             if (!ownsAlarm(alarm)) return false
             notificationManager.notify(COUNTDOWN_NOTIFICATION_ID, notification)
@@ -425,16 +473,31 @@ class CountdownNotificationManager @Inject constructor(
                 PackageManager.PERMISSION_GRANTED) &&
             NotificationManagerCompat.from(context).areNotificationsEnabled()
 
-    private fun buildAlarmNotification(alarm: CountdownAlarm): Notification {
+    private fun fallbackNotificationsEnabled(): Boolean {
+        if (!notificationsEnabled()) return false
+        val notifications = NotificationManagerCompat.from(context)
+        // A separate audible channel must not bypass a user-blocked original reminder channel.
+        return listOf(COUNTDOWN_NOTIFICATION_CHANNEL_ID, COUNTDOWN_FALLBACK_CHANNEL_ID).all { channelId ->
+            val channel = notifications.getNotificationChannelCompat(channelId)
+            channel?.importance != NotificationManager.IMPORTANCE_NONE &&
+                channel?.group?.let { notifications.getNotificationChannelGroupCompat(it)?.isBlocked } != true
+        }
+    }
+
+    private fun buildAlarmNotification(alarm: CountdownAlarm, fallback: Boolean = false): Notification {
+        val channelId = if (fallback) COUNTDOWN_FALLBACK_CHANNEL_ID else COUNTDOWN_NOTIFICATION_CHANNEL_ID
         CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.NOTIFICATION_BUILD,
             alarm.orderKey.orderId, mapOf(
                 "fullScreenAllowed" to canUseFullScreenIntent(),
                 "notificationsEnabled" to notificationsEnabled(),
                 "channelImportance" to NotificationManagerCompat.from(context)
-                    .getNotificationChannelCompat(COUNTDOWN_NOTIFICATION_CHANNEL_ID)?.importance,
+                    .getNotificationChannelCompat(channelId)?.importance,
+                "fallbackNotification" to fallback,
                 "sdk" to Build.VERSION.SDK_INT,
             ), userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))
-        return notificationUiDelegate.buildCountdownCompletionNotification(
+        return if (fallback) notificationUiDelegate.buildCountdownFallbackNotification(
+            alarm.orderKey, alarm.serviceName, alarm.owner, alarm.triggerTimeMillis)
+        else notificationUiDelegate.buildCountdownCompletionNotification(
             alarm.orderKey, alarm.serviceName, alarm.owner, alarm.triggerTimeMillis)
     }
 
@@ -447,10 +510,13 @@ class CountdownNotificationManager @Inject constructor(
     }
 
 
-    internal fun trackDeliveryResult(alarm: CountdownAlarm, outcome: String, failureType: String? = null) {
+    internal fun trackDeliveryResult(
+        alarm: CountdownAlarm, outcome: String, failureType: String? = null,
+        playbackStartupDurationMs: Long? = null,
+    ) {
         CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_DELIVERY_RESULT,
             alarm.orderKey.orderId,
-            mapOf("failureType" to failureType) +
+            mapOf("failureType" to failureType, "playbackStartupDurationMs" to playbackStartupDurationMs) +
                 CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, outcome),
             reportToServer = true,
             userId = CountdownAlarmDiagnostics.userId(alarm.diagnostics, alarm.owner))

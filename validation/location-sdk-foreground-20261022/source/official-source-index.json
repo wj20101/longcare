@@ -1,0 +1,241 @@
+{
+  "Handler.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/os/Handler.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/os/Handler.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "20ffb9fde85cef8da4a855af9c49d1fe70074d5180eabc648ccbc89aef00c48f",
+    "lineCount": 932,
+    "excerptRanges": [
+      [
+        448,
+        470
+      ],
+      [
+        650,
+        675
+      ]
+    ]
+  },
+  "SystemClock.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/os/SystemClock.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/os/SystemClock.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "8fdca5ebb31181eedbff5daf20e94c643379b6cd785dbadc79405d2809b8f28d",
+    "lineCount": 316,
+    "excerptRanges": [
+      [
+        51,
+        98
+      ]
+    ]
+  },
+  "PowerManagerService.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/power/PowerManagerService.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/power/PowerManagerService.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "8276e62dfaafa5691d9bea8a9afe5774341a72f386667c9767eb75b6cec06f3f",
+    "lineCount": 4740,
+    "excerptRanges": [
+      [
+        2567,
+        2625
+      ],
+      [
+        2978,
+        3008
+      ]
+    ]
+  },
+  "LocationManagerService.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/LocationManagerService.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/LocationManagerService.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "dba87747209eaa6b65f1070da967f3dddfcba0a77a27fae5e236ead62d7f401d",
+    "lineCount": 3485,
+    "excerptRanges": [
+      [
+        145,
+        155
+      ],
+      [
+        977,
+        1008
+      ],
+      [
+        1076,
+        1117
+      ],
+      [
+        1748,
+        1778
+      ]
+    ]
+  },
+  "GnssLocationProvider.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/location/GnssLocationProvider.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/location/GnssLocationProvider.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "72d112cde02487311f67d6682081326d6617e72fb571307932f1c66157ddad9b",
+    "lineCount": 2793,
+    "excerptRanges": [
+      [
+        1582,
+        1613
+      ],
+      [
+        2269,
+        2279
+      ]
+    ]
+  },
+  "LocationManager.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/location/java/android/location/LocationManager.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/location/java/android/location/LocationManager.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "6d62c29a66e4b8020df5616a2cd8a17279cbb030e463a05e5425114a2d73fa5e",
+    "lineCount": 2368,
+    "excerptRanges": [
+      [
+        367,
+        390
+      ]
+    ]
+  },
+  "IGnssCallback.hal": {
+    "url": "https://android.googlesource.com/platform/hardware/interfaces/+/android-9.0.0_r1/gnss/1.0/IGnssCallback.hal",
+    "downloadUrl": "https://android.googlesource.com/platform/hardware/interfaces/+/android-9.0.0_r1/gnss/1.0/IGnssCallback.hal?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "6fa9804a17a8bb7923a56bd10493a5483c20007e4c9026fd04287bee7c945a8c",
+    "lineCount": 244,
+    "excerptRanges": [
+      [
+        156,
+        161
+      ],
+      [
+        206,
+        213
+      ]
+    ]
+  },
+  "com_android_server_location_GnssLocationProvider.cpp": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/jni/com_android_server_location_GnssLocationProvider.cpp",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/jni/com_android_server_location_GnssLocationProvider.cpp?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "018ec24f7dd775181b214b2a2b1d2e4818daefd2164abeb56d3c55899997ec67",
+    "lineCount": 2311,
+    "excerptRanges": [
+      [
+        532,
+        539
+      ]
+    ]
+  },
+  "NetworkPolicyManager.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/net/NetworkPolicyManager.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/net/NetworkPolicyManager.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "967b811d11620db664402a0f498f637a59db8fe1c2de14c21bb1dd3f6f16dca2",
+    "lineCount": 383,
+    "excerptRanges": [
+      [
+        107,
+        113
+      ],
+      [
+        350,
+        363
+      ]
+    ]
+  },
+  "NetworkPolicyManagerService.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/net/NetworkPolicyManagerService.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/net/NetworkPolicyManagerService.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "e2eb0de7e5208cd6f6a5535779f85e7f1d5b771d29a992aeba451eb155eb81ce",
+    "lineCount": 5102,
+    "excerptRanges": [
+      [
+        3448,
+        3459
+      ],
+      [
+        3623,
+        3631
+      ],
+      [
+        4144,
+        4162
+      ]
+    ]
+  },
+  "ActiveServices.java": {
+    "tag": "android-9.0.0_r1",
+    "sha256": "56014de234f38baa75282c6c848233282c35a509ba4b725f87a1274755e71c93",
+    "lineCount": 4217,
+    "excerptRanges": [
+      [
+        1160,
+        1210
+      ],
+      [
+        1238,
+        1282
+      ],
+      [
+        1310,
+        1363
+      ],
+      [
+        2685,
+        2735
+      ]
+    ],
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/am/ActiveServices.java"
+  },
+  "ServiceRecord.java": {
+    "tag": "android-9.0.0_r1",
+    "sha256": "99b5e8fc66643a540b406946bd8ceebe0f05eaa21d58240c0796d5f08da42518",
+    "lineCount": 764,
+    "excerptRanges": [
+      [
+        595,
+        740
+      ]
+    ],
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/am/ServiceRecord.java"
+  },
+  "Service.java": {
+    "tag": "android-9.0.0_r1",
+    "sha256": "397a232bb75b80cead0f17ca6ba9afebfcfd1828fe04cac21af6f7b69a7daf05",
+    "lineCount": 786,
+    "excerptRanges": [
+      [
+        415,
+        500
+      ],
+      [
+        670,
+        805
+      ]
+    ],
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/core/java/android/app/Service.java"
+  },
+  "ActivityManagerService.java": {
+    "url": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/am/ActivityManagerService.java",
+    "downloadUrl": "https://android.googlesource.com/platform/frameworks/base/+/android-9.0.0_r1/services/core/java/com/android/server/am/ActivityManagerService.java?format=TEXT",
+    "tag": "android-9.0.0_r1",
+    "sha256": "929d2cfdba9edcd3af8d03dcfdc7c57ebd53dd013c2625be7635ee1a261663bd",
+    "lineCount": 27191,
+    "excerptRanges": [
+      [
+        3099,
+        3138
+      ],
+      [
+        9342,
+        9415
+      ]
+    ]
+  }
+}

@@ -2,8 +2,8 @@ package com.ytone.longcare.features.location.core
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.ytone.longcare.domain.location.LocationRuntimeReadiness
-import androidx.core.content.ContextCompat
 import com.ytone.longcare.features.location.service.LocationTrackingService
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -103,7 +103,14 @@ class LocationForegroundServiceController @Inject constructor(
             putExtra(LocationTrackingService.EXTRA_GENERATION, generation)
             putExtra(LocationTrackingService.EXTRA_ORDER_ID, orderId)
         }
-        ContextCompat.startForegroundService(context, intent)
+        // ContextCompat discards the platform's nullable dispatch result. Android can silently
+        // reject a restricted launch; no Service callback will then release the accepted owner.
+        val component = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+        checkNotNull(component) { "location_foreground_dispatch_rejected" }
     }
 
     fun stop(): Boolean = context.stopService(Intent(context, LocationTrackingService::class.java))

@@ -5,6 +5,8 @@ import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.User
+import com.ytone.longcare.model.UserSessionSnapshot
+import com.ytone.longcare.common.network.RequestSessionGeneration
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -51,8 +53,7 @@ class RequestInterceptorDeviceIdTest {
         every { runtimeConfigProvider.isDebug } returns false
         every { runtimeConfigProvider.publicKey } returns "testPublicKey"
 
-        val sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
-        every { userSessionRepository.sessionState } returns sessionState
+        every { userSessionRepository.sessionSnapshot } returns MutableStateFlow(UserSessionSnapshot(0L, null))
 
         every { deviceInfoProvider.getAppVersionCode() } returns 1
         every { deviceInfoProvider.getAppVersionName() } returns "1.0.0"
@@ -105,11 +106,12 @@ class RequestInterceptorDeviceIdTest {
         every { consentManager.isPrivacyConsented } returns false
         val first = User(userId = 1, accountId = 2, companyId = 3, userIdentity = 4, token = "first-token")
         val next = User(userId = 11, accountId = 12, companyId = 13, userIdentity = 14, token = "next-token")
-        val sessionState = mockk<StateFlow<SessionState>>()
-        every { userSessionRepository.sessionState } returns sessionState
-        every { sessionState.value } returnsMany listOf(SessionState.LoggedIn(first), SessionState.LoggedIn(next))
+        val snapshots = mockk<StateFlow<UserSessionSnapshot>>()
+        every { userSessionRepository.sessionSnapshot } returns snapshots
+        every { snapshots.value } returnsMany listOf(UserSessionSnapshot(7L, first), UserSessionSnapshot(8L, next))
 
-        executeRequest()
+        val sent = executeRequest()
+        assertEquals(7L, sent.tag(RequestSessionGeneration::class.java)?.value)
 
         val header = JSONObject(String(capturedHeaderJson.captured, Charsets.UTF_8))
         assertEquals(first.userId, header.getInt("userId"))
@@ -117,6 +119,18 @@ class RequestInterceptorDeviceIdTest {
         assertEquals(first.companyId, header.getInt("companyId"))
         assertEquals(first.userIdentity, header.getInt("userIdentity"))
         assertEquals(first.token, header.getString("token"))
+    }
+
+    @Test
+    fun `unknown or changing snapshot does not authenticate or attach a generation`() {
+        every { consentManager.isPrivacyConsented } returns false
+        every { userSessionRepository.sessionState } returns MutableStateFlow(SessionState.LoggedIn(User(userId = 99, token = "old")))
+        every { userSessionRepository.sessionSnapshot } returns MutableStateFlow(UserSessionSnapshot(8L, null))
+        val sent = executeRequest()
+        val header = JSONObject(String(capturedHeaderJson.captured, Charsets.UTF_8))
+        assertEquals(0, header.getInt("userId"))
+        assertEquals("", header.getString("token"))
+        assertEquals(null, sent.tag(RequestSessionGeneration::class.java))
     }
 
     @Test
@@ -144,7 +158,7 @@ class RequestInterceptorDeviceIdTest {
             Request.Builder()
                 .url("https://api.example.com/V1/Test/Endpoint")
                 .build()
-    ) {
+    ): Request {
 
         val dummyResponse = Response.Builder()
             .request(request)
@@ -155,8 +169,10 @@ class RequestInterceptorDeviceIdTest {
 
         val chain = mockk<Interceptor.Chain>()
         every { chain.request() } returns request
-        every { chain.proceed(any()) } returns dummyResponse
+        val sent = slot<Request>()
+        every { chain.proceed(capture(sent)) } returns dummyResponse
 
         interceptor.intercept(chain)
+        return sent.captured
     }
 }

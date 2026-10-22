@@ -5,6 +5,8 @@ import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
 import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.common.network.RequestSessionGeneration
+import com.ytone.longcare.model.User
 import okhttp3.Interceptor
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
@@ -37,7 +39,11 @@ class RequestInterceptor @Inject constructor(
         // 密钥只存在于当前请求的生命周期内，请求完成后自动释放
         newRequestBuilder.tag(AesKeyTag::class.java, AesKeyTag(randomString))
         
-        val map = iniHttpHeader(randomString)
+        // Capture user + generation once. A changing/unknown session never supplies old credentials.
+        val snapshot = userSessionRepository.sessionSnapshot.value
+        newRequestBuilder.tag(RequestSessionGeneration::class.java,
+            snapshot.user?.let { RequestSessionGeneration(snapshot.generation) })
+        val map = iniHttpHeader(randomString, snapshot.user)
         if (map.isNotEmpty()) {
             for (head in map) {
                 newRequestBuilder.addHeader(head.key, head.value)
@@ -93,9 +99,7 @@ class RequestInterceptor @Inject constructor(
         return chain.proceed(build)
     }
 
-    private fun iniHttpHeader(randomString: String): Map<String, String> {
-        // A concurrent account change must not mix identity fields within one request header.
-        val user = userSessionRepository.sessionState.value.user
+    private fun iniHttpHeader(randomString: String, user: User?): Map<String, String> {
         val baseMap = mutableMapOf<String, Any>(
             "userId" to (user?.userId ?: 0),
             "token" to user?.token.orEmpty(),

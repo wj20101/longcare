@@ -19,6 +19,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -77,11 +78,14 @@ class DeviceCompatibilityHelperTest {
             ShadowBuild.setManufacturer(manufacturer)
             val guides = DeviceCompatibilityHelper.getAllGuides(context)
             assertEquals(manufacturer, PermissionGuideId.entries.toSet(), guides.map { it.id }.toSet())
-            assertEquals(manufacturer, message, guides.first().messageRes)
-            assertEquals(manufacturer, R.string.compatibility_status_manual_check, guides[1].statusRes)
-            assertEquals(manufacturer, R.string.compatibility_status_manual_check, guides[2].statusRes)
+            assertEquals(manufacturer, message, guides.single { it.id == PermissionGuideId.BACKGROUND_ACTIVITY }.messageRes)
+            assertEquals(manufacturer, Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+                guides.single { it.id == PermissionGuideId.BATTERY_OPTIMIZATION }.settingsIntent.action)
+            guides.filter { it.id in setOf(PermissionGuideId.AUTO_START, PermissionGuideId.MANUFACTURER_POPUP) }
+                .forEach { assertNull(manufacturer, it.statusRes) }
             if (manufacturer !in setOf("Xiaomi", "Redmi")) {
-                guides.forEach { guide -> assertAppDetails(guide.settingsIntent) }
+                guides.filter { it.id != PermissionGuideId.BATTERY_OPTIMIZATION }
+                    .forEach { guide -> assertAppDetails(guide.settingsIntent) }
             }
         }
     }
@@ -91,7 +95,9 @@ class DeviceCompatibilityHelperTest {
         ShadowBuild.setManufacturer("Xiaomi")
         val guides = DeviceCompatibilityHelper.getAllGuides(context).associateBy { it.id }
         assertEquals("com.miui.powerkeeper.ui.HiddenAppsConfigActivity",
-            guides.getValue(PermissionGuideId.BATTERY_OPTIMIZATION).settingsIntent.component?.className)
+            guides.getValue(PermissionGuideId.BACKGROUND_ACTIVITY).settingsIntent.component?.className)
+        assertEquals(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+            guides.getValue(PermissionGuideId.BATTERY_OPTIMIZATION).settingsIntent.action)
         val autoStart = guides.getValue(PermissionGuideId.AUTO_START).settingsIntent
         assertEquals("miui.intent.action.OP_AUTO_START", autoStart.action)
         assertEquals("com.miui.securitycenter", autoStart.`package`)
@@ -107,8 +113,10 @@ class DeviceCompatibilityHelperTest {
     fun `Samsung uses its documented never sleeping apps action without inventing autostart permission`() {
         ShadowBuild.setManufacturer("samsung")
         val guides = DeviceCompatibilityHelper.getAllGuides(context)
-        assertEquals(1, guides.size)
-        val battery = guides.single()
+        assertEquals(setOf(PermissionGuideId.BATTERY_OPTIMIZATION, PermissionGuideId.BACKGROUND_ACTIVITY), guides.map { it.id }.toSet())
+        assertEquals(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+            guides.single { it.id == PermissionGuideId.BATTERY_OPTIMIZATION }.settingsIntent.action)
+        val battery = guides.single { it.id == PermissionGuideId.BACKGROUND_ACTIVITY }
         assertEquals(R.string.compatibility_battery_samsung, battery.messageRes)
         assertEquals("com.samsung.android.lool", battery.settingsIntent.`package`)
         assertEquals("com.samsung.android.sm.ACTION_OPEN_CHECKABLE_LISTACTIVITY", battery.settingsIntent.action)
@@ -117,11 +125,12 @@ class DeviceCompatibilityHelperTest {
 
     @Test
     fun `generic device offers standard battery settings and manual access remains after exemption`() {
-        val battery = DeviceCompatibilityHelper.getAllGuides(context).single()
+        val battery = guide(PermissionGuideId.BATTERY_OPTIMIZATION)
         assertEquals(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS, battery.settingsIntent.action)
+        assertAppDetails(guide(PermissionGuideId.BACKGROUND_ACTIVITY).settingsIntent)
         every { powerManager.isIgnoringBatteryOptimizations(any()) } returns true
         assertTrue(DeviceCompatibilityHelper.getAllRequiredGuides(context).isEmpty())
-        assertEquals(1, DeviceCompatibilityHelper.getAllGuides(context).size)
+        assertEquals(2, DeviceCompatibilityHelper.getAllGuides(context).size)
     }
 
     @Test
@@ -131,8 +140,9 @@ class DeviceCompatibilityHelperTest {
 
         val battery = DeviceCompatibilityHelper.getAllRequiredGuides(context).single()
 
-        assertEquals(PermissionGuideId.BATTERY_OPTIMIZATION, battery.id)
-        assertEquals(R.string.compatibility_status_restricted_exempt, battery.statusRes)
+        assertEquals(PermissionGuideId.BACKGROUND_ACTIVITY, battery.id)
+        assertEquals(R.string.compatibility_status_background_restricted, battery.statusRes)
+        assertEquals(R.string.compatibility_status_exempt, guide(PermissionGuideId.BATTERY_OPTIMIZATION).statusRes)
     }
 
     @Test
@@ -142,8 +152,8 @@ class DeviceCompatibilityHelperTest {
 
         val battery = DeviceCompatibilityHelper.getAllRequiredGuides(context).single()
 
-        assertEquals(PermissionGuideId.BATTERY_OPTIMIZATION, battery.id)
-        assertEquals(R.string.compatibility_status_exempt, battery.statusRes)
+        assertEquals(PermissionGuideId.BACKGROUND_ACTIVITY, battery.id)
+        assertEquals(R.string.compatibility_status_background_unknown, battery.statusRes)
     }
 
     @Test
@@ -155,19 +165,24 @@ class DeviceCompatibilityHelperTest {
         assertTrue(DeviceCompatibilityHelper.getAllRequiredGuides(context).isEmpty())
         val manual = DeviceCompatibilityHelper.getAllGuides(context)
         assertEquals(all.map { it.id }, manual.map { it.id })
-        assertEquals(R.string.compatibility_status_restricted_not_exempt, manual.first().statusRes)
+        assertEquals(R.string.compatibility_status_not_exempt, manual.single { it.id == PermissionGuideId.BATTERY_OPTIMIZATION }.statusRes)
+        assertEquals(R.string.compatibility_status_background_restricted, manual.single { it.id == PermissionGuideId.BACKGROUND_ACTIVITY }.statusRes)
     }
 
     @Test
     fun `old shown keys remain compatible but do not imply authorization`() {
         ShadowBuild.setManufacturer("Xiaomi")
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("battery_guide_shown", true)
             .putBoolean("auto_start_guide_shown", true)
             .putBoolean("manufacturer_guide_shown", true)
             .commit()
         assertEquals(listOf(PermissionGuideId.BATTERY_OPTIMIZATION),
             DeviceCompatibilityHelper.getAllRequiredGuides(context).map { it.id })
-        assertEquals(3, DeviceCompatibilityHelper.getAllGuides(context).size)
+        assertEquals(4, DeviceCompatibilityHelper.getAllGuides(context).size)
+        DeviceCompatibilityHelper.markGuideShown(context, PermissionGuideId.BATTERY_OPTIMIZATION)
+        assertTrue(DeviceCompatibilityHelper.getAllRequiredGuides(context).isEmpty())
+        assertTrue(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("system_battery_guide_shown", false))
     }
 
     @Test
@@ -182,7 +197,7 @@ class DeviceCompatibilityHelperTest {
     @Test
     fun `Activity opens settings in its natural back stack without new task flag`() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
-        val guide = DeviceCompatibilityHelper.getAllGuides(context).single().copy(
+        val guide = guide(PermissionGuideId.BATTERY_OPTIMIZATION).copy(
             settingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 android.net.Uri.parse("package:${activity.packageName}")),
         )
@@ -195,7 +210,7 @@ class DeviceCompatibilityHelperTest {
 
     @Test
     fun `non Activity context retains required new task flag without modifying guide intent`() {
-        val guide = DeviceCompatibilityHelper.getAllGuides(context).single()
+        val guide = guide(PermissionGuideId.BATTERY_OPTIMIZATION)
         assertTrue(DeviceCompatibilityHelper.openGuide(context, guide))
         assertTrue(startedIntents.single().flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         assertEquals(0, guide.settingsIntent.flags)
@@ -204,44 +219,57 @@ class DeviceCompatibilityHelperTest {
     @Test
     fun `system restriction and battery exemption are independent of manufacturer configuration`() {
         ShadowBuild.setManufacturer("Samsung")
+        val batteryStates = mapOf(
+            true to R.string.compatibility_status_exempt,
+            false to R.string.compatibility_status_not_exempt,
+            null to R.string.compatibility_status_unknown,
+        )
+        val backgroundStates = mapOf(
+            true to R.string.compatibility_status_background_restricted,
+            false to R.string.compatibility_status_background_unrestricted,
+            null to R.string.compatibility_status_background_unknown,
+        )
+        batteryStates.forEach { (exempt, batteryStatus) ->
+            every { powerManager.isIgnoringBatteryOptimizations(any()) } answers {
+                exempt ?: throw SecurityException("unavailable")
+            }
+            backgroundStates.forEach { (restricted, backgroundStatus) ->
+                every { activityManager.isBackgroundRestricted } answers {
+                    restricted ?: throw SecurityException("unavailable")
+                }
+                // Returning from either Settings page reads both independent live states again.
+                val guides = DeviceCompatibilityHelper.getAllGuides(context).associateBy { it.id }
+                assertEquals(batteryStatus, guides.getValue(PermissionGuideId.BATTERY_OPTIMIZATION).statusRes)
+                assertEquals(backgroundStatus, guides.getValue(PermissionGuideId.BACKGROUND_ACTIVITY).statusRes)
+                val required = DeviceCompatibilityHelper.getAllRequiredGuides(context).map { it.id }
+                assertTrue(PermissionGuideId.BACKGROUND_ACTIVITY in required)
+                assertEquals(exempt != true, PermissionGuideId.BATTERY_OPTIMIZATION in required)
+            }
+        }
         DeviceCompatibilityHelper.markGuideShown(context, PermissionGuideId.BATTERY_OPTIMIZATION)
-        every { activityManager.isBackgroundRestricted } returns true
-        every { powerManager.isIgnoringBatteryOptimizations(any()) } returns true
-        assertTrue(DeviceCompatibilityHelper.getAllRequiredGuides(context).isEmpty())
-        val restricted = DeviceCompatibilityHelper.getAllGuides(context).single()
-        assertEquals(R.string.compatibility_status_restricted_exempt, restricted.statusRes)
-        every { powerManager.isIgnoringBatteryOptimizations(any()) } returns false
-        assertEquals(R.string.compatibility_status_restricted_not_exempt,
-            DeviceCompatibilityHelper.getAllGuides(context).single().statusRes)
-        assertTrue(DeviceCompatibilityHelper.getAllRequiredGuides(context).isEmpty())
-        every { powerManager.isIgnoringBatteryOptimizations(any()) } returns true
-        every { activityManager.isBackgroundRestricted } returns false
-        assertTrue(DeviceCompatibilityHelper.getAllRequiredGuides(context).isEmpty())
-        assertEquals(R.string.compatibility_status_unrestricted_exempt,
-            DeviceCompatibilityHelper.getAllGuides(context).single().statusRes)
-        every { powerManager.isIgnoringBatteryOptimizations(any()) } returns false
-        assertEquals(R.string.compatibility_status_unrestricted_not_exempt,
-            DeviceCompatibilityHelper.getAllGuides(context).single().statusRes)
-        ShadowBuild.setManufacturer("vivo")
-        assertEquals(3, DeviceCompatibilityHelper.getAllGuides(context).size)
+        assertEquals(listOf(PermissionGuideId.BACKGROUND_ACTIVITY),
+            DeviceCompatibilityHelper.getAllRequiredGuides(context).map { it.id })
     }
 
     @Test
     fun `unreadable system state is unknown and never treated as granted`() {
         every { activityManager.isBackgroundRestricted } throws SecurityException("unavailable")
         every { powerManager.isIgnoringBatteryOptimizations(any()) } throws SecurityException("unavailable")
-        val battery = DeviceCompatibilityHelper.getAllRequiredGuides(context).single()
-        assertEquals(R.string.compatibility_status_unknown, battery.statusRes)
+        val guides = DeviceCompatibilityHelper.getAllRequiredGuides(context).associateBy { it.id }
+        assertEquals(R.string.compatibility_status_unknown, guides.getValue(PermissionGuideId.BATTERY_OPTIMIZATION).statusRes)
+        assertEquals(R.string.compatibility_status_background_unknown, guides.getValue(PermissionGuideId.BACKGROUND_ACTIVITY).statusRes)
     }
 
     @Test
     @Config(sdk = [27])
     fun `Android before 28 does not query unsupported background restriction API`() {
-        val battery = DeviceCompatibilityHelper.getAllGuides(context).single()
+        val battery = guide(PermissionGuideId.BATTERY_OPTIMIZATION)
         assertEquals(R.string.compatibility_status_not_exempt, battery.statusRes)
+        assertEquals(R.string.compatibility_status_background_unknown, guide(PermissionGuideId.BACKGROUND_ACTIVITY).statusRes)
         every { powerManager.isIgnoringBatteryOptimizations(any()) } returns true
-        assertEquals(R.string.compatibility_status_exempt,
-            DeviceCompatibilityHelper.getAllRequiredGuides(context).single().statusRes)
+        assertEquals(R.string.compatibility_status_exempt, guide(PermissionGuideId.BATTERY_OPTIMIZATION).statusRes)
+        assertEquals(listOf(PermissionGuideId.BACKGROUND_ACTIVITY),
+            DeviceCompatibilityHelper.getAllRequiredGuides(context).map { it.id })
         verify(exactly = 0) { context.getSystemService(ActivityManager::class.java) }
     }
 
@@ -249,53 +277,60 @@ class DeviceCompatibilityHelperTest {
     fun `unresolved manufacturer settings fall back to app details even when packages are invisible`() {
         ShadowBuild.setManufacturer("Samsung")
         every { packageManager.resolveActivity(any<Intent>(), any<Int>()) } returns null
-        val battery = DeviceCompatibilityHelper.getAllGuides(context).single()
-        assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, battery.settingsIntent.action)
-        assertTrue(DeviceCompatibilityHelper.openGuide(context, battery))
-        assertAppDetails(startedIntents.single())
+        DeviceCompatibilityHelper.getAllGuides(context).forEach { item ->
+            assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, item.settingsIntent.action)
+            assertTrue(DeviceCompatibilityHelper.openGuide(context, item))
+        }
+        assertEquals(2, startedIntents.size)
+        startedIntents.forEach(::assertAppDetails)
     }
 
     @Test
     fun `unexported and permission protected activities are not launched`() {
         ShadowBuild.setManufacturer("Samsung")
         every { packageManager.resolveActivity(any<Intent>(), any<Int>()) } returns exportedActivity(exported = false)
-        val unexported = DeviceCompatibilityHelper.getAllGuides(context).single()
-        assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, unexported.settingsIntent.action)
+        assertTrue(DeviceCompatibilityHelper.getAllGuides(context).all {
+            it.settingsIntent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        })
         every { packageManager.resolveActivity(any<Intent>(), any<Int>()) } returns exportedActivity(permission = "vendor.signature.PERMISSION")
-        val protected = DeviceCompatibilityHelper.getAllGuides(context).single()
-        assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, protected.settingsIntent.action)
+        assertTrue(DeviceCompatibilityHelper.getAllGuides(context).all {
+            it.settingsIntent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        })
     }
 
     @Test
     fun `activity disabled after collecting guide falls back without losing manual entry`() {
         ShadowBuild.setManufacturer("Samsung")
-        val battery = DeviceCompatibilityHelper.getAllGuides(context).single()
+        val battery = guide(PermissionGuideId.BACKGROUND_ACTIVITY)
         every { packageManager.resolveActivity(any<Intent>(), any<Int>()) } returns exportedActivity(enabled = false)
         assertTrue(DeviceCompatibilityHelper.openGuide(context, battery))
         assertAppDetails(startedIntents.single())
     }
 
     @Test
-    fun `manufacturer activity launch failure falls back to app details`() {
+    fun `both standard and manufacturer launch failures fall back to app details`() {
         ShadowBuild.setManufacturer("Samsung")
-        val battery = DeviceCompatibilityHelper.getAllGuides(context).single()
+        val guides = DeviceCompatibilityHelper.getAllGuides(context)
         every { context.startActivity(any()) } answers {
             val intent = firstArg<Intent>()
             if (intent.action != Settings.ACTION_APPLICATION_DETAILS_SETTINGS) throw SecurityException("vendor denied")
             startedIntents += intent
         }
-        assertTrue(DeviceCompatibilityHelper.openGuide(context, battery))
-        assertAppDetails(startedIntents.single())
+        guides.forEach { assertTrue(DeviceCompatibilityHelper.openGuide(context, it)) }
+        assertEquals(2, startedIntents.size)
+        startedIntents.forEach(::assertAppDetails)
     }
 
     @Test
     fun `all setting launches failing return false without marking guide shown`() {
         ShadowBuild.setManufacturer("Samsung")
-        val battery = DeviceCompatibilityHelper.getAllGuides(context).single()
+        val guides = DeviceCompatibilityHelper.getAllGuides(context)
         every { context.startActivity(any()) } throws ActivityNotFoundException()
-        assertFalse(DeviceCompatibilityHelper.openGuide(context, battery))
-        assertEquals(1, DeviceCompatibilityHelper.getAllRequiredGuides(context).size)
+        guides.forEach { assertFalse(DeviceCompatibilityHelper.openGuide(context, it)) }
+        assertEquals(2, DeviceCompatibilityHelper.getAllRequiredGuides(context).size)
     }
+
+    private fun guide(id: PermissionGuideId) = DeviceCompatibilityHelper.getAllGuides(context).single { it.id == id }
 
     private fun assertAppDetails(intent: Intent) {
         assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, intent.action)

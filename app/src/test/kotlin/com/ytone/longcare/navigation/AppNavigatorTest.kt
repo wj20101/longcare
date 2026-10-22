@@ -190,7 +190,6 @@ class AppNavigatorTest {
         val countdown = nav.top()
         val input = mapOf(ImageTaskType.BEFORE_CARE to listOf(ImageTask("图片", "content://中文", ImageTaskType.BEFORE_CARE,
             "file://result", ImageTaskStatus.SUCCESS, "错误?", true, "cloud/key", "https://example.test/photo")))
-        nav.page().handle(countdown).results.set(NavigationConstants.EXISTING_IMAGES_KEY, input)
         nav.navigate(PhotoUploadRoute(order))
         val upload = nav.top()
         nav.navigate(camera)
@@ -201,11 +200,15 @@ class AppNavigatorTest {
         val restored = AppNavigator(restoredStack.toMutableList<NavKey>(), NavigationResults.restore(nav.results.snapshot()))
         val uploadPage = restored.page()
         assertEquals(upload.id, restored.top().id)
+        assertEquals(PhotoUploadRoute(order), restored.top().route)
+        assertEquals(countdown.id, uploadPage.previousBackStackEntry!!.id)
         assertEquals("content://camera", uploadPage.handle(upload).results.getStateFlow<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY, null).value)
-        assertEquals(input, uploadPage.previousBackStackEntry!!.results.getStateFlow<Map<ImageTaskType, List<ImageTask>>>(NavigationConstants.EXISTING_IMAGES_KEY, null).value)
         uploadPage.previousBackStackEntry!!.results.set(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, input)
         uploadPage.popBackStack()
         assertEquals(countdown.id, restored.top().id)
+        val restoredResults = NavigationResults.restore(restored.results.snapshot())
+        assertEquals(input, restoredResults.handle(countdown.id)
+            .getStateFlow<Map<ImageTaskType, List<ImageTask>>>(NavigationConstants.PHOTO_UPLOAD_RESULT_KEY, null).value)
     }
 
     @Test fun consumingEmitsNullAndSameValueCanBeDeliveredAgain() {

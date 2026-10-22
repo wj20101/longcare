@@ -63,7 +63,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 
 开始服务直接进入 NFC/读卡流程；无入口的设备选择页、旧人脸引导页和正式应用腾讯测试路由已移除。独立助手的腾讯测试入口亦已删除，正式业务仍需的共享实现保留。
 
-默认服务人员核验结果通过调用者 entry 邮箱的 `DEFAULT_FACE_VERIFICATION_RESULT_KEY` 返回；长者照片和销售登记照片通过 `CAPTURED_IMAGE_URI_KEY` 返回；手动人脸补录通过 `FACE_IMAGE_PATH_KEY` 返回。图片输入/上传结果分别使用 `EXISTING_IMAGES_KEY` / `PHOTO_UPLOAD_RESULT_KEY`。邮箱与栈共同保存，接收页消费后清空 StateFlow；来源失效的迟到回调丢弃。服务完成后清除中间页并保留原 Home entry，完成页三种退出入口统一 pop，首页恢复时加载最新订单。选中项目清理在服务端确认结束后的既有清理链执行，不由完成页按钮触发。
+默认服务人员核验结果通过调用者 entry 邮箱的 `DEFAULT_FACE_VERIFICATION_RESULT_KEY` 返回；长者照片和销售登记照片通过 `CAPTURED_IMAGE_URI_KEY` 返回；手动人脸补录通过 `FACE_IMAGE_PATH_KEY` 返回。照片页按订单从 Room 加载已有照片，不再通过导航邮箱重复导入任务；新增限额计数与确认上传等待同一次初始查询完成，读取失败不得当作空历史继续，换单取消旧查询。上传结果仍使用 `PHOTO_UPLOAD_RESULT_KEY` 返回，拍摄临时 URI 保持独立入口。邮箱与栈共同保存，接收页消费后清空 StateFlow；来源失效的迟到回调丢弃。服务完成后清除中间页并保留原 Home entry，完成页三种退出入口统一 pop，首页恢复时加载最新订单。选中项目清理在服务端确认结束后的既有清理链执行，不由完成页按钮触发。
 
 倒计时页顶部/系统返回继续回首页并清除前序服务步骤，这是禁止重复操作的业务例外，不改为普通 pop。
 

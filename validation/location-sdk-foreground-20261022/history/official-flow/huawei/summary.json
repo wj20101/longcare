@@ -1,0 +1,124 @@
+{
+  "device": {
+    "ro.product.model": "STK-L21",
+    "ro.product.manufacturer": "HUAWEI",
+    "ro.build.version.release": "9",
+    "ro.build.version.sdk": "28"
+  },
+  "source": "real AMap SDK 11.3.101; isolated order state and local HTTP counters; no care API writes",
+  "conditions": {
+    "usbConnected": true,
+    "screenOnDuringFlow": true,
+    "batteryExempt": false,
+    "powerSave": false,
+    "systemLocationAndPowerSettingsChanged": false,
+    "dozeOrUnpluggedLockScreenCovered": false
+  },
+  "coldAction": {
+    "durationMs": 1315,
+    "outcome": "success",
+    "accuracyMeters": 34,
+    "client": 1,
+    "temporaryClientReleased": true
+  },
+  "home": {
+    "observedMs": 55140,
+    "additionalSuccessfulLocalUploads": 1,
+    "rawCallbackGapMsClient2": [
+      30385
+    ],
+    "samePid": true,
+    "sameClients": true
+  },
+  "stickyRecovery": {
+    "previousPid": 29771,
+    "newPid": 30322,
+    "serviceCreateAfterPreKillObservationMs": 8453,
+    "successfulUploadAfterPreKillObservationMs": 12140,
+    "note": "Timed from immediately preceding host snapshot, so includes its small command overhead; kill was run-as kill -9, not force-stop",
+    "orderId": 9000001
+  },
+  "simulatedLocationGate": {
+    "pauseToClientReleaseMs": 12521,
+    "successfulUploadsBetweenPauseAndResume": 0,
+    "resumeToClientCreateMs": 6921,
+    "resumeToSuccessfulUploadMs": 8614,
+    "newSourcePoint": true
+  },
+  "checkoutAction": {
+    "durationMs": 3141,
+    "outcome": "success",
+    "accuracyMeters": 37,
+    "sameClient": true,
+    "optionIntervalsMs": [
+      30000,
+      3000,
+      30000
+    ]
+  },
+  "switchOrder": {
+    "newOrderId": 9000002,
+    "oldClientReleased": true,
+    "wrongOrderUploadsAfterSwitch": 0,
+    "newOrderSuccessfulUploads": 1
+  },
+  "endOrder": {
+    "clientReleaseAfterEndMs": 36,
+    "serviceDestroyAfterEndMs": 141,
+    "successfulUploadsAfterEnd": 0,
+    "observationAfterEndMs": 47432,
+    "foregroundServiceReleased": true
+  },
+  "sdkCallbacks": {
+    "count": 9,
+    "errorCodes": [
+      0
+    ],
+    "accuracyMetersMin": 32,
+    "accuracyMetersMax": 41,
+    "locationTypes": [
+      2,
+      5
+    ],
+    "allHavePositiveSourceTick": true
+  },
+  "clients": [
+    {
+      "id": 1,
+      "purpose": "cold foreground action"
+    },
+    {
+      "id": 2,
+      "purpose": "first active order"
+    },
+    {
+      "id": 3,
+      "purpose": "system sticky recreation"
+    },
+    {
+      "id": 4,
+      "purpose": "explicit gate resume"
+    },
+    {
+      "id": 5,
+      "purpose": "order switch"
+    }
+  ],
+  "successfulLocalUploads": 6,
+  "cleanup": {
+    "dataStoreShaUnchanged": true,
+    "hasRecoveryOrder": false,
+    "hasRecoverySession": false,
+    "servicesEmpty": true,
+    "processEmpty": true,
+    "probePreferencesAbsent": true,
+    "asleep": true
+  },
+  "notCovered": [
+    "Samsung/One UI real hardware",
+    "Honor/MagicOS real hardware",
+    "Huawei physically unplugged lock screen or Doze",
+    "real care sign-in, sign-out, NFC and remote AddPosition API",
+    "one-minute effective reporting under Huawei lock screen"
+  ]
+}

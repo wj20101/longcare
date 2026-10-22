@@ -385,6 +385,9 @@ class HomeDeviceViewModelTest {
 
     private class TestSessionRepository(initial: SessionState = careSession()) : UserSessionRepository {
         override val sessionState = MutableStateFlow(initial)
+        // This UI/probe fake never authenticates real network requests.
+        override val sessionSnapshot = kotlinx.coroutines.flow.MutableStateFlow(com.ytone.longcare.model.UserSessionSnapshot(0L, null))
+        override suspend fun logoutIfCurrent(generation: Long): Long? = null
 
         override suspend fun login(user: User) {
             sessionState.value = SessionState.LoggedIn(user)

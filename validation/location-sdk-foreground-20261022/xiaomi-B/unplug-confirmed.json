@@ -1,0 +1,10 @@
+{
+  "hostMonotonic": 451594.650978708,
+  "hostWall": 1792600830.403451,
+  "deviceElapsedRealtimeStart": 2946113803,
+  "durationMs": 300000,
+  "mappingUncertaintyMs": 53.35268749855459,
+  "boundary": "after_user_confirmed_physical_unplug_and_lock",
+  "userConfirmation": "已拔线",
+  "sdkForegroundRequested": true
+}

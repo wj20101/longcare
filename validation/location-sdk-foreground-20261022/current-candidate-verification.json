@@ -1,0 +1,30 @@
+{
+  "recordDate": "2026-10-22",
+  "branch": "codex/test-location-background-20261022",
+  "baseCommit": "b5215e10f5cc32a20ac154bfde0a1dc323a71abc",
+  "versionName": "1.0.7",
+  "versionCode": 76,
+  "candidateApkSha256": "07c30942c446becabfc01785823567692678a941246866272b446bc63eca70bd",
+  "historicalAbApkSha256": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8",
+  "verification": {
+    "fullPreflight": "PASS",
+    "selectedJvmTests": {
+      "tests": 1118,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "appAndCardDiagnosticsLint": "PASS",
+    "lintWarningAllowlist": "PASS (existing Aligned16KB/TrustAllX509TrustManager)",
+    "debugAppAndInstrumentationBuild": "PASS",
+    "version76Rebuild": "PASS",
+    "physicalDeviceRunForNewWakeLockAnd45sCandidate": "NOT_EXECUTED",
+    "exceptionAfterStopTest": "NOT_COVERED"
+  },
+  "scopeNotes": [
+    "Full JVM preflight and Lint covered latest functional source with versionCode75; after fast-forward of remote version-only commit to76, both Debug APKs rebuilt successfully.",
+    "JVM results include UP-TO-DATE selected tasks, exclude archived CI XMLs and retired modules.",
+    "No claim of one-minute valid-upload acceptance for current candidate.",
+    "Current source retains known continuous wake-lock and stop/start exception-handling candidate risks; see README and project-review."
+  ]
+}

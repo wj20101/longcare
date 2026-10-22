@@ -18,9 +18,11 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** Desired lifecycle guarantees when a location foreground service cannot be started. */
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class LocationKeepAliveManagerRegressionTest {
 
     @Before
@@ -105,6 +107,9 @@ class LocationKeepAliveManagerRegressionTest {
             firstArg<android.app.ActivityManager.RunningAppProcessInfo>().importance = importance
         }
         val context = mockk<android.content.Context>(relaxed = true)
+        every { context.startForegroundService(any()) } returns android.content.ComponentName(
+            "com.ytone.longcare", "com.ytone.longcare.features.location.service.LocationTrackingService",
+        )
         val readiness = mockk<com.ytone.longcare.domain.location.LocationRuntimeReadiness> {
             every { hasLocationPermission() } answers { permission }
             every { isLocationServiceEnabled() } answers { enabled }
@@ -119,7 +124,45 @@ class LocationKeepAliveManagerRegressionTest {
         manager.acquireOrderTracking("owner", 1)
         verify(exactly = 0) { context.startForegroundService(any()) }
         enabled = true
-        manager.acquireOrderTracking("owner", 1)
+        org.junit.Assert.assertTrue(manager.acquireOrderTracking("owner", 1))
         verify(exactly = 1) { context.startForegroundService(any()) }
+    }
+
+    @Test
+    @Config(sdk = [24, 28])
+    fun `silent platform rejection rolls back acceptance and a later visible request retries`() {
+        mockkStatic(android.app.ActivityManager::class)
+        every { android.app.ActivityManager.getMyMemoryState(any()) } answers {
+            firstArg<android.app.ActivityManager.RunningAppProcessInfo>().importance =
+                android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        }
+        val readiness = mockk<com.ytone.longcare.domain.location.LocationRuntimeReadiness> {
+            every { hasLocationPermission() } returns true
+            every { isLocationServiceEnabled() } returns true
+        }
+        val context = mockk<android.content.Context>()
+        every { context.packageName } returns "com.ytone.longcare"
+        val component = android.content.ComponentName(
+            "com.ytone.longcare", "com.ytone.longcare.features.location.service.LocationTrackingService",
+        )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            every { context.startForegroundService(any()) } returnsMany listOf(null, component)
+        } else {
+            every { context.startService(any()) } returnsMany listOf(null, component)
+        }
+        val manager = LocationKeepAliveManager(LocationForegroundServiceController(context, readiness))
+
+        org.junit.Assert.assertFalse(manager.acquireOrderTracking("owner", 1))
+        // The two native dispatches verified below prove that the rejected start was rolled back.
+        org.junit.Assert.assertTrue(manager.acquireOrderTracking("owner", 1))
+        // A genuinely accepted second dispatch remains idempotent.
+        org.junit.Assert.assertTrue(manager.acquireOrderTracking("owner", 1))
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            verify(exactly = 2) { context.startForegroundService(any()) }
+            verify(exactly = 0) { context.startService(any()) }
+        } else {
+            verify(exactly = 2) { context.startService(any()) }
+        }
     }
 }

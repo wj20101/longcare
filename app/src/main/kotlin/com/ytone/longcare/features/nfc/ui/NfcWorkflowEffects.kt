@@ -4,6 +4,8 @@ import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import com.ytone.longcare.features.nfc.vm.NfcWorkflowViewModel
 import com.ytone.longcare.features.nfc.vm.LocationRequestResult
 import com.ytone.longcare.features.nfc.vm.ScanMode
@@ -23,6 +25,7 @@ internal fun NfcWorkflowEffects(
     onLocationRequest: suspend () -> LocationRequestResult,
 ) {
     val scanSourceUiController = rememberNfcScanSourceUiController()
+    val currentLocationRequest by rememberUpdatedState(onLocationRequest)
 
     LaunchedEffect(activity, scanMode) {
         if (activity != null) {
@@ -34,18 +37,18 @@ internal fun NfcWorkflowEffects(
         }
     }
 
-    LaunchedEffect(orderKey, signInMode, endOderInfo) {
+    LaunchedEffect(activity, nfcViewModel, orderKey, signInMode, endOderInfo) {
         nfcViewModel.observeScanEvents(
             orderKey = orderKey,
             signInMode = signInMode,
             endOderInfo = endOderInfo,
-            onLocationRequest = { onLocationRequest() },
+            onLocationRequest = { currentLocationRequest() },
         )
     }
 
-    DisposableEffect(nfcViewModel) {
+    DisposableEffect(activity, nfcViewModel) {
         onDispose {
-            nfcViewModel.stopScanRequests()
+            nfcViewModel.stopScanRequests(preserveWorkflow = shouldPreserveNfcWorkflow(activity))
         }
     }
 
@@ -61,3 +64,6 @@ internal fun NfcWorkflowEffects(
     }
 
 }
+
+internal fun shouldPreserveNfcWorkflow(activity: Activity?): Boolean =
+    activity?.isChangingConfigurations == true

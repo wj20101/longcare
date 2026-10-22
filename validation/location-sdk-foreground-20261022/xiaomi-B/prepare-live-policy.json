@@ -1,0 +1,13 @@
+{
+  "hostWall": 1792600769.163133,
+  "hostMonotonic": 451533.41104575,
+  "uid": 10216,
+  "batteryExemptObservedInLiveWhitelist": true,
+  "providers": "network",
+  "powerSaveSetting": "0",
+  "dataSaverRestricted": "false",
+  "installedApkSha256ByFile": {
+    "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+  },
+  "foregroundServices": []
+}

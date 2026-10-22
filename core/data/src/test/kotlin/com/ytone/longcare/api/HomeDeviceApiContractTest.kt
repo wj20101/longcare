@@ -3,6 +3,7 @@ package com.ytone.longcare.api
 import com.squareup.moshi.Moshi
 import com.ytone.longcare.common.network.ApiResultCallAdapterFactory
 import com.ytone.longcare.common.network.SessionInvalidation
+import com.ytone.longcare.common.network.RequestSessionGeneration
 import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.model.ZhiChiDeviceStatusModel
 import com.ytone.longcare.model.result.ApiResult
@@ -89,7 +90,8 @@ class HomeDeviceApiContractTest {
             .addInterceptor { chain ->
                 recordRequest(chain.request())
                 Response.Builder()
-                    .request(chain.request())
+                    .request(chain.request().newBuilder()
+                        .tag(RequestSessionGeneration::class.java, RequestSessionGeneration(1L)).build())
                     .protocol(Protocol.HTTP_1_1)
                     .code(200)
                     .message("OK")
@@ -111,9 +113,9 @@ private class DeviceSessionInvalidationHandler : SessionInvalidationHandler {
     override val invalidations: StateFlow<SessionInvalidation?> = MutableStateFlow(null)
     val reasons = mutableListOf<String>()
 
-    override fun invalidate(reason: String) {
+    override fun invalidate(reason: String, generation: Long) {
         reasons += reason
     }
 
-    override fun consume(id: Long) = Unit
+    override fun consume(id: Long): Boolean = false
 }

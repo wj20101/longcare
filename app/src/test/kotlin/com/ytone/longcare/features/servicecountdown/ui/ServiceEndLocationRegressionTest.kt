@@ -59,7 +59,7 @@ class ServiceEndLocationRegressionTest {
             onNavigateToEndServiceSelection = { actualOrder, _, _ ->
                 navigatedToConfirmation = actualOrder == orderKey
             },
-            onNavigateToPhotoUpload = { _, _ -> },
+            onNavigateToPhotoUpload = {},
             photoUploadResultFlow =
                 MutableStateFlow<Map<ImageTaskType, List<ImageTask>>?>(null),
             clearPhotoUploadResult = {},

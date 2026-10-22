@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-22",
+  "scope": "Offline validation of sanitized historical evidence only; no device/network action and no test of subsequent production candidate.",
+  "pythonSyntax": "all four helper scripts compile",
+  "relativeMarkdownLinks": "all retained local links resolve",
+  "privacyScan": "no host absolute path, original device serial, PIN, account token/header, or coordinate fields retained",
+  "xiaomiA": {
+    "rawCallbacks": 0,
+    "uniquePositiveTicks": 0,
+    "localSuccess": 0,
+    "sameApk": true,
+    "sdkBeforeWindowMatchesVariant": true
+  },
+  "xiaomiB": {
+    "rawCallbacks": 0,
+    "uniquePositiveTicks": 0,
+    "localSuccess": 0,
+    "sameApk": true,
+    "sdkBeforeWindowMatchesVariant": true
+  },
+  "analysisMethod": "Copied A/B inputs into a temporary directory and ran analyze.py, preserving the committed historical summary files."
+}

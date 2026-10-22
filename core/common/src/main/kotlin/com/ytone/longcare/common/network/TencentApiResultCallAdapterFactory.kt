@@ -47,7 +47,7 @@ private class TencentApiResultCallAdapter<T : TencentApiResponse>(
     override fun responseType(): Type = responseType
 
     override fun adapt(call: Call<T>): Call<ApiResult<T>> =
-        MappedApiResultCall(call) { response ->
+        MappedApiResultCall(call) { response, _ ->
             if (response.code == "0") {
                 ApiResult.Success(response)
             } else {

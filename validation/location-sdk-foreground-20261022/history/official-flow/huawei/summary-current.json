@@ -1,0 +1,23 @@
+{
+  "device": "huawei",
+  "inputFiles": [],
+  "traceRows": 0,
+  "duplicatesRemoved": 0,
+  "malformedRows": 0,
+  "captureStartElapsedRealtime": 984185510,
+  "firstTraceElapsedRealtime": null,
+  "lastTraceElapsedRealtime": null,
+  "scope": "Local isolated repository counters only; no nursing backend request or geographic ground truth verification. Minute bucket coverage alone does not establish a rolling <=60s success gap.",
+  "wholeRunCallbacks": {
+    "raw": 0,
+    "sdkSuccess": 0,
+    "uniquePositiveSourceTicks": 0
+  },
+  "actions": [],
+  "allHttpEndsByOrderId": {},
+  "normalEndObservations": [],
+  "allPidSequence": [],
+  "allClientSequence": [],
+  "unplugWindow": null,
+  "windowNote": "No confirmed unplug window; whole-run counts are not unplugged acceptance evidence."
+}

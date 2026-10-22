@@ -26,6 +26,7 @@ class AndroidLocationRuntimeReadinessTest {
     private val context = mockk<Context>()
     private val connectivity = mockk<ConnectivityManager>()
     private val power = mockk<PowerManager>()
+    private val activity = mockk<ActivityManager>()
     private val packages = mockk<PackageManager>()
     private val packageInfo = mockk<PackageInfo>()
     private val network = mockk<Network>()
@@ -35,6 +36,7 @@ class AndroidLocationRuntimeReadinessTest {
     @Before fun setUp() {
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivity
         every { context.getSystemService(Context.POWER_SERVICE) } returns power
+        every { context.getSystemService(Context.ACTIVITY_SERVICE) } returns activity
         every { context.packageManager } returns packages
         every { context.packageName } returns "com.ytone.longcare"
         every { packages.getPackageInfo(any<String>(), any<Int>()) } returns packageInfo
@@ -45,6 +47,9 @@ class AndroidLocationRuntimeReadinessTest {
         every { power.isInteractive } returns true
         every { power.isPowerSaveMode } returns false
         every { power.isIgnoringBatteryOptimizations(any()) } returns false
+        every { power.isLowPowerStandbyEnabled } returns false
+        every { activity.isBackgroundRestricted } returns false
+        every { connectivity.restrictBackgroundStatus } returns ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED
         every { connectivity.getNetworkCapabilities(network) } returns capabilities
         every { capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns true
         every { capabilities.hasTransport(any()) } returns false
@@ -123,6 +128,8 @@ class AndroidLocationRuntimeReadinessTest {
         verify(exactly = 1) { power.isInteractive }
         verify(exactly = 1) { power.isPowerSaveMode }
         verify(exactly = 1) { power.isIgnoringBatteryOptimizations("com.ytone.longcare") }
+        verify(exactly = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) 1 else 0) { connectivity.restrictBackgroundStatus }
+        verify(exactly = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 1 else 0) { power.isLowPowerStandbyEnabled }
         confirmVerified(connectivity, power)
     }
 
@@ -133,7 +140,7 @@ class AndroidLocationRuntimeReadinessTest {
         every { power.isDeviceIdleMode } throws IllegalStateException()
         every { packages.getPackageInfo(any<String>(), any<Int>()) } throws PackageManager.NameNotFoundException()
         val snapshot = readiness.diagnosticSnapshot()
-        assertEquals(9, snapshot.size)
+        assertEquals(13, snapshot.size)
         assertNull(snapshot["appVersionCode"])
         assertNull(snapshot["deviceIdle"])
         assertNull(snapshot["networkValidated"])
@@ -144,15 +151,40 @@ class AndroidLocationRuntimeReadinessTest {
         assertEquals(false, snapshot["batteryExempt"])
     }
 
+    @Test fun `background policies remain separate from network validation and unreadable policy stays unknown`() {
+        every { connectivity.activeNetwork } returns network
+        every { activity.isBackgroundRestricted } returns true
+        every { power.isLowPowerStandbyEnabled } returns true
+        every { connectivity.restrictBackgroundStatus } returns ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+        val snapshot = readiness.diagnosticSnapshot()
+        assertEquals(true, snapshot["networkValidated"])
+        assertEquals(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) true else null, snapshot["backgroundRestricted"])
+        assertEquals(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED else null, snapshot["restrictBackgroundStatus"])
+        assertEquals(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) true else null,
+            snapshot["lowPowerStandbyEnabled"])
+
+        every { activity.isBackgroundRestricted } throws SecurityException()
+        every { power.isLowPowerStandbyEnabled } throws IllegalStateException()
+        every { connectivity.restrictBackgroundStatus } returns -1
+        val unknown = readiness.diagnosticSnapshot()
+        for (key in listOf("backgroundRestricted", "restrictBackgroundStatus", "lowPowerStandbyEnabled")) {
+            assertNull(key, unknown[key])
+        }
+        assertEquals(true, unknown["networkValidated"])
+        assertEquals(true, unknown["screenOn"])
+    }
+
     @Test fun `unavailable services remain unknown without dropping app version`() {
         every { context.getSystemService(any<String>()) } returns null
         val snapshot = readiness.diagnosticSnapshot()
         assertEquals(72L, snapshot["appVersionCode"])
         for (field in listOf("networkAvailable", "networkValidated", "networkTransport",
-            "deviceIdle", "screenOn", "powerSave", "batteryExempt")) {
+            "deviceIdle", "deviceLightIdle", "screenOn", "powerSave", "batteryExempt",
+            "backgroundRestricted", "restrictBackgroundStatus", "lowPowerStandbyEnabled")) {
             assertNull(field, snapshot[field])
         }
         verify(exactly = 0) { connectivity.activeNetwork }
-        confirmVerified(connectivity, power)
+        confirmVerified(connectivity, power, activity)
     }
 }

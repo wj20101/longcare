@@ -18,7 +18,9 @@ import java.util.Locale
 /** 厂商设置只提供人工核对入口，不把私有接口或“已展示”当成授权状态。 */
 object DeviceCompatibilityHelper {
     private const val PREFS_NAME = "device_compatibility_prefs"
-    private const val KEY_BATTERY_GUIDE_SHOWN = "battery_guide_shown"
+    private const val KEY_SYSTEM_BATTERY_GUIDE_SHOWN = "system_battery_guide_shown"
+    // 旧电池引导只涉及厂商后台策略；不把它迁移成新系统电池优化项已展示。
+    private const val KEY_BACKGROUND_ACTIVITY_GUIDE_SHOWN = "battery_guide_shown"
     // 沿用旧 key，升级后不会再次逐项打扰已看过引导的用户。
     private const val KEY_AUTO_START_GUIDE_SHOWN = "auto_start_guide_shown"
     private const val KEY_MANUFACTURER_GUIDE_SHOWN = "manufacturer_guide_shown"
@@ -41,10 +43,13 @@ object DeviceCompatibilityHelper {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return buildGuides(context, backgroundRestricted, batteryExempt).filter { item ->
             !prefs.getBoolean(shownKey(item.id), false) &&
-                // 标准系统电池豁免不能证明厂商的“无限制/从不休眠”已配置。
-                // 通用系统也只有明确未受限时才能省略；未知状态仍供人工核对。
-                !(item.id == PermissionGuideId.BATTERY_OPTIMIZATION &&
-                    manufacturer() == Manufacturer.OTHER && batteryExempt == true && backgroundRestricted == false)
+                when (item.id) {
+                    PermissionGuideId.BATTERY_OPTIMIZATION -> batteryExempt != true
+                    // 标准系统状态不能证明厂商的“无限制/从不休眠”已配置。
+                    PermissionGuideId.BACKGROUND_ACTIVITY ->
+                        manufacturer() != Manufacturer.OTHER || backgroundRestricted != false
+                    PermissionGuideId.AUTO_START, PermissionGuideId.MANUFACTURER_POPUP -> true
+                }
         }
     }
 
@@ -64,10 +69,17 @@ object DeviceCompatibilityHelper {
         val items = mutableListOf(
             PermissionGuideItem(
                 id = PermissionGuideId.BATTERY_OPTIMIZATION,
+                titleRes = R.string.compatibility_battery_optimization_title,
+                messageRes = R.string.compatibility_battery_optimization_message,
+                settingsIntent = availableOrAppSettings(context, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)),
+                statusRes = batteryStatus(batteryExempt),
+            ),
+            PermissionGuideItem(
+                id = PermissionGuideId.BACKGROUND_ACTIVITY,
                 titleRes = R.string.compatibility_battery_title_power_strategy,
                 messageRes = batteryMessage(manufacturer),
-                settingsIntent = availableOrAppSettings(context, batteryIntent(context, manufacturer)),
-                statusRes = batteryStatus(backgroundRestricted, batteryExempt),
+                settingsIntent = availableOrAppSettings(context, backgroundActivityIntent(context, manufacturer)),
+                statusRes = backgroundActivityStatus(backgroundRestricted),
             )
         )
         if (manufacturer in listOf(Manufacturer.XIAOMI, Manufacturer.HUAWEI, Manufacturer.OPPO, Manufacturer.VIVO)) {
@@ -76,14 +88,12 @@ object DeviceCompatibilityHelper {
                 titleRes = R.string.compatibility_auto_start_title,
                 messageRes = autoStartMessage(manufacturer),
                 settingsIntent = availableOrAppSettings(context, autoStartIntent(manufacturer)),
-                statusRes = R.string.compatibility_status_manual_check,
             )
             items += PermissionGuideItem(
                 id = PermissionGuideId.MANUFACTURER_POPUP,
                 titleRes = R.string.compatibility_popup_permission_title,
                 messageRes = popupMessage(manufacturer),
                 settingsIntent = availableOrAppSettings(context, popupIntent(context, manufacturer)),
-                statusRes = R.string.compatibility_status_manual_check,
             )
         }
         return items
@@ -106,7 +116,8 @@ object DeviceCompatibilityHelper {
     }
 
     private fun shownKey(id: PermissionGuideId): String = when (id) {
-        PermissionGuideId.BATTERY_OPTIMIZATION -> KEY_BATTERY_GUIDE_SHOWN
+        PermissionGuideId.BATTERY_OPTIMIZATION -> KEY_SYSTEM_BATTERY_GUIDE_SHOWN
+        PermissionGuideId.BACKGROUND_ACTIVITY -> KEY_BACKGROUND_ACTIVITY_GUIDE_SHOWN
         PermissionGuideId.AUTO_START -> KEY_AUTO_START_GUIDE_SHOWN
         PermissionGuideId.MANUFACTURER_POPUP -> KEY_MANUFACTURER_GUIDE_SHOWN
     }
@@ -122,18 +133,20 @@ object DeviceCompatibilityHelper {
         }.getOrNull()
 
     @StringRes
-    private fun batteryStatus(restricted: Boolean?, exempt: Boolean?): Int = when {
-        restricted == true && exempt == true -> R.string.compatibility_status_restricted_exempt
-        restricted == true && exempt == false -> R.string.compatibility_status_restricted_not_exempt
-        restricted == true -> R.string.compatibility_status_restricted
-        restricted == false && exempt == true -> R.string.compatibility_status_unrestricted_exempt
-        restricted == false && exempt == false -> R.string.compatibility_status_unrestricted_not_exempt
-        exempt == true -> R.string.compatibility_status_exempt
-        exempt == false -> R.string.compatibility_status_not_exempt
-        else -> R.string.compatibility_status_unknown
+    private fun batteryStatus(exempt: Boolean?): Int = when (exempt) {
+        true -> R.string.compatibility_status_exempt
+        false -> R.string.compatibility_status_not_exempt
+        null -> R.string.compatibility_status_unknown
     }
 
-    private fun batteryIntent(context: Context, manufacturer: Manufacturer): Intent? = when (manufacturer) {
+    @StringRes
+    private fun backgroundActivityStatus(restricted: Boolean?): Int = when (restricted) {
+        true -> R.string.compatibility_status_background_restricted
+        false -> R.string.compatibility_status_background_unrestricted
+        null -> R.string.compatibility_status_background_unknown
+    }
+
+    private fun backgroundActivityIntent(context: Context, manufacturer: Manufacturer): Intent? = when (manufacturer) {
         Manufacturer.XIAOMI -> Intent().setClassName(
             "com.miui.powerkeeper", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity")
             .putExtra("package_name", context.packageName)
@@ -141,7 +154,6 @@ object DeviceCompatibilityHelper {
         // Samsung 官方公布的“从不休眠的应用”入口；旧 One UI 不支持时回退应用详情。
         Manufacturer.SAMSUNG -> Intent("com.samsung.android.sm.ACTION_OPEN_CHECKABLE_LISTACTIVITY")
             .setPackage("com.samsung.android.lool").putExtra("activity_type", 2)
-        Manufacturer.OTHER -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         else -> null
     }
 
@@ -222,4 +234,4 @@ data class PermissionGuideItem(
     @param:StringRes val statusRes: Int? = null,
 )
 
-enum class PermissionGuideId { BATTERY_OPTIMIZATION, AUTO_START, MANUFACTURER_POPUP }
+enum class PermissionGuideId { BATTERY_OPTIMIZATION, BACKGROUND_ACTIVITY, AUTO_START, MANUFACTURER_POPUP }

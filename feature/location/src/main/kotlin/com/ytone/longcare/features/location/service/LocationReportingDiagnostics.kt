@@ -1,7 +1,9 @@
 package com.ytone.longcare.features.location.service
 
 import android.os.SystemClock
+import com.ytone.longcare.common.diagnostics.locationTimeDiagnostic
 import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.domain.location.LocationQuality
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.model.LocationResult
 
@@ -28,6 +30,7 @@ internal class LocationReportingDiagnostics(
     private var sourceRepeatCount = 0L
     private var apiErrorCode: Int? = null
     private var apiErrorType: String? = null
+    private var apiErrorClassName: String? = null
     private var lastApiFailure: String? = null
     private var qualityReason: String? = null
     private var gateReason: String? = null
@@ -79,6 +82,7 @@ internal class LocationReportingDiagnostics(
         // Failure classes remain visible in the next aggregate without one remote exception per point.
         apiErrorCode = errorCode
         apiErrorType = error?.javaClass?.simpleName
+        apiErrorClassName = error?.javaClass?.name
         if (!hasReportedIssue || due()) {
             val stage = if (hasReportedIssue) "summary" else "first"
             hasReportedIssue = true
@@ -137,6 +141,7 @@ internal class LocationReportingDiagnostics(
     private fun report(type: LocationEventTracker.EventType, stage: String, error: Throwable? = null,
         successGapMs: Long? = null, requestMs: Long? = null, sample: LocationResult? = lastSample) {
         val now = elapsedRealtime()
+        val wallNow = System.currentTimeMillis()
         val rawAge = lastSample?.receivedElapsedRealtime?.takeIf { it > 0L }?.let { (now - it).coerceAtLeast(0L) }
         val gap = successGap(now)
         val resumed = type == LocationEventTracker.EventType.API_UPLOAD_RESUMED
@@ -163,15 +168,18 @@ internal class LocationReportingDiagnostics(
             "successGapMs" to (successGapMs ?: gap),
             "maxSuccessGapMs" to maxSuccessGap,
             "observedMs" to (now - startedAt).coerceAtLeast(0L),
-            "rawGapMs" to rawAge,
             "requestMs" to (requestMs ?: pendingAt?.let { (now - it).coerceAtLeast(0L) }),
-            "sourceAgeMs" to sample?.sourceElapsedRealtime?.takeIf { it > 0L && it <= now }?.let { now - it },
-            "sampleAgeMs" to sample?.takeIf { it.locationTime > 0L && it.receivedAt >= it.locationTime }
-                ?.let { it.receivedAt - it.locationTime + (now - it.receivedElapsedRealtime).coerceAtLeast(0L) },
+            "time" to sample?.let { locationTimeDiagnostic(it, wallNow, now,
+                LocationQuality.timeIssue(it, wallNow, now)?.name) },
             "accuracy" to sample?.accuracy?.takeIf { it.isFinite() },
             "locationType" to sample?.locationType,
             "sdkErrorCode" to sample?.errorCode, "qualityReason" to qualityReason,
-            "apiFailure" to lastApiFailure?.let { "$it,code=${apiErrorCode ?: "?"},type=${apiErrorType ?: "?"}" },
+            "apiFailure" to lastApiFailure?.let {
+                // A contemporaneous Throwable already supplies the exact class as errorType.
+                // Keep type in later aggregates without that Throwable; do not lose the cause.
+                "$it,code=${apiErrorCode ?: "?"}" + if (error != null && error.javaClass.name == apiErrorClassName)
+                    "" else ",type=${apiErrorType ?: "?"}"
+            },
             "maxTickGapMs" to maxTickGap, "maxSleepGapMs" to maxSleepGap,
             // Fixed labels and lifetime counters fit one bounded scalar; differences give window counts.
             "counts" to "cb=$callbackCount,rej=$rejectedCount,ok=$successCount,fail=$failureCount,cancel=$cancelledCount,reuse=$sourceRepeatCount",
@@ -187,6 +195,7 @@ internal class LocationReportingDiagnostics(
         lastApiFailure = null
         apiErrorCode = null
         apiErrorType = null
+        apiErrorClassName = null
         runCatching {
             if (error != null || type == LocationEventTracker.EventType.API_UPLOAD_BUSINESS_ERROR) {
                 LocationEventTracker.trackError(type, error, extras, userId)

@@ -1,0 +1,7 @@
+{
+  "startElapsedRealtime": 989146190,
+  "durationMs": 120000,
+  "device": "STK-L21",
+  "connection": "USB connected",
+  "scope": "real AMap raw callbacks and local upload counters, no care backend"
+}

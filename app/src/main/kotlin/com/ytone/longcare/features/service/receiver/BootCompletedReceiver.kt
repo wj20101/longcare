@@ -1,8 +1,10 @@
 package com.ytone.longcare.features.service.receiver
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -10,6 +12,7 @@ import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.service.ServiceTimeNotificationManager
+import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.service.storage.PendingOrder
 import com.ytone.longcare.features.service.storage.PendingOrdersStorage
 import dagger.hilt.android.AndroidEntryPoint
@@ -28,6 +31,9 @@ private const val SESSION_RESOLUTION_TIMEOUT_MS = 5_000L
  */
 @AndroidEntryPoint
 class BootCompletedReceiver : BroadcastReceiver() {
+
+    @Inject
+    lateinit var countdownNotificationManager: CountdownNotificationManager
 
     @Inject
     lateinit var serviceTimeNotificationManager: ServiceTimeNotificationManager
@@ -49,7 +55,9 @@ class BootCompletedReceiver : BroadcastReceiver() {
         logI("收到设备重启完成广播: ${intent.action}")
         
         // 验证广播Action
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
+        val exactPermissionGranted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
+        if (!exactPermissionGranted && intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
             intent.action != "android.intent.action.QUICKBOOT_POWERON") {
             logE("收到非重启相关的广播: ${intent.action}")
@@ -77,6 +85,13 @@ class BootCompletedReceiver : BroadcastReceiver() {
                     logI("用户未登录，跳过通知恢复")
                     return@launch
                 }
+
+                countdownNotificationManager.restorePendingCountdownAlarm(
+                    canRestore = { privacyConsentManager.isPrivacyConsented },
+                    requireExactAlarm = exactPermissionGranted,
+                )
+                // Exact-alarm grant only restores the ownership-checked countdown record.
+                if (exactPermissionGranted) return@launch
 
                 val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
                 if (pendingOrders.isEmpty()) {

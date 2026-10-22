@@ -47,6 +47,9 @@ internal suspend fun executeEndOrderRequest(
                 serviceOrderLifecycle.onOrderEnded(orderKey.orderId)
                 completionDelegate.cleanupResources(orderKey)
             }
+            // Local cleanup deliberately finishes non-cancellably, but a detached/changed
+            // workflow must not receive this old request's success afterwards.
+            currentCoroutineContext().ensureActive()
             uiState.value = NfcSignInUiState.Success(
                 endOrderSuccessData = EndOrderSuccessData(
                     trueServiceTime = result.data.trueServiceTime

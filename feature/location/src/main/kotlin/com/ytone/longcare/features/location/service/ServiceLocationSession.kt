@@ -2,6 +2,7 @@ package com.ytone.longcare.features.location.service
 
 import android.os.SystemClock
 import com.ytone.longcare.common.utils.logI
+import com.ytone.longcare.domain.location.LocationQuality
 import com.ytone.longcare.features.location.reporting.LocationReportingSession
 import com.ytone.longcare.features.location.reporting.LocationSampleEvaluator
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
@@ -216,11 +217,13 @@ internal class ServiceLocationSession(
                             val rejection = when {
                                 !synchronizeGate() -> "sampling_paused"
                                 pending.authorizationVersion != authorizationVersion -> "authorization_changed"
-                                location.receivedElapsedRealtime < samplingEpoch -> "before_resume"
-                                // A new callback can still contain the SDK's pre-resume source point.
-                                location.sourceElapsedRealtime > 0L && location.sourceElapsedRealtime < samplingEpoch -> "source_before_resume"
-                                candidate != null && location.locationTime < requireNotNull(candidate).locationTime -> "older_candidate"
-                                else -> evaluator.rejection(location)?.name
+                                else -> evaluator.rejection(location)?.name ?: when {
+                                    // The same source anchor handles queued callbacks and unknown-source fallback.
+                                    LocationQuality.sampleElapsedRealtime(location) < samplingEpoch -> "before_resume"
+                                    candidate != null && LocationQuality.sampleElapsedRealtime(location) <
+                                        LocationQuality.sampleElapsedRealtime(requireNotNull(candidate)) -> "older_candidate"
+                                    else -> null
+                                }
                             }
                             diagnostics.onCandidate(rejection)
                             if (rejection == null) candidate = location

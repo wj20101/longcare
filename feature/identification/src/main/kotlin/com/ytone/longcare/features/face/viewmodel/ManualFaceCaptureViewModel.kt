@@ -35,8 +35,12 @@ class ManualFaceCaptureViewModel @Inject constructor(
         applyTransition(ManualFaceCaptureStateTransitions.onCameraPermissionChanged(_uiState.value, granted))
     }
 
-    fun startCapture() {
+    fun startCapture(): Boolean {
+        // Clicks can arrive before Compose renders the loading state.
+        if (!_uiState.value.cameraPermissionGranted || _uiState.value.isLoading ||
+            _uiState.value.capturedPhoto != null) return false
         applyTransition(ManualFaceCaptureStateTransitions.onStartCapture(_uiState.value))
+        return true
     }
 
     fun onPhotoCaptured(bitmap: Bitmap) {

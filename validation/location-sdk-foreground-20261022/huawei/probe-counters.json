@@ -1,0 +1,133 @@
+{
+  "before-interrupt-probe.xml": {
+    "httpRequests": "6",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600675678",
+    "sdkForeground": "true",
+    "uploads": "6"
+  },
+  "checkout-action-probe.xml": {
+    "httpRequests": "6",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600675678",
+    "sdkForeground": "true",
+    "uploads": "6"
+  },
+  "ended-observed-probe.xml": {
+    "httpRequests": "10",
+    "clients": "3",
+    "realSource": "true",
+    "orderId": "9000002",
+    "boots": "4",
+    "orderEnded": "true",
+    "lastUpload": "1792601345127",
+    "sdkForeground": "true",
+    "uploads": "10"
+  },
+  "foreground-ready-probe.xml": {
+    "httpRequests": "1",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600352657",
+    "sdkForeground": "true",
+    "uploads": "1"
+  },
+  "home-observed-probe.xml": {
+    "httpRequests": "3",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600446078",
+    "sdkForeground": "true",
+    "uploads": "3"
+  },
+  "home-probe.xml": {
+    "httpRequests": "2",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600384167",
+    "sdkForeground": "true",
+    "uploads": "2"
+  },
+  "lock-probe.xml": {
+    "httpRequests": "4",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600477537",
+    "sdkForeground": "true",
+    "uploads": "4"
+  },
+  "locked-observed-probe.xml": {
+    "httpRequests": "5",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "lastUpload": "1792600510981",
+    "sdkForeground": "true",
+    "uploads": "5"
+  },
+  "start-probe.xml": {
+    "httpRequests": "0",
+    "clients": "0",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "1",
+    "orderEnded": "false",
+    "sdkForeground": "true",
+    "uploads": "0"
+  },
+  "sticky-restored-probe.xml": {
+    "httpRequests": "6",
+    "clients": "1",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "2",
+    "orderEnded": "false",
+    "lastUpload": "1792600675678",
+    "sdkForeground": "true",
+    "uploads": "6"
+  },
+  "switched-order-probe.xml": {
+    "httpRequests": "9",
+    "clients": "3",
+    "realSource": "true",
+    "orderId": "9000002",
+    "boots": "4",
+    "orderEnded": "false",
+    "lastUpload": "1792601253038",
+    "sdkForeground": "true",
+    "uploads": "9"
+  },
+  "visible-restored-probe.xml": {
+    "httpRequests": "8",
+    "clients": "2",
+    "realSource": "true",
+    "orderId": "9000001",
+    "boots": "3",
+    "orderEnded": "false",
+    "lastUpload": "1792601228920",
+    "sdkForeground": "true",
+    "uploads": "8"
+  }
+}

@@ -164,6 +164,9 @@ class HomeDeviceStatusCardTest {
         val resumedResponse = CompletableDeferred<Unit>()
         val session = object : UserSessionRepository {
             override val sessionState = MutableStateFlow<SessionState>(SessionState.LoggedIn(User(userIdentity = 1)))
+            // This UI/probe fake never authenticates real network requests.
+            override val sessionSnapshot = kotlinx.coroutines.flow.MutableStateFlow(com.ytone.longcare.model.UserSessionSnapshot(0L, null))
+            override suspend fun logoutIfCurrent(generation: Long): Long? = null
             override suspend fun login(user: User) { sessionState.value = SessionState.LoggedIn(user) }
             override suspend fun updateUser(user: User) = login(user)
             override suspend fun logout() { sessionState.value = SessionState.LoggedOut }

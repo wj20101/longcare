@@ -7,6 +7,7 @@ import com.ytone.longcare.common.network.ApiRequestException
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.network.ApiResultCallAdapterFactory
 import com.ytone.longcare.common.network.SessionInvalidation
+import com.ytone.longcare.common.network.RequestSessionGeneration
 import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.common.network.TencentApiResultCallAdapterFactory
@@ -92,6 +93,15 @@ class ApiResultCallAdapterIntegrationTest {
             api.silentExpired(),
         )
         assertEquals(listOf("登录状态无效", "登录过期"), handler.reasons)
+        assertEquals(listOf(1L, 1L), handler.generations)
+    }
+
+    @Test
+    fun `unauthenticated response cannot invalidate a login established after dispatch`() = runTest {
+        val handler = RecordingSessionInvalidationHandler()
+        val api = createStandardApi(handler, requestGeneration = null)
+        assertEquals(ApiResult.Failure(3002, "登录过期"), api.expired())
+        assertTrue(handler.reasons.isEmpty())
     }
 
     @Test
@@ -164,8 +174,9 @@ class ApiResultCallAdapterIntegrationTest {
 
     private fun createStandardApi(
         handler: SessionInvalidationHandler,
+        requestGeneration: Long? = 1L,
     ): StandardAdapterTestApi =
-        retrofitBuilder()
+        retrofitBuilder(requestGeneration)
             .addCallAdapterFactory(ApiResultCallAdapterFactory(handler))
             .build()
             .create(StandardAdapterTestApi::class.java)
@@ -176,7 +187,7 @@ class ApiResultCallAdapterIntegrationTest {
             .build()
             .create(TencentAdapterTestApi::class.java)
 
-    private fun retrofitBuilder(): Retrofit.Builder {
+    private fun retrofitBuilder(requestGeneration: Long? = 1L): Retrofit.Builder {
         val moshi =
             Moshi.Builder()
                 .add(Unit::class.java, UnitJsonAdapter)
@@ -184,7 +195,7 @@ class ApiResultCallAdapterIntegrationTest {
                 .build()
         val client =
             OkHttpClient.Builder()
-                .addInterceptor(FakeResponseInterceptor())
+                .addInterceptor(FakeResponseInterceptor(requestGeneration))
                 .build()
         return Retrofit.Builder()
             .baseUrl("https://example.test/")
@@ -266,15 +277,17 @@ private class RecordingSessionInvalidationHandler : SessionInvalidationHandler {
     override val invalidations: StateFlow<SessionInvalidation?> =
         MutableStateFlow(null)
     val reasons = mutableListOf<String>()
+    val generations = mutableListOf<Long>()
 
-    override fun invalidate(reason: String) {
+    override fun invalidate(reason: String, generation: Long) {
         reasons += reason
+        generations += generation
     }
 
-    override fun consume(id: Long) = Unit
+    override fun consume(id: Long): Boolean = false
 }
 
-private class FakeResponseInterceptor : Interceptor {
+private class FakeResponseInterceptor(private val requestGeneration: Long?) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val path = chain.request().url.encodedPath.removePrefix("/")
         if (path == "network-error") {
@@ -371,7 +384,8 @@ private class FakeResponseInterceptor : Interceptor {
             }
 
         return Response.Builder()
-            .request(chain.request())
+            .request(chain.request().newBuilder()
+                .tag(RequestSessionGeneration::class.java, requestGeneration?.let(::RequestSessionGeneration)).build())
             .protocol(Protocol.HTTP_1_1)
             .code(code)
             .message(if (code == 200) "OK" else "Service Unavailable")

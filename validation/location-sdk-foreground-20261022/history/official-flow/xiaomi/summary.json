@@ -1,0 +1,203 @@
+{
+  "device": "xiaomi",
+  "inputFiles": [
+    "background-location-probe.jsonl"
+  ],
+  "traceRows": 69,
+  "duplicatesRemoved": 0,
+  "malformedRows": 0,
+  "captureStartElapsedRealtime": 2940803480,
+  "firstTraceElapsedRealtime": 2940990876,
+  "lastTraceElapsedRealtime": 2941704425,
+  "scope": "Local isolated repository counters only; no nursing backend request or geographic ground truth verification. Minute bucket coverage alone does not establish a rolling <=60s success gap.",
+  "wholeRunCallbacks": {
+    "raw": 10,
+    "sdkSuccess": 10,
+    "uniquePositiveSourceTicks": 9
+  },
+  "actions": [
+    {
+      "start": 2940990885,
+      "end": 2940991771,
+      "durationMs": 886,
+      "pid": 31968,
+      "clientAtStart": null,
+      "clientAtEnd": null,
+      "outcome": "success",
+      "reason": null,
+      "accuracyMeters": 61
+    },
+    {
+      "start": 2941531406,
+      "end": 2941534246,
+      "durationMs": 2840,
+      "pid": 31968,
+      "clientAtStart": 2,
+      "clientAtEnd": 2,
+      "outcome": "success",
+      "reason": null,
+      "accuracyMeters": 39
+    }
+  ],
+  "allHttpEndsByOrderId": {
+    "9000001": {
+      "success": 7
+    }
+  },
+  "normalEndObservations": [
+    {
+      "orderId": 9000001,
+      "endedAt": 2941704235,
+      "observedThrough": 2941704425,
+      "laterHttpEnds": [],
+      "localSuccessAfterEnd": 0,
+      "observationDurationMs": 190
+    }
+  ],
+  "allPidSequence": [
+    {
+      "at": 2940990876,
+      "value": 31968
+    },
+    {
+      "at": 2941595878,
+      "value": 32639
+    }
+  ],
+  "allClientSequence": [
+    {
+      "at": 2940991039,
+      "value": 1,
+      "pid": 31968
+    },
+    {
+      "at": 2941009863,
+      "value": 2,
+      "pid": 31968
+    },
+    {
+      "at": 2941596073,
+      "value": 3,
+      "pid": 32639
+    }
+  ],
+  "unplugWindow": {
+    "startInclusive": 2941107816,
+    "endExclusive": 2941407816,
+    "durationMs": 300000,
+    "rawCallbacks": 0,
+    "sdkSuccessCallbacks": 0,
+    "nullCallbacks": 0,
+    "sdkErrorCodes": {},
+    "uniquePositiveSourceTicks": 0,
+    "uniquePositiveSuccessfulSourceTicks": 0,
+    "unseenPositiveSuccessSourceTicks": 0,
+    "positiveSuccessfulSourceAgeMsRange": null,
+    "localHttpSuccess": 0,
+    "buckets": [
+      {
+        "startInclusive": 2941107816,
+        "endExclusive": 2941167816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941167816,
+        "endExclusive": 2941227816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941227816,
+        "endExclusive": 2941287816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941287816,
+        "endExclusive": 2941347816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2941347816,
+        "endExclusive": 2941407816,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      }
+    ],
+    "allCompleteMinuteBucketsHaveLocalSuccess": false,
+    "boundaryInclusiveMaxGapMs": {
+      "rawCallback": 300000,
+      "sdkSuccessCallback": 300000,
+      "unseenPositiveSuccessSourceTick": 300000,
+      "localHttpSuccess": 300000
+    },
+    "pidSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2941069804,
+        "value": 31968
+      }
+    ],
+    "clientSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2941069804,
+        "value": 2,
+        "pid": 31968
+      }
+    ],
+    "clientCreatesInWindow": [],
+    "traceBracketsWholeWindow": true,
+    "cpu": {
+      "windowCpuSleepMs": null,
+      "note": "Bounds use covering trace endpoints and millisecond clocks; no exact sleep onset, duration or cause is inferred.",
+      "coveringTraceElapsedMs": 410484,
+      "coveringTraceUptimeMs": 35560,
+      "coveringTraceSuspendEstimateMs": 374924,
+      "coveringStart": 2941069804,
+      "coveringEnd": 2941480288,
+      "windowSuspendLowerBoundMs": 264440,
+      "windowSuspendUpperBoundMs": 300000
+    },
+    "mappingUncertaintyMs": 51.96
+  },
+  "verifiedScenarios": {
+    "stickyRecovery": {
+      "fromPreKillSnapshotServiceCreateMs": 2388,
+      "fromPreKillSnapshotFirstLocalSuccessMs": 3285,
+      "timingNote": "Includes command dispatch overhead; not an exact timestamp of kill delivery.",
+      "oldPid": 31968,
+      "newPid": 32639,
+      "orderId": 9000001
+    },
+    "endObservation": {
+      "endObservationMs": 97060,
+      "counterUnchanged": true,
+      "noForegroundService": true,
+      "noRealOrderRecovery": true,
+      "realDataStoreUnchanged": true
+    },
+    "cleanup": {
+      "realDataStoreUnchanged": true,
+      "noRealRecovery": true,
+      "probePreferencesRestored": true,
+      "privateTraceFilesRestored": true,
+      "servicesEmpty": true,
+      "processAbsent": true,
+      "noExperimentalWakeLock": true,
+      "screen_off_timeoutUnchanged": true,
+      "auto_timeUnchanged": true,
+      "auto_time_zoneUnchanged": true
+    }
+  }
+}

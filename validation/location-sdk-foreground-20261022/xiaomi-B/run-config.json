@@ -1,0 +1,19 @@
+{
+  "sdkForeground": true,
+  "oemPolicy": "unrestricted_by_user_confirmation",
+  "oemProof": "user-confirmed-oem-unrestricted; original screenshot retained locally",
+  "baselinePolicy": {
+    "hostWall": 1792600767.4161322,
+    "hostMonotonic": 451531.664086083,
+    "uid": 10216,
+    "batteryExemptObservedInLiveWhitelist": true,
+    "providers": "network",
+    "powerSaveSetting": "0",
+    "dataSaverRestricted": "false",
+    "installedApkSha256ByFile": {
+      "base.apk": "f9eb5bdcf67cb9ec30bd383a32a5bb33cf462dcf2718a0fdd3964dbabb2b5ed8"
+    },
+    "foregroundServices": []
+  },
+  "compareTo": "xiaomi-A"
+}

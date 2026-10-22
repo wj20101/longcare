@@ -39,6 +39,8 @@ internal class NfcScanWorkflowDelegate(
     private var retryScan: PendingNfcScan? = null
     private var retryBinding: PendingNfcData? = null
     private var confirmedBindingOrder: OrderKey? = null
+    private var workflowIdentity: NfcWorkflowIdentity? = null
+    val hasAttachedCallbacks: Boolean get() = nfcEventJob != null
 
     fun observeScanEvents(
         orderKey: OrderKey,
@@ -46,7 +48,10 @@ internal class NfcScanWorkflowDelegate(
         endOderInfo: EndOderInfo?,
         onLocationRequest: suspend () -> LocationRequestResult,
     ) {
-        clear()
+        val identity = NfcWorkflowIdentity(orderKey, signInMode, endOderInfo)
+        if (workflowIdentity != identity) clear()
+        else if (hasAttachedCallbacks) detach()
+        workflowIdentity = identity
         nfcEventJob = scope.launch {
             appEventBus.events.collect { event ->
                 readerUiState.value = reduceReaderUiState(scanMode.value, event, readerUiState.value)
@@ -161,6 +166,7 @@ internal class NfcScanWorkflowDelegate(
             userId = userId, locationFields = locationFields)
         // 清除自动重试动作；网络结果未知时必须重新核对客户绑定状态。
         retryBinding = null
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
         val response = orderRepository.bindLocation(data.orderKey.orderId, data.tagId,
             location.longitude.toString(), location.latitude.toString())
         currentCoroutineContext().ensureActive()
@@ -202,9 +208,32 @@ internal class NfcScanWorkflowDelegate(
         }
     }
 
-    fun clear() {
+    /** Drop Activity-bound work, not already confirmed workflow state, during re-creation. */
+    fun detach() {
         nfcEventJob?.cancel()
+        nfcEventJob = null
         pendingActionJob?.cancel()
+        pendingActionJob = null
+        val loading = uiState.value as? NfcSignInUiState.Loading ?: return
+        if (loading.reason == NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION) return
+        if (loading.reason == NfcLoadingReason.SUBMITTING) {
+            // A canceled HTTP call may already have reached the server. Never re-play it merely
+            // because a new Activity attaches; require the user to reconcile the order first.
+            pendingPermissionScan = null
+            retryScan = null
+            retryBinding = null
+            orderDelegate.resetState()
+            uiState.value = reportedNfcError(userMessages.submissionInterrupted)
+        } else {
+            // Location acquisition was canceled with the old Activity callback. Retain its tag /
+            // confirmed end-order parameters for an explicit fresh-location retry on the new UI.
+            uiState.value = reportedNfcError(userMessages.workflowInterrupted)
+        }
+    }
+
+    fun clear() {
+        detach()
+        workflowIdentity = null
         pendingNfcData.value = null
         pendingPermissionScan = null
         retryScan = null

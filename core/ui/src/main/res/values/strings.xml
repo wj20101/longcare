@@ -15,9 +15,10 @@
     <string name="common_close">关闭</string>
     <string name="background_settings_action">后台设置</string>
     <string name="background_settings_title">后台运行设置</string>
-    <string name="background_settings_description">按需调整以下设置，减少锁屏定位中断和提醒遗漏。</string>
+    <string name="background_settings_description">按需调整以下设置。未调整时，锁屏定位和提醒仍可能中断。</string>
     <string name="background_settings_open_description">前往%1$s</string>
-    <string name="background_settings_battery_summary">减少定位中断</string>
+    <string name="background_settings_battery_summary">核对系统电池优化</string>
+    <string name="background_settings_background_activity_summary">核对后台活动与休眠</string>
     <string name="background_settings_auto_start_summary">支持服务恢复</string>
     <string name="background_settings_popup_summary">核对锁屏提醒</string>
     <string name="background_settings_show_details">查看机型设置说明</string>

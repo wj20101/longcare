@@ -1,0 +1,252 @@
+{
+  "scope": "Read-only independent audit of three retained physical Xiaomi lock/unplug 300-second windows. No device operations or source edits. HTTP success is isolated local repository success, not nursing API delivery or surveyed geographic correctness.",
+  "groups": [
+    {
+      "group": "A",
+      "path": "build/location-official-flow/xiaomi",
+      "currentPersistedRows": 69,
+      "summaryRows": 69,
+      "summaryNeedsWholeRunRefresh": false,
+      "window": {
+        "startInclusive": 2941107816,
+        "endExclusive": 2941407816,
+        "durationMs": 300000,
+        "mappingUncertaintyMs": 51.96,
+        "persistedRowsInside": 1,
+        "rawCallbacks": 0,
+        "successfulLocalHttp": 0,
+        "minuteBucketsWithSuccess": 0,
+        "bracketed": true,
+        "pidBefore": 31968,
+        "pidAfter": 31968,
+        "clientBefore": 2,
+        "clientAfter": 2,
+        "clientsCreatedInWindow": 0
+      },
+      "cpu": {
+        "coveringElapsedMs": 410484,
+        "coveringUptimeMs": 35560,
+        "windowSuspendLowerBoundMs": 264440,
+        "windowSuspendUpperBoundMs": 300000,
+        "matchesPublishedBounds": true,
+        "mappingAdjustedConservativeLowerBoundMs": 264336.08
+      },
+      "policyObservedAtTraceBrackets": {
+        "batteryExemptBefore": false,
+        "batteryExemptAfter": false,
+        "traceObservedBatteryExemptValues": [
+          false
+        ],
+        "metadataBatteryExempt": null,
+        "contradiction": false
+      },
+      "samplingConfigMismatch": false,
+      "batteryHistory": {
+        "windowStartAfterResetMs": 20600.0,
+        "lightIdleBeginsAfterWindowStartMs": 180618.0,
+        "offAtReconnectAfterWindowStartMs": 368971.0,
+        "completeWindowBeforeRecharge": true,
+        "dischargingAndScreenOffObserved": true,
+        "cpuSuspendStartsBeforeLightIdle": true
+      },
+      "wallOffsetSpreadMs": 1,
+      "samplingConfigEvidence": {
+        "lastOptionBeforeWindow": {
+          "elapsedRealtime": 2941009872,
+          "client": 2,
+          "intervalMs": 30000,
+          "once": false,
+          "httpTimeoutMs": 30000
+        },
+        "optionWritesInsideWindow": 0,
+        "note": "Foreground action option changes outside this fixed window are excluded."
+      }
+    },
+    {
+      "group": "B",
+      "path": "build/location-power-policy/xiaomi",
+      "currentPersistedRows": 29,
+      "summaryRows": 29,
+      "summaryNeedsWholeRunRefresh": false,
+      "window": {
+        "startInclusive": 2942704086,
+        "endExclusive": 2943004086,
+        "durationMs": 300000,
+        "mappingUncertaintyMs": 53.92,
+        "persistedRowsInside": 0,
+        "rawCallbacks": 0,
+        "successfulLocalHttp": 0,
+        "minuteBucketsWithSuccess": 0,
+        "bracketed": true,
+        "pidBefore": 1936,
+        "pidAfter": 1936,
+        "clientBefore": 1,
+        "clientAfter": 1,
+        "clientsCreatedInWindow": 0
+      },
+      "cpu": {
+        "coveringElapsedMs": 421374,
+        "coveringUptimeMs": 24166,
+        "windowSuspendLowerBoundMs": 275834,
+        "windowSuspendUpperBoundMs": 300000,
+        "matchesPublishedBounds": true,
+        "mappingAdjustedConservativeLowerBoundMs": 275726.16
+      },
+      "policyObservedAtTraceBrackets": {
+        "batteryExemptBefore": true,
+        "batteryExemptAfter": true,
+        "traceObservedBatteryExemptValues": [
+          false,
+          true
+        ],
+        "metadataBatteryExempt": true,
+        "contradiction": false
+      },
+      "samplingConfigMismatch": false,
+      "batteryHistory": {
+        "windowStartAfterResetMs": 23870.0,
+        "lightIdleBeginsAfterWindowStartMs": 159328.0,
+        "offAtReconnectAfterWindowStartMs": 384435.0,
+        "completeWindowBeforeRecharge": true,
+        "dischargingAndScreenOffObserved": true,
+        "cpuSuspendStartsBeforeLightIdle": true
+      },
+      "wallOffsetSpreadMs": 1,
+      "samplingConfigEvidence": {
+        "lastOptionBeforeWindow": {
+          "elapsedRealtime": 2942611642,
+          "client": 1,
+          "intervalMs": 30000,
+          "once": false,
+          "httpTimeoutMs": 30000
+        },
+        "optionWritesInsideWindow": 0,
+        "note": "Foreground action option changes outside this fixed window are excluded."
+      }
+    },
+    {
+      "group": "C",
+      "path": "build/location-power-policy/xiaomi-oem",
+      "currentPersistedRows": 26,
+      "summaryRows": 19,
+      "summaryNeedsWholeRunRefresh": true,
+      "window": {
+        "startInclusive": 2943396522,
+        "endExclusive": 2943696522,
+        "durationMs": 300000,
+        "mappingUncertaintyMs": 55.29,
+        "persistedRowsInside": 0,
+        "rawCallbacks": 0,
+        "successfulLocalHttp": 0,
+        "minuteBucketsWithSuccess": 0,
+        "bracketed": true,
+        "pidBefore": 3223,
+        "pidAfter": 3223,
+        "clientBefore": 1,
+        "clientAfter": 1,
+        "clientsCreatedInWindow": 0
+      },
+      "cpu": {
+        "coveringElapsedMs": 518262,
+        "coveringUptimeMs": 30007,
+        "windowSuspendLowerBoundMs": 269993,
+        "windowSuspendUpperBoundMs": 300000,
+        "matchesPublishedBounds": true,
+        "mappingAdjustedConservativeLowerBoundMs": 269882.42
+      },
+      "policyObservedAtTraceBrackets": {
+        "batteryExemptBefore": true,
+        "batteryExemptAfter": true,
+        "traceObservedBatteryExemptValues": [
+          true
+        ],
+        "metadataBatteryExempt": false,
+        "contradiction": true
+      },
+      "samplingConfigMismatch": false,
+      "batteryHistory": {
+        "windowStartAfterResetMs": 17306.0,
+        "lightIdleBeginsAfterWindowStartMs": 165558.0,
+        "offAtReconnectAfterWindowStartMs": 483544.0,
+        "completeWindowBeforeRecharge": true,
+        "dischargingAndScreenOffObserved": true,
+        "cpuSuspendStartsBeforeLightIdle": true
+      },
+      "wallOffsetSpreadMs": 1,
+      "samplingConfigEvidence": {
+        "lastOptionBeforeWindow": {
+          "elapsedRealtime": 2943272660,
+          "client": 1,
+          "intervalMs": 30000,
+          "once": false,
+          "httpTimeoutMs": 30000
+        },
+        "optionWritesInsideWindow": 0,
+        "note": "Foreground action option changes outside this fixed window are excluded."
+      }
+    }
+  ],
+  "artifactEvidence": {
+    "BAndCRecordedSameInstalledApkSha256": true,
+    "sha256": "3e48ebc6cd5c0b310d84cf7e61605c47b557239e0c01cdbccdbfe930e9098ca4",
+    "AHasNoPostInstallApkHashInRetainedFolder": true,
+    "note": "A original-state package dump predates the 23:14 installation and cannot establish A was a different APK. Exact A binary equality is not independently established by retained hashes."
+  },
+  "GPSConfigurationEvidence": {
+    "BandCRecordedProviders": "network",
+    "AEnabledProviderDump": "fused/passive enabled; app requested GPS/30s, no enabled GPS provider listed",
+    "note": "A requested GPS listener is not evidence GPS provider was enabled. Do not generalize network-only indoor results to active GPS outdoors."
+  },
+  "contradictions": [
+    {
+      "group": "C",
+      "field": "batteryExempt",
+      "recordedManualMetadata": false,
+      "runtimeAndTerminalSystemEvidence": true,
+      "evidence": [
+        "xiaomi-oem/background-location-probe.jsonl: every observed trace true",
+        "xiaomi-oem/reconnected-deviceidle.txt: user whitelist com.ytone.longcare",
+        "xiaomi-oem/reconnected-power.txt: mDeviceIdleWhitelist includes10216",
+        "xiaomi-oem/reconnected-netpolicy.txt: power-save whitelist UID10216 true"
+      ],
+      "implication": "Cannot describe C as OEM-only independent from system exemption. Report OEM unrestricted with observed system exemption; both relaxed still failed this one window. No evidence establishes the source of initial false metadata or when/how exemption changed."
+    }
+  ],
+  "safeConclusions": [
+    "All three observed windows fail the minute-success requirement: 0 successful isolated uploads in five complete minutes. This is conclusive regardless of exact event distribution.",
+    "No client or process replacement occurred inside any fixed window.",
+    "Substantial CPU suspend occurred and light idle appears later; neither observation alone proves the SDK, application code, OEM or Doze was the unique cause.",
+    "B and C are not evidence that battery settings never help; only that these observed configurations were insufficient in this device/environment."
+  ],
+  "nextComparisonConstraints": [
+    "No additional physical comparison is proposed or initiated; user stopped further trials.",
+    "OEM unrestricted and effective system exemption remain enabled by latest user instruction; do not force their removal for a control group.",
+    "The phone remains network-only, isolated order/service/process are stopped, and probe preferences/real DataStore are restored."
+  ],
+  "initialFalseMetadataAnalysis": {
+    "provenCause": null,
+    "reason": "No retained raw start-whitelist output or parser code accompanies policy-C-start.json; an initial false label cannot establish effective runtime policy. C already reports batteryExempt=true on service_create before AMap client initialization, and terminal independent system dumps agree.",
+    "notEstablished": [
+      "The precise moment exemption became effective",
+      "Whether OEM selection modified the system whitelist",
+      "Whether a shell parser/output-format error produced false metadata",
+      "A persistent service, SDK or application bug causing the exemption difference"
+    ]
+  },
+  "finalPolicy": {
+    "status": "retained_unrestricted_by_latest_user_instruction",
+    "oemPolicy": "unrestricted",
+    "systemExemptionObserved": true,
+    "systemExemptionRemovalPlanned": false,
+    "providers": "network",
+    "powerSave": "0",
+    "servicesEmpty": true,
+    "appPid": null,
+    "probePreferencesRestored": true,
+    "dataStoreUnchanged": true,
+    "hasRecoveryOrder": false,
+    "hasRecoverySession": false,
+    "continuedPhysicalTrials": false,
+    "authoritativeFinalState": "build/location-power-policy/xiaomi-final-state.json"
+  }
+}

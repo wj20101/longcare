@@ -45,6 +45,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,6 +53,9 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowPowerManager
+import org.robolectric.shadows.ShadowSystemClock
+import java.time.Duration
 
 /** Actual Service lifecycle and session coordinator; only SDK, runtime conditions and HTTP are ports. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -73,24 +77,28 @@ class LocationTrackingServiceSamplingRecoveryTest {
         mockkObject(LocationEventTracker)
         every { LocationEventTracker.trackEvent(any(), any(), any(), any()) } answers { events += secondArg<Map<String, Any?>>() }
         withFixture {
+            val previousLock = ShadowPowerManager.getLatestWakeLock()
             start(ready = false)
             assertEquals("authorization_wait", events.single()["stage"])
             advanceTimeBy(90_000)
             runCurrent()
             verify(exactly = 0) { service.continuousAmapLocationManager.startContinuousLocation(any(), any()) }
             assertEquals(1, events.size)
+            assertSame(previousLock, ShadowPowerManager.getLatestWakeLock())
             manager.onOrderStarted(10)
             runCurrent()
             val finished = events.single { it["stage"] == "authorization_wait_finished" }
             assertEquals("order_ready", finished["reason"])
             assertEquals(90_000L, finished["waitMs"])
             assertEquals(1, subscriptions)
+            requireSamplingWakeLock()
         }
     }
 
     @Test fun `disabled system location pauses collection and resumes without another visible start`() = runTest {
         withFixture {
             start()
+            val activeLock = requireSamplingWakeLock()
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
 
@@ -98,6 +106,7 @@ class LocationTrackingServiceSamplingRecoveryTest {
             tick()
             assertEquals(1, subscriptions)
             assertFalse(samplingEnabled)
+            assertFalse(activeLock.isHeld)
             assertFalse(shadowOf(service).isStoppedBySelf)
             assertTrue(shadowOf(service).lastForegroundNotification != null)
             verify(exactly = 0) { controller.stop() }
@@ -106,6 +115,7 @@ class LocationTrackingServiceSamplingRecoveryTest {
             tick()
             assertEquals(1, subscriptions)
             assertTrue(samplingEnabled)
+            requireSamplingWakeLock()
             assertEquals(1, startedSubscriptions)
             sample()
             coVerify(exactly = 2) { service.locationRepository.addPosition(10, any(), any()) }
@@ -123,10 +133,29 @@ class LocationTrackingServiceSamplingRecoveryTest {
             }
             assertEquals(1, subscriptions)
             assertEquals(1, startedSubscriptions)
-            assertEquals(0, recoveries)
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
+        }
+    }
+
+    @Test fun `failed cadence reconciliation interrupts the service without repeated health retries`() = runTest {
+        withFixture {
+            start()
+            val activeLock = requireSamplingWakeLock()
+            coEvery { service.continuousAmapLocationManager.syncAppVisibility(any()) } throws
+                IllegalStateException("SDK cadence restore failed")
+
+            tick()
+
+            assertEquals(0, subscriptions)
+            assertEquals(LocationReportingStatus.INTERRUPTED, manager.status.value)
+            assertTrue(shadowOf(service).isStoppedBySelf)
+            assertFalse(activeLock.isHeld)
+            tick()
+            sample()
+            coVerify(exactly = 1) { service.continuousAmapLocationManager.syncAppVisibility(any()) }
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         }
     }
 
@@ -162,23 +191,20 @@ class LocationTrackingServiceSamplingRecoveryTest {
         }
     }
 
-    @Test fun `health checks retain a spent recovery budget after error and successful callbacks`() = runTest {
+    @Test fun `errors and successful callbacks do not change the subscription after long callback gaps`() = runTest {
         withFixture {
             start()
-            // The same owner's foreground action/previous collector already used its recovery.
-            recoveryAttempted = true
             repeat(8) { tick() }
-            assertEquals(0, recoveries)
             assertEquals(1, subscriptions)
             assertFalse(shadowOf(service).isStoppedBySelf)
 
             failure(LocationFailure.NETWORK, errorCode = 4)
             repeat(3) { tick() }
-            assertEquals(0, recoveries)
             sample()
             repeat(3) { tick() }
-            assertEquals(0, recoveries)
             assertEquals(1, subscriptions)
+            assertEquals(1, startedSubscriptions)
+            verify(exactly = 0) { controller.stop() }
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
         }
     }
@@ -203,9 +229,11 @@ class LocationTrackingServiceSamplingRecoveryTest {
     @Test fun `visible refresh cannot enable sampling while the current account is unresolved`() = runTest {
         withFixture {
             start()
+            val activeLock = requireSamplingWakeLock()
             users.value = SessionState.Unknown
             tick()
             assertFalse(samplingEnabled)
+            assertFalse(activeLock.isHeld)
             manager.onAppVisible()
             runCurrent()
             assertFalse(samplingEnabled)
@@ -253,97 +281,68 @@ class LocationTrackingServiceSamplingRecoveryTest {
         }
     }
 
-    @Test fun `continued silence after one rebuild keeps listening and a late sample resumes upload`() = runTest {
+    @Test fun `five minute callback silence retains the live subscription and a late sample resumes upload`() = runTest {
         withFixture {
             start()
-            repeat(8) { tick() }
-            assertEquals(1, recoveries)
+            repeat(10) { tick() }
             assertEquals(1, subscriptions)
+            assertEquals(1, startedSubscriptions)
             assertFalse(shadowOf(service).isStoppedBySelf)
+            assertEquals(LocationReportingStatus.LOCATING, manager.status.value)
             verify(exactly = 0) { controller.stop() }
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+            coVerify(exactly = 1) { service.continuousAmapLocationManager.setSamplingEnabled(any(), true) }
+            coVerify(exactly = 0) { service.continuousAmapLocationManager.setSamplingEnabled(any(), false) }
 
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
             verify(exactly = 1) { controller.start(any(), any(), 10) }
             repeat(3) { tick() }
-            assertEquals(1, recoveries)
             assertEquals(1, subscriptions)
+            assertEquals(1, startedSubscriptions)
             assertFalse(shadowOf(service).isStoppedBySelf)
         }
     }
 
-    @Test fun `battery exempt idle service repairs silence once and resumes correct uploads`() = runTest {
-        withFixture {
-            val power = shadowOf(service.getSystemService(PowerManager::class.java))
-            power.setIsDeviceIdleMode(true)
-            power.setIgnoringBatteryOptimizations(service.packageName, true)
-            start()
-            repeat(8) { tick() }
-            assertEquals(1, recoveries)
-            assertEquals(1, subscriptions)
-            assertTrue(shadowOf(service).lastForegroundNotification != null)
-            sample()
-            coVerify(exactly = 1) { service.locationRepository.addPosition(10, 31.0, 121.0) }
-            assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
-        }
-    }
+    @Test fun `idle entry and exit preserve the SDK subscription regardless of battery exemption`() = runTest {
+        for (exempt in listOf(false, true)) {
+            withFixture {
+                val power = shadowOf(service.getSystemService(PowerManager::class.java))
+                power.setIsDeviceIdleMode(true)
+                power.setIgnoringBatteryOptimizations(service.packageName, exempt)
+                start()
+                repeat(10) { tick() }
+                assertEquals(1, subscriptions)
+                assertEquals(1, startedSubscriptions)
+                assertTrue(shadowOf(service).lastForegroundNotification != null)
+                coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
 
-    @Test fun `restricted idle service waits without repeated SDK rebuilds then repairs on exit`() = runTest {
-        withFixture {
-            val power = shadowOf(service.getSystemService(PowerManager::class.java))
-            power.setIsDeviceIdleMode(true)
-            power.setIgnoringBatteryOptimizations(service.packageName, false)
-            start()
-            repeat(8) { tick() }
-            assertEquals(0, recoveries)
-            assertEquals(1, subscriptions)
-            power.setIsDeviceIdleMode(false)
-            tick()
-            assertEquals(1, recoveries)
-            sample()
-            coVerify(exactly = 1) { service.locationRepository.addPosition(10, 31.0, 121.0) }
-        }
-    }
-
-    @Test fun `synchronous callback during rebuild cannot grant another automatic rebuild`() = runTest {
-        withFixture {
-            coEvery { service.continuousAmapLocationManager.recoverStalledSampling(any()) } coAnswers {
-                if (recoveryAttempted || testScheduler.currentTime - lastCallback < 90_000L) false
-                else {
-                    recoveryAttempted = true
-                    recoveries += 1
-                    // The SDK can invoke its listener inside startLocation, before recovery returns.
-                    recordCallback()
-                    true
-                }
+                power.setIsDeviceIdleMode(false)
+                tick()
+                sample()
+                coVerify(exactly = 1) { service.locationRepository.addPosition(10, 31.0, 121.0) }
+                assertEquals(LocationReportingStatus.ACTIVE, manager.status.value)
+                assertEquals(1, startedSubscriptions)
+                verify(exactly = 1) { controller.start(any(), any(), 10) }
+                verify(exactly = 0) { controller.stop() }
             }
-            start()
-            repeat(3) { tick() }
-            assertEquals(1, recoveries)
-            assertEquals(1L, callbacks)
-            assertEquals(90_000L, lastCallback)
-
-            repeat(3) { tick() }
-            assertEquals(1, recoveries)
-            assertEquals(1L, callbacks)
-            assertEquals(90_000L, lastCallback)
-            assertEquals(1, subscriptions)
-            assertFalse(shadowOf(service).isStoppedBySelf)
-            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         }
     }
 
     @Test fun `permission loss stops collection and a later permission grant cannot revive the old collector`() = runTest {
         withFixture {
             start()
+            val activeLock = requireSamplingWakeLock()
             permission = false
             tick()
             assertEquals(0, subscriptions)
             assertTrue(shadowOf(service).isStoppedBySelf)
+            assertFalse(activeLock.isHeld)
             permission = true
             tick()
             assertEquals(0, subscriptions)
+            assertFalse(activeLock.isHeld)
             coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         }
     }
@@ -351,10 +350,12 @@ class LocationTrackingServiceSamplingRecoveryTest {
     @Test fun `privacy withdrawal terminates the active order collector`() = runTest {
         withFixture {
             start()
+            val activeLock = requireSamplingWakeLock()
             consent = false
             tick()
             assertEquals(0, subscriptions)
             assertTrue(shadowOf(service).isStoppedBySelf)
+            assertFalse(activeLock.isHeld)
             sample()
             coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
         }
@@ -363,15 +364,18 @@ class LocationTrackingServiceSamplingRecoveryTest {
     @Test fun `unknown login state pauses instead of ending the order and resumes when identity is confirmed`() = runTest {
         withFixture {
             start()
+            val activeLock = requireSamplingWakeLock()
             users.value = SessionState.Unknown
             tick()
             assertEquals(1, subscriptions)
             assertFalse(samplingEnabled)
+            assertFalse(activeLock.isHeld)
             assertFalse(shadowOf(service).isStoppedBySelf)
             users.value = SessionState.LoggedIn(user)
             tick()
             assertEquals(1, subscriptions)
             assertTrue(samplingEnabled)
+            requireSamplingWakeLock()
             assertEquals(1, startedSubscriptions)
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
@@ -382,27 +386,150 @@ class LocationTrackingServiceSamplingRecoveryTest {
     @Test fun `ending an order cancels its collector before a late callback can upload`() = runTest {
         withFixture {
             start()
+            val activeLock = requireSamplingWakeLock()
             manager.onOrderEnded(10)
             runCurrent()
             assertEquals(0, subscriptions)
+            assertFalse(activeLock.isHeld)
+            tick()
             sample()
             coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
             verify(exactly = 1) { controller.stop() }
         }
     }
 
+    @Test fun `active sampling renews the same bounded CPU lock only at the renewal deadline`() = runTest {
+        withFixture {
+            start()
+            val activeLock = requireSamplingWakeLock()
+            val wakeLock = shadowOf(activeLock)
+            assertFalse(wakeLock.isReferenceCounted)
+            assertEquals(1, wakeLock.timesHeld)
+            repeat(8) { sample() }
+            assertEquals("SDK callbacks must not acquire repeatedly", 1, wakeLock.timesHeld)
+
+            advanceTimeBy(119_999L)
+            runCurrent()
+            sample()
+            assertEquals(1, wakeLock.timesHeld)
+            advanceTimeBy(1L)
+            runCurrent()
+            assertSame(activeLock, requireSamplingWakeLock())
+            assertEquals(2, wakeLock.timesHeld)
+            repeat(8) { sample() }
+            assertEquals(2, wakeLock.timesHeld)
+
+            advanceTimeBy(120_000L)
+            runCurrent()
+            assertSame(activeLock, requireSamplingWakeLock())
+            assertEquals("Long orders renew beyond the first 180-second timeout", 3, wakeLock.timesHeld)
+            assertEquals(1, subscriptions)
+
+            manager.stopReporting()
+            runCurrent()
+            assertEquals(0, subscriptions)
+            assertFalse(activeLock.isHeld)
+        }
+    }
+
+    @Test fun `platform timeout releases the CPU lock if service health checks cannot run`() = runTest {
+        withFixture {
+            start()
+            val activeLock = requireSamplingWakeLock()
+            // Advance Android's clock alone: no coroutine health check can renew the lease.
+            ShadowSystemClock.advanceBy(Duration.ofMillis(179_999L))
+            assertTrue(activeLock.isHeld)
+            ShadowSystemClock.advanceBy(Duration.ofMillis(2L))
+            assertFalse(activeLock.isHeld)
+            assertEquals(1, shadowOf(activeLock).timesHeld)
+        }
+    }
+
+    @Test fun `switching order releases the old lock without old collector cleanup releasing the new one`() = runTest {
+        withFixture {
+            start()
+            val previousLock = requireSamplingWakeLock()
+            start(orderId = 11)
+            val currentLock = requireSamplingWakeLock()
+            if (previousLock !== currentLock) assertFalse(previousLock.isHeld)
+            assertEquals(2, startedSubscriptions)
+            runCurrent()
+            assertTrue(currentLock.isHeld)
+            sample()
+            coVerify(exactly = 0) { service.locationRepository.addPosition(10, any(), any()) }
+            coVerify(exactly = 1) { service.locationRepository.addPosition(11, any(), any()) }
+
+            manager.onOrderEnded(11)
+            runCurrent()
+            assertFalse(currentLock.isHeld)
+        }
+    }
+
+    @Test fun `removing the task releases its CPU lock and cannot resume on a late callback`() = runTest {
+        withFixture {
+            start()
+            val activeLock = requireSamplingWakeLock()
+            service.onTaskRemoved(null)
+            runCurrent()
+            assertFalse(activeLock.isHeld)
+            assertEquals(0, subscriptions)
+            assertTrue(shadowOf(service).isStoppedBySelf)
+            tick()
+            sample()
+            assertFalse(activeLock.isHeld)
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+        }
+    }
+
+    @Test fun `logout or account switch cancels the old collector without accepting late callbacks`() = runTest {
+        for (replacement in listOf<User?>(null, User(companyId = 1, accountId = 2, userId = 4))) {
+            withFixture {
+                start()
+                val activeLock = requireSamplingWakeLock()
+
+                users.value = replacement?.let { SessionState.LoggedIn(it) } ?: SessionState.LoggedOut
+                manager.setAccount(replacement?.let { LocationAccount(it.companyId, it.accountId, it.userId) })
+                runCurrent()
+                assertEquals(0, subscriptions)
+                assertFalse(activeLock.isHeld)
+                tick()
+                sample()
+                coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+                verify(exactly = 1) { controller.stop() }
+            }
+        }
+    }
+
+    @Test fun `service destruction cancels collection and rejects late callbacks`() = runTest {
+        withFixture {
+            start()
+            val activeLock = requireSamplingWakeLock()
+
+            service.onDestroy()
+            runCurrent()
+            assertEquals(0, subscriptions)
+            assertFalse(activeLock.isHeld)
+            tick()
+            sample()
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+        }
+    }
+
     @Test fun `sticky recreation with location disabled retains the order and resumes inside the existing service`() = runTest {
         withFixture {
+            val previousLock = ShadowPowerManager.getLatestWakeLock()
             enabled = false
             restore()
             assertEquals(1, subscriptions)
             assertFalse(samplingEnabled)
+            assertSame(previousLock, ShadowPowerManager.getLatestWakeLock())
             assertFalse(shadowOf(service).isStoppedBySelf)
             verify(exactly = 0) { controller.start(any(), any(), any()) }
 
             enabled = true
             tick()
             assertTrue(samplingEnabled)
+            requireSamplingWakeLock()
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             verify(exactly = 0) { controller.start(any(), any(), any()) }
@@ -433,11 +560,8 @@ class LocationTrackingServiceSamplingRecoveryTest {
         var consent = true
         var subscriptions = 0
         var startedSubscriptions = 0
-        var recoveries = 0
-        var recoveryAttempted = false
         var samplingEnabled = true
         var lastCallback = 0L
-        var callbacks = 0L
         private var owner = ""
         private var generation = 0L
         val service = Robolectric.buildService(LocationTrackingService::class.java).get()
@@ -463,6 +587,7 @@ class LocationTrackingServiceSamplingRecoveryTest {
                     every { isLocationServiceEnabled() } answers { enabled }
                 }
                 privacyConsentManager = mockk { every { isPrivacyConsented } answers { consent } }
+                foregroundStateVerifier = mockk { every { isForeground(any(), any()) } returns true }
             }
             every { service.locationClock.currentTimeMillis() } answers { WALL_START + testScheduler.currentTime }
             every { service.locationClock.elapsedRealtime() } answers { testScheduler.currentTime }
@@ -478,40 +603,35 @@ class LocationTrackingServiceSamplingRecoveryTest {
             }
             coEvery { service.continuousAmapLocationManager.setSamplingEnabled(any(), any()) } coAnswers {
                 val enabled = secondArg<Boolean>()
-                if (samplingEnabled != enabled) {
-                    recoveryAttempted = false
-                    if (enabled) lastCallback = testScheduler.currentTime
-                }
+                if (!samplingEnabled && enabled) lastCallback = testScheduler.currentTime
                 samplingEnabled = enabled
             }
             coEvery { service.continuousAmapLocationManager.isSamplingStalled(any()) } coAnswers {
                 samplingEnabled && testScheduler.currentTime - lastCallback >= 90_000L
             }
-            coEvery { service.continuousAmapLocationManager.recoverStalledSampling(any()) } coAnswers {
-                if (recoveryAttempted || testScheduler.currentTime - lastCallback < 90_000L) false
-                else {
-                    recoveryAttempted = true
-                    recoveries += 1
-                    lastCallback = testScheduler.currentTime
-                    true
-                }
-            }
             coEvery { service.locationRepository.addPosition(any(), any(), any()) } returns ApiResult.Success(Unit)
             manager.setAccount(LocationAccount(1, 2, 3))
         }
 
-        fun start(ready: Boolean = true) {
+        fun start(ready: Boolean = true, orderId: Long = 10) {
             scope.runCurrent()
-            manager.prepareOrderStart(10)
-            if (ready) manager.onOrderStarted(10)
+            manager.prepareOrderStart(orderId)
+            if (ready) manager.onOrderStarted(orderId)
             service.onStartCommand(Intent().apply {
                 action = LocationTrackingService.ACTION_ACQUIRE_KEEP_ALIVE
                 putExtra(LocationTrackingService.EXTRA_OWNER, owner)
                 putExtra(LocationTrackingService.EXTRA_GENERATION, generation)
-                putExtra(LocationTrackingService.EXTRA_ORDER_ID, 10L)
+                putExtra(LocationTrackingService.EXTRA_ORDER_ID, orderId)
             }, 0, 1)
             scope.runCurrent()
             assertEquals(if (ready) 1 else 0, subscriptions)
+        }
+
+        fun requireSamplingWakeLock(): PowerManager.WakeLock {
+            val wakeLock = requireNotNull(ShadowPowerManager.getLatestWakeLock())
+            assertEquals("longcare:LocationSampling", shadowOf(wakeLock).tag)
+            assertTrue("An authorized foreground collector must hold its CPU lock", wakeLock.isHeld)
+            return wakeLock
         }
 
         fun restore() {
@@ -530,20 +650,15 @@ class LocationTrackingServiceSamplingRecoveryTest {
 
         suspend fun sample() {
             val value = location()
-            recordCallback()
+            lastCallback = testScheduler.currentTime
             samples.emit(LocationAcquisition.Success(value))
             scope.runCurrent()
         }
 
         suspend fun failure(reason: LocationFailure, errorCode: Int) {
-            recordCallback()
+            lastCallback = testScheduler.currentTime
             samples.emit(LocationAcquisition.Failure(reason, location().copy(errorCode = errorCode)))
             scope.runCurrent()
-        }
-
-        fun recordCallback() {
-            lastCallback = testScheduler.currentTime
-            callbacks += 1L
         }
 
         fun location() = LocationResult(

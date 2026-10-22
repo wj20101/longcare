@@ -10,7 +10,6 @@ import java.util.Locale
 object LocationEventTracker {
     enum class EventType(val code: String, val description: String) {
         // ContinuousAmapLocationManager 相关
-        SDK_RECOVERED("sdk_recovered", "无回调后重建定位采集"),
         CLIENT_INIT_ERROR("client_init_error", "持续高德定位客户端初始化失败"),
         CLIENT_CLEANUP_ERROR("client_cleanup_error", "持续高德定位客户端释放失败"),
         AMAP_CONTINUOUS_LOCATION_ERROR("amap_continuous_location_error", "持续定位失败"),
@@ -77,7 +76,7 @@ object LocationEventTracker {
     }
 }
 
-/** One SDK client's bounded diagnostic window; sampling and recovery stay with the SDK/service. */
+/** One SDK client's bounded diagnostic window; callbacks never change the acquisition lifecycle. */
 internal class ContinuousLocationDiagnostics(
     private val requestId: String,
     private val httpTimeoutMs: Long,

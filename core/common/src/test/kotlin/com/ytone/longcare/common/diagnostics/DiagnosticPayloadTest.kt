@@ -4,6 +4,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class DiagnosticPayloadTest {
+    @Test fun `time evidence preserves signed offsets and explicit invalid branch within payload bounds`() {
+        val sample = com.ytone.longcare.model.LocationResult(30.0, 120.0, "gps", locationTime = 105_000,
+            receivedAt = 100_000, receivedElapsedRealtime = 10_000, sourceElapsedRealtime = 10_001)
+        val time = locationTimeDiagnostic(sample, 90_000, 12_000, "SOURCE_AFTER_RECEIPT")
+        assertEquals("issue=SOURCE_AFTER_RECEIPT,fix=5000,source=-1,elapsed=2000,shift=-12000", time)
+        val fields = DiagnosticPayload.create("location", "service_action_result", "INFO", "123", "动作时间诊断",
+            null, mapOf("time" to time))
+        assertEquals(time, fields["time"])
+        assertTrue(DiagnosticPayload.encode(fields).length <= 950)
+        assertTrue(locationTimeDiagnostic(sample.copy(sourceElapsedRealtime = 0), 100_000, 10_000,
+            "FIX_AFTER_RECEIPT").contains("source=?"))
+    }
+
     @Test
     fun `long failure details cannot displace the submitted location evidence`() {
         val sample = com.ytone.longcare.model.LocationResult(

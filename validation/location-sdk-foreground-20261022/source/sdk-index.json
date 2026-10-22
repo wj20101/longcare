@@ -1,0 +1,7 @@
+{
+  "dependency": "com.amap.api:location:11.3.101",
+  "jarSha256": "b33e86dbc00ce2f661aa2a125a0c329831ffb50d22dcc62ecd67c01b0db38e73",
+  "clientApi": "https://a.amap.com/lbs/static/unzip/Android_Location_Doc/com/amap/api/location/AMapLocationClient.html",
+  "optionApi": "https://a.amap.com/lbs/static/unzip/Android_Location_Doc/com/amap/api/location/AMapLocationClientOption.html",
+  "bytecodeAvailability": "Reviewed bytecode retained only in local raw archive, not vendored into Git."
+}

@@ -11,6 +11,7 @@ import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.User
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,6 +43,7 @@ class DefaultUserSessionRepository @Inject constructor(
 ) : UserSessionRepository {
 
     private val mutationMutex = Mutex()
+    override val sessionSnapshot = faceSession.sessionSnapshot
 
     override val sessionState: StateFlow<SessionState> = appDataStore.data
         .retryWhen { exception, _ ->
@@ -109,17 +111,47 @@ class DefaultUserSessionRepository @Inject constructor(
         }
     }
 
-    override suspend fun logout() = mutationMutex.withLock {
+    override suspend fun logout() {
+        mutationMutex.withLock { logoutLocked() }
+    }
+
+    override suspend fun logoutIfCurrent(generation: Long): Long? = mutationMutex.withLock {
+        val snapshot = sessionSnapshot.value
+        val expectedUser = snapshot.user ?: return@withLock null
+        if (snapshot.generation != generation) return@withLock null
+        logoutLocked(expectedUser)
+    }
+
+    private suspend fun logoutLocked(expectedUser: User? = null): Long? {
         faceSession.beginChange()
+        var requestedClear = false
+        var cleared = false
+        var clearOutcomeUncertain = false
         try {
             appDataStore.edit { preferences ->
+                // Recheck durable credentials in the transaction as publication may previously fail.
+                if (expectedUser != null) {
+                    val durable = preferences[APP_USER_KEY]?.let { runCatching { User.ADAPTER.decode(it) }.getOrNull() }
+                    if (durable == null || durable.companyId != expectedUser.companyId ||
+                        durable.accountId != expectedUser.accountId || durable.userId != expectedUser.userId ||
+                        durable.token != expectedUser.token) return@edit
+                }
                 DataStoreLocationRecoveryStore.clearLocationRecovery(preferences)
                 preferences.remove(APP_USER_KEY)
+                requestedClear = true
             }
-            awaitSessionState(SessionState.LoggedOut)
+            // edit returns only after durable commit; a transform followed by IOException aborts.
+            cleared = requestedClear
+            if (cleared) awaitSessionState(SessionState.LoggedOut)
+        } catch (cancelled: CancellationException) {
+            // Prompt cancellation may hide a committed write. Do not reopen uncertain credentials.
+            clearOutcomeUncertain = requestedClear
+            throw cancelled
         } finally {
-            faceSession.finishChange(sessionState.value.user)
+            // Never restore old authentication after a durable clear whose flow publication failed.
+            faceSession.finishChange(if (cleared || clearOutcomeUncertain) null else sessionState.value.user)
         }
+        return sessionSnapshot.value.generation.takeIf { cleared }
     }
 
     private suspend fun awaitSessionState(expected: SessionState) {

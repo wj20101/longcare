@@ -19,10 +19,6 @@ internal class ServiceCountdownImageDelegate(
         stateHolder.uploadedImages.value = uploadResult
     }
 
-    fun getCurrentUploadedImages(): Map<ImageTaskType, List<ImageTask>> {
-        return stateHolder.uploadedImages.value
-    }
-
     fun validatePhotosUploaded(): Boolean {
         val images = stateHolder.uploadedImages.value
         val beforeCareTasks = images[ImageTaskType.BEFORE_CARE] ?: emptyList()

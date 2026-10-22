@@ -165,6 +165,7 @@ class NfcLocationDiagnosticsTest {
         assertEquals("GCJ02", fields["coordType"])
         assertEquals("18.0", fields["accuracy"])
         assertEquals("END_ORDER", fields["signInMode"])
+        assertTrue("Checkout summary must retain its original time evidence", fields.getValue("time").contains("issue=none"))
         assertTrue("Sample age must be captured before sending the request", fields.getValue("sampleAgeMs").toLong() <= ageWhenSubmitted)
         assertTrue(failure.message!!.length <= 950)
     }

@@ -1,0 +1,38 @@
+{
+  "background-location-probe.jsonl": {
+    "present": false,
+    "restoredExactly": true
+  },
+  "background-location-probe.previous.jsonl": {
+    "present": false,
+    "restoredExactly": true
+  },
+  "probePreferencesRestoredExactly": true,
+  "realDataStoreSha256": "1749355f50fa1b5f24f53bae360c7d18597149e0f9feeb486910364d4f9618a6",
+  "realDataStoreUnchanged": true,
+  "servicesAbsent": true,
+  "pid": "",
+  "powerSettings": {
+    "screen_off_timeout": {
+      "value": "600000",
+      "unchanged": true
+    },
+    "auto_time": {
+      "value": "1",
+      "unchanged": true
+    },
+    "auto_time_zone": {
+      "value": "1",
+      "unchanged": true
+    },
+    "low_power": {
+      "value": "0",
+      "unchanged": true
+    },
+    "location_providers_allowed": {
+      "value": "gps,network",
+      "unchanged": true
+    }
+  },
+  "ownActiveNotifications": []
+}

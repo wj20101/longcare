@@ -1,0 +1,137 @@
+{
+  "device": "xiaomi-oem",
+  "inputFiles": [
+    "background-location-probe.jsonl"
+  ],
+  "traceRows": 26,
+  "duplicatesRemoved": 0,
+  "malformedRows": 0,
+  "captureStartElapsedRealtime": 2943268340,
+  "firstTraceElapsedRealtime": 2943272317,
+  "lastTraceElapsedRealtime": 2943931347,
+  "scope": "Local isolated repository counters only; no nursing backend request or geographic ground truth verification. Minute bucket coverage alone does not establish a rolling <=60s success gap.",
+  "wholeRunCallbacks": {
+    "raw": 2,
+    "sdkSuccess": 2,
+    "uniquePositiveSourceTicks": 2
+  },
+  "actions": [],
+  "allHttpEndsByOrderId": {
+    "9000001": {
+      "success": 2
+    }
+  },
+  "normalEndObservations": [
+    {
+      "orderId": 9000001,
+      "endedAt": 2943931205,
+      "observedThrough": 2943931347,
+      "laterHttpEnds": [],
+      "localSuccessAfterEnd": 0,
+      "observationDurationMs": 142
+    }
+  ],
+  "allPidSequence": [
+    {
+      "at": 2943272317,
+      "value": 3223
+    }
+  ],
+  "allClientSequence": [
+    {
+      "at": 2943272654,
+      "value": 1,
+      "pid": 3223
+    }
+  ],
+  "unplugWindow": {
+    "startInclusive": 2943396522,
+    "endExclusive": 2943696522,
+    "durationMs": 300000,
+    "rawCallbacks": 0,
+    "sdkSuccessCallbacks": 0,
+    "nullCallbacks": 0,
+    "sdkErrorCodes": {},
+    "uniquePositiveSourceTicks": 0,
+    "uniquePositiveSuccessfulSourceTicks": 0,
+    "unseenPositiveSuccessSourceTicks": 0,
+    "positiveSuccessfulSourceAgeMsRange": null,
+    "localHttpSuccess": 0,
+    "buckets": [
+      {
+        "startInclusive": 2943396522,
+        "endExclusive": 2943456522,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2943456522,
+        "endExclusive": 2943516522,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2943516522,
+        "endExclusive": 2943576522,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2943576522,
+        "endExclusive": 2943636522,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      },
+      {
+        "startInclusive": 2943636522,
+        "endExclusive": 2943696522,
+        "rawCallbacks": 0,
+        "sdkSuccessCallbacks": 0,
+        "unseenPositiveSuccessSourceTicks": 0,
+        "localHttpSuccess": 0
+      }
+    ],
+    "allCompleteMinuteBucketsHaveLocalSuccess": false,
+    "boundaryInclusiveMaxGapMs": {
+      "rawCallback": 300000,
+      "sdkSuccessCallback": 300000,
+      "unseenPositiveSuccessSourceTick": 300000,
+      "localHttpSuccess": 300000
+    },
+    "pidSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2943362400,
+        "value": 3223
+      }
+    ],
+    "clientSequenceIncludingPreWindowBaseline": [
+      {
+        "at": 2943362400,
+        "value": 1,
+        "pid": 3223
+      }
+    ],
+    "clientCreatesInWindow": [],
+    "traceBracketsWholeWindow": true,
+    "cpu": {
+      "windowCpuSleepMs": null,
+      "note": "Bounds use covering trace endpoints and millisecond clocks; no exact sleep onset, duration or cause is inferred.",
+      "coveringTraceElapsedMs": 518262,
+      "coveringTraceUptimeMs": 30007,
+      "coveringTraceSuspendEstimateMs": 488255,
+      "coveringStart": 2943362400,
+      "coveringEnd": 2943880662,
+      "windowSuspendLowerBoundMs": 269993,
+      "windowSuspendUpperBoundMs": 300000
+    },
+    "mappingUncertaintyMs": 55.29
+  }
+}

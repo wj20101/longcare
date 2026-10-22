@@ -22,10 +22,14 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,63 +41,76 @@ import com.ytone.longcare.theme.PrimaryBlue
 
 @Composable
 internal fun CameraPreviewContent(
-    onImageCapture: (ImageCapture) -> Unit,
+    onImageCapture: (ImageCapture?) -> Unit,
     onTakePhoto: () -> Unit,
-    isCapturing: Boolean
+    isCapturing: Boolean,
+    onCameraError: (Exception) -> Unit,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    val previewView = remember(context) { PreviewView(context) }
+    val currentOnImageCapture by rememberUpdatedState(onImageCapture)
+    val currentOnCameraError by rememberUpdatedState(onCameraError)
+    var captureReady by remember { mutableStateOf(false) }
 
-    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
-
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, previewView) {
+        var disposed = false
+        var provider: ProcessCameraProvider? = null
+        var preview: Preview? = null
+        var capture: ImageCapture? = null
+        captureReady = false
+        currentOnImageCapture(null)
+        val future = ProcessCameraProvider.getInstance(context)
+        future.addListener({
+            // Camera provider initialization can complete after leaving this screen.
+            if (!disposed) {
+                try {
+                    val activeProvider = future.get()
+                    provider = activeProvider
+                    val boundPreview = Preview.Builder().build()
+                    val boundCapture = ImageCapture.Builder()
+                        .setTargetRotation(previewView.display?.rotation ?: android.view.Surface.ROTATION_0)
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .build()
+                    preview = boundPreview
+                    capture = boundCapture
+                    boundPreview.surfaceProvider = previewView.surfaceProvider
+                    activeProvider.bindToLifecycle(
+                        lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA,
+                        boundPreview, boundCapture,
+                    )
+                    // Publish only after binding succeeds, never the unbound candidate.
+                    currentOnImageCapture(boundCapture)
+                    captureReady = true
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    captureReady = false
+                    currentOnImageCapture(null)
+                    currentOnCameraError(error)
+                }
+            }
+        }, ContextCompat.getMainExecutor(context))
         onDispose {
-            cameraProvider?.unbindAll()
+            disposed = true
+            captureReady = false
+            currentOnImageCapture(null)
+            // Release only this screen's use cases, not another camera owner's bindings.
+            val useCases = listOfNotNull(preview, capture).toTypedArray()
+            if (useCases.isNotEmpty()) provider?.unbind(*useCases)
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { ctx ->
-                PreviewView(ctx).apply {
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                    cameraProviderFuture.addListener({
-                        try {
-                            val provider = cameraProviderFuture.get()
-                            cameraProvider = provider
-
-                            val preview = Preview.Builder().build()
-                            val imageCapture = ImageCapture.Builder()
-                                .setTargetRotation(display.rotation)
-                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                .build()
-
-                            onImageCapture(imageCapture)
-
-                            val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-                            provider.unbindAll()
-                            provider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview,
-                                imageCapture
-                            )
-
-                            preview.surfaceProvider = surfaceProvider
-                        } catch (exc: Exception) {
-                            com.ytone.longcare.common.utils.KLogger.e("CameraPreview", "相机初始化失败", exc)
-                        }
-                    }, ContextCompat.getMainExecutor(ctx))
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
         FloatingActionButton(
-            onClick = onTakePhoto,
+            onClick = { if (captureReady && !isCapturing) onTakePhoto() },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(32.dp)
-                .size(72.dp),
+                .size(72.dp)
+                .semantics { if (!captureReady || isCapturing) disabled() },
             containerColor = PrimaryBlue,
             contentColor = Color.White
         ) {

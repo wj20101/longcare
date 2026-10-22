@@ -1,0 +1,15 @@
+{
+  "hadProbePreferences": false,
+  "realState": {
+    "hasRecoveryOrder": false,
+    "hasRecoverySession": false,
+    "sha256": "1749355f50fa1b5f24f53bae360c7d18597149e0f9feeb486910364d4f9618a6"
+  },
+  "captureStartElapsedRealtime": 988859080,
+  "screenOffTimeout": "600000",
+  "autoTime": "1",
+  "autoTimeZone": "1",
+  "powerSave": "0",
+  "providers": "gps,network",
+  "archiveNote": "Reduced offline-analysis input only. Raw private recovery backups intentionally excluded; DO NOT use for restore."
+}

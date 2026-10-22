@@ -217,13 +217,16 @@ fun BackgroundSettingsDialog(
 @Composable
 private fun BackgroundSettingsRow(item: PermissionGuideItem, onAction: () -> Unit) {
     val title = stringResource(item.titleRes)
+    // Public system states stay visible; manufacturer instructions remain manual checks.
     val summaryRes = when (item.id) {
-        PermissionGuideId.BATTERY_OPTIMIZATION -> R.string.background_settings_battery_summary
+        PermissionGuideId.BATTERY_OPTIMIZATION -> item.statusRes ?: R.string.background_settings_battery_summary
+        PermissionGuideId.BACKGROUND_ACTIVITY -> item.statusRes ?: R.string.background_settings_background_activity_summary
         PermissionGuideId.AUTO_START -> R.string.background_settings_auto_start_summary
         PermissionGuideId.MANUFACTURER_POPUP -> R.string.background_settings_popup_summary
     }
     val icon = when (item.id) {
         PermissionGuideId.BATTERY_OPTIMIZATION -> Icons.Outlined.BatteryFull
+        PermissionGuideId.BACKGROUND_ACTIVITY -> Icons.Outlined.Tune
         PermissionGuideId.AUTO_START -> Icons.Outlined.Autorenew
         PermissionGuideId.MANUFACTURER_POPUP -> Icons.Outlined.Notifications
     }
@@ -272,14 +275,6 @@ private fun BackgroundSettingsDetails(item: PermissionGuideItem) {
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.semantics { heading() },
         )
-        item.statusRes?.let { status ->
-            Text(
-                text = stringResource(status),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
         val message = stringResource(item.messageRes)
         if (message.isNotBlank()) {
             Spacer(Modifier.height(4.dp))

@@ -3,13 +3,13 @@ package com.ytone.longcare.features.location.service
 import android.Manifest
 import android.app.PendingIntent
 import android.app.Notification
-import android.os.PowerManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -32,6 +32,7 @@ import com.ytone.longcare.features.location.reporting.LocationReportingStatus
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.core.LocationKeepAliveManager
+import com.ytone.longcare.core.common.service.ForegroundServiceStateVerifier
 import com.ytone.longcare.features.location.reporting.LocationClock
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.features.location.reporting.LocationSampleEvaluator
@@ -79,6 +80,7 @@ open class LocationTrackingService : Service() {
     @Inject lateinit var userSessionRepository: UserSessionRepository
     @Inject lateinit var runtimeReadiness: LocationRuntimeReadiness
     @Inject lateinit var privacyConsentManager: PrivacyConsentManager
+    @Inject lateinit var foregroundStateVerifier: ForegroundServiceStateVerifier
 
     private var foregroundEntered = false
     private var recoveryJob: Job? = null
@@ -90,6 +92,8 @@ open class LocationTrackingService : Service() {
     private var currentGeneration: Long = 0L
     private var currentOwner: String? = null
     private var cleanupCompleted = false
+    private var samplingWakeLock: PowerManager.WakeLock? = null
+    private var samplingWakeLockRenewAt = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -170,8 +174,15 @@ open class LocationTrackingService : Service() {
     private fun enterForeground() {
         if (foregroundEntered) return
         createNotificationChannel()
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, createNotification(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        } else 0
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, createNotification(), type)
+        // AOSP may silently ignore promotion (for example a restricted app-op). A normal
+        // startForeground return alone must not authorize SDK collection without a real FGS.
+        check(foregroundStateVerifier.isForeground(this, type)) {
+            "location_foreground_promotion_rejected"
+        }
         foregroundEntered = true
         lastNotificationText = R.string.location_tracking_preparing
     }
@@ -231,6 +242,8 @@ open class LocationTrackingService : Service() {
             return
         }
         val previousJob = collectorJob
+        // The old collector must not keep the CPU awake while its replacement awaits authorization.
+        cleanupStage(CleanupStage.RELEASE_CPU_LOCK, ::releaseSamplingWakeLock)
         previousJob?.cancel()
         val job = serviceScope.launch(start = CoroutineStart.LAZY) {
             previousJob?.cancelAndJoin()
@@ -257,7 +270,11 @@ open class LocationTrackingService : Service() {
                     check(currentAccount() == session.account) { "location_account_changed" }
                 val diagnostics = LocationReportingDiagnostics(
                     orderId, owner, session.account.userId.toString(), locationClock::elapsedRealtime,
-                    runtimeSnapshot = continuousAmapLocationManager::diagnosticSnapshot,
+                    runtimeSnapshot = {
+                        val snapshot = continuousAmapLocationManager.diagnosticSnapshot()
+                        // Keep CPU evidence inside the existing bounded runtime scalar.
+                        snapshot + ("runtime" to "cpu=${if (samplingWakeLock?.isHeld == true) 1 else 0},${snapshot["runtime"]}")
+                    },
                 )
                 val samplingEnabled = MutableStateFlow(LocationSamplingState(false))
                 val initiallyEnabled = updateSampling(owner, session, samplingEnabled, diagnostics)
@@ -268,7 +285,7 @@ open class LocationTrackingService : Service() {
                     }
                     .filterIsInstance<LocationAcquisition.Success>().map { it.location }
                 val evaluator = LocationSampleEvaluator(
-                    sessionStartedAt = locationClock.currentTimeMillis(),
+                    sessionStartedAtElapsedRealtime = locationClock.elapsedRealtime(),
                     clock = locationClock,
                 )
                 coroutineScope {
@@ -301,7 +318,9 @@ open class LocationTrackingService : Service() {
                             samplingEnabled = samplingEnabled,
                             diagnostics = diagnostics,
                         ).run()
-                    } finally { healthJob.cancel() }
+                    } finally {
+                        healthJob.cancel()
+                    }
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -316,6 +335,11 @@ open class LocationTrackingService : Service() {
                 )
                 reportingManager.onServiceInterrupted(owner)
                 if (currentOwner == owner && currentGeneration == serviceGeneration) stopKeepAlive(stopService = true)
+            } finally {
+                // A cancelled old collector cannot release the replacement order's lock.
+                if (currentOwner == owner && currentGeneration == serviceGeneration) {
+                    cleanupStage(CleanupStage.RELEASE_CPU_LOCK, ::releaseSamplingWakeLock)
+                }
             }
         }
         collectorJob = job
@@ -351,6 +375,7 @@ open class LocationTrackingService : Service() {
         check(unknown || currentAccount() == session.account) { "location_account_changed" }
         val locationEnabled = runtimeReadiness.isLocationServiceEnabled()
         val ready = !unknown && session.canUpload() && locationEnabled
+        updateSamplingWakeLock(ready)
         if (enabled.value.enabled != ready) {
             enabled.value = LocationSamplingState(ready,
                 if (ready) locationClock.elapsedRealtime() else enabled.value.resumedAtElapsedRealtime)
@@ -365,6 +390,31 @@ open class LocationTrackingService : Service() {
             updateNotification(R.string.location_tracking_locating)
         }
         return ready
+    }
+
+    /** The foreground Service owns one non-counted lock, only while authorized sampling is active. */
+    private fun updateSamplingWakeLock(enabled: Boolean) {
+        if (!enabled) {
+            releaseSamplingWakeLock()
+            return
+        }
+        check(foregroundEntered) { "location_cpu_lock_requires_foreground" }
+        val lock = samplingWakeLock ?: getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, CPU_LOCK_TAG)
+            .apply { setReferenceCounted(false) }
+            .also { samplingWakeLock = it }
+        val now = locationClock.elapsedRealtime()
+        if (!lock.isHeld || now >= samplingWakeLockRenewAt) {
+            lock.acquire(CPU_LOCK_TIMEOUT_MS)
+            samplingWakeLockRenewAt = now + CPU_LOCK_RENEW_INTERVAL_MS
+        }
+    }
+
+    private fun releaseSamplingWakeLock() {
+        val lock = samplingWakeLock ?: return
+        samplingWakeLock = null
+        samplingWakeLockRenewAt = 0L
+        if (lock.isHeld) lock.release()
     }
 
     private fun updateAcquisitionStatus(owner: String, event: LocationAcquisition) {
@@ -401,17 +451,8 @@ open class LocationTrackingService : Service() {
             if (!ready) continue
             // A client created by this very check has not had an initialization grace period yet.
             continuousAmapLocationManager.syncAppVisibility(fromHealthTimer = healthTimerElapsed && wasEnabled)
-            val power = getSystemService(POWER_SERVICE) as PowerManager
-            // Exempt apps can still sample/network in Doze; idle alone must not disable recovery.
-            if (power.isDeviceIdleMode && !power.isIgnoringBatteryOptimizations(packageName)) continue
-            // Background health checks and foreground actions share the manager's one recovery budget.
-            if (continuousAmapLocationManager.recoverStalledSampling(owner)) {
-                reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
-                updateNotification(R.string.location_tracking_locating)
-                LocationEventTracker.trackEvent(LocationEventTracker.EventType.SDK_RECOVERED,
-                    mapOf(LocationEventTracker.Attribute.ORDER_ID to session.orderId))
-            } else if (continuousAmapLocationManager.isSamplingStalled(owner)) {
-                // Keep the rebuilt listener alive: a delayed SDK callback can recover without a page visit.
+            if (continuousAmapLocationManager.isSamplingStalled(owner)) {
+                // Silence is diagnostic evidence, not a reason to replace the live SDK client.
                 reportingManager.updateStatus(owner, LocationReportingStatus.LOCATING)
                 updateNotification(R.string.location_tracking_callback_wait)
             }
@@ -437,6 +478,7 @@ open class LocationTrackingService : Service() {
             collectorJob = null
             recoveryJob?.cancel()
             recoveryJob = null
+            cleanupStage(CleanupStage.RELEASE_CPU_LOCK, ::releaseSamplingWakeLock)
             cleanupStage(CleanupStage.REMOVE_FOREGROUND) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
             }
@@ -510,12 +552,19 @@ open class LocationTrackingService : Service() {
     }
 
     private enum class CleanupStage(val telemetryValue: String) {
+        RELEASE_CPU_LOCK("release_cpu_lock"),
         REMOVE_FOREGROUND("remove_foreground"),
         STOP_SERVICE("stop_service"),
     }
 
     companion object {
         private const val SAMPLING_HEALTH_INTERVAL_MS = 15_000L
+        private const val CPU_LOCK_TAG = "longcare:LocationSampling"
+        // App policy, not an Android/AMap requirement. The existing health loop renews at 2 min,
+        // leaving 1 min slack. This is continuous work-scoped CPU use, not a 3-minute total cap.
+        // Handler-based timeout is only a fallback, not a hard ANR deadline; release on every exit.
+        private const val CPU_LOCK_TIMEOUT_MS = 3 * 60_000L
+        private const val CPU_LOCK_RENEW_INTERVAL_MS = 2 * 60_000L
         const val ACTION_ACQUIRE_KEEP_ALIVE = "ACTION_ACQUIRE_LOCATION_KEEPALIVE"
         const val EXTRA_OWNER = "EXTRA_OWNER"
         const val EXTRA_GENERATION = "EXTRA_GENERATION"

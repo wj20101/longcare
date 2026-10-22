@@ -1,0 +1,17 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{f17b68a u0 com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService}
+    intent={act=debug.location.PROBE_START cmp=com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService}
+    packageName=com.ytone.longcare
+    processName=com.ytone.longcare
+    baseDir=/data/app/com.ytone.longcare-zmJKoLSK1fYlwu46waU6wQ==/base.apk
+    dataDir=/data/user/0/com.ytone.longcare
+    app=ProcessRecord{bd51ff7 6091:com.ytone.longcare/u0a216}
+    createTime=-70ms startingBgTimeout=--
+    lastActivity=-70ms restartTime=-70ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=false callStart=false lastStartId=1
+    callerPackage=com.android.shell
+    executeNesting=1 executeFg=true executingStart=-69ms
+    Delivered Starts:
+    #0 id=1 dur=-69ms dc=1
+      intent=Intent { act=debug.location.PROBE_START cmp=com.ytone.longcare/.features.location.testing.BackgroundLocationProbeService }

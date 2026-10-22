@@ -23,6 +23,8 @@ internal class PhotoUploadDelegate(
     private val userMessages: PhotoUploadMessages,
 ) {
     val isUploading = MutableStateFlow(false)
+    // An uploaded object is not a durable success until Room commits; retry that commit first.
+    private val pendingUploadKeys = mutableMapOf<String, String>()
 
     suspend fun generateWatermarkData(taskType: ImageTaskType, address: String, orderId: Long? = null): WatermarkData {
         val title = when (taskType) {
@@ -44,7 +46,11 @@ internal class PhotoUploadDelegate(
         val userId = DiagnosticEventTracker.currentUserId()
         return try {
             isUploading.value = true
+            taskQueueDelegate.awaitInitialLoad()
             val allTasks = taskQueueDelegate.getTasksSnapshot()
+            check(allTasks.all { it.status == ImageTaskStatus.SUCCESS }) {
+                userMessages.imageProcessingFailed
+            }
             val successfulTasks = allTasks.filter {
                 it.status == ImageTaskStatus.SUCCESS && it.resultUri != null && !it.isUploaded
             }
@@ -55,11 +61,15 @@ internal class PhotoUploadDelegate(
 
             for (task in successfulTasks) {
                 try {
-                    val uploadedPhoto = photoCloudUploader.upload(Uri.parse(task.resultUri))
+                    val uploadedKey = pendingUploadKeys[task.id]
+                        ?: photoCloudUploader.upload(Uri.parse(task.resultUri)).key.also {
+                            pendingUploadKeys[task.id] = it
+                        }
                     taskQueueDelegate.updateTaskUploadStatus(
                         taskId = task.id,
-                        key = uploadedPhoto.key,
+                        key = uploadedKey,
                     )
+                    pendingUploadKeys.remove(task.id)
                 } catch (cancellation: CancellationException) {
                     throw cancellation
                 } catch (uploadError: Exception) {

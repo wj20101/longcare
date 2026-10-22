@@ -18,11 +18,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -68,7 +70,8 @@ class BackgroundSettingsDialogTest {
         render(fixture)
         compose.onNodeWithText("后台设置").performClick()
         settingsRow(fixture.items.single()).performClick()
-        compose.onNodeWithText("处理中…").assertDoesNotExist()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_not_exempt)).assertIsDisplayed()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_exempt)).assertDoesNotExist()
         compose.onNodeWithText("关闭").assertIsDisplayed()
         compose.onNodeWithText("检查系统权限").assertDoesNotExist()
         compose.runOnIdle {
@@ -116,29 +119,30 @@ class BackgroundSettingsDialogTest {
         val fixture = Fixture()
         render(fixture)
         compose.onNodeWithText("后台设置").performClick()
-        compose.onNodeWithText("查看机型设置说明").performScrollTo().performClick()
-        compose.onNodeWithText("处理中…").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_not_exempt)).assertIsDisplayed()
         settingsRow(fixture.items.single()).performScrollTo().performClick()
         compose.runOnIdle {
             fixture.owner.registry.currentState = Lifecycle.State.STARTED
-            fixture.items = listOf(guide(R.string.common_confirm))
+            fixture.items = listOf(guide(CommonR.string.compatibility_status_exempt))
             fixture.owner.registry.currentState = Lifecycle.State.RESUMED
         }
-        compose.onNodeWithText("确认").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("处理中…").assertDoesNotExist()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_exempt)).assertIsDisplayed()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_not_exempt)).assertDoesNotExist()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_battery_optimization_message)).assertDoesNotExist()
         compose.runOnIdle { assertEquals(1, fixture.settingsActions) }
     }
 
-    @Test fun default_view_has_three_compact_settings_without_technical_status_text() {
-        val fixture = Fixture().apply { items = threeGuides() }
+    @Test fun default_view_separates_system_battery_status_from_manufacturer_background_checks() {
+        val fixture = Fixture().apply { items = fourGuides() }
         render(fixture)
         compose.onNodeWithText("后台设置").performClick()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         fixture.items.forEach { item ->
+            settingsRow(item).performScrollTo().assertIsDisplayed().assertHasClickAction().assertHeightIsAtLeast(48.dp)
             compose.onNodeWithText(context.getString(item.titleRes)).assertIsDisplayed()
-            settingsRow(item).assertIsDisplayed().assertHasClickAction().assertHeightIsAtLeast(48.dp)
         }
-        compose.onNodeWithText("处理中…").assertDoesNotExist()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_not_exempt)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(resourceText(CommonR.string.compatibility_status_background_unknown)).performScrollTo().assertIsDisplayed()
         // 机型说明位于滚动区域底部，小视口允许滚动查看。
         compose.onNodeWithText("查看机型设置说明").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(context.getString(CommonR.string.compatibility_battery_xiaomi)).assertDoesNotExist()
@@ -152,14 +156,17 @@ class BackgroundSettingsDialogTest {
         val fixture = Fixture()
         render(fixture)
         compose.onNodeWithText("后台设置").performClick()
-        compose.onNodeWithText("处理中…").assertDoesNotExist()
+        val status = resourceText(CommonR.string.compatibility_status_not_exempt)
+        val instructions = resourceText(CommonR.string.compatibility_battery_optimization_message)
+        compose.onNodeWithText(status).assertIsDisplayed()
+        compose.onNodeWithText(instructions).assertDoesNotExist()
         compose.onNodeWithText("查看机型设置说明").performScrollTo().performClick()
-        compose.onNodeWithText("处理中…").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("请开启系统定位服务后重试").assertIsDisplayed()
+        compose.onAllNodesWithText(status).assertCountEquals(1)
+        compose.onNodeWithText(instructions).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("收起说明").performScrollTo().performClick()
-        compose.onNodeWithText("处理中…").assertDoesNotExist()
-        compose.onNodeWithText("请开启系统定位服务后重试").assertDoesNotExist()
-        compose.onNodeWithText("查看机型设置说明").assertIsDisplayed()
+        compose.onNodeWithText(status).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(instructions).assertDoesNotExist()
+        compose.onNodeWithText("查看机型设置说明").performScrollTo().assertIsDisplayed()
         compose.runOnIdle {
             assertEquals(0, fixture.settingsActions)
             assertEquals(0, fixture.dismisses)
@@ -228,7 +235,7 @@ class BackgroundSettingsDialogTest {
             fontScale = 2f
             showConfirm = true
             showSystemCheck = true
-            items = threeGuides()
+            items = fourGuides()
         }
         render(fixture)
         compose.onNodeWithText("后台设置").performClick()
@@ -268,6 +275,9 @@ class BackgroundSettingsDialogTest {
             R.string.background_settings_open_description, context.getString(item.titleRes),
         ))
     }
+
+    private fun resourceText(resource: Int): String =
+        InstrumentationRegistry.getInstrumentation().targetContext.getString(resource)
 
     private fun render(fixture: Fixture) {
         compose.runOnIdle {
@@ -318,7 +328,7 @@ class BackgroundSettingsDialogTest {
 
     private class Fixture {
         lateinit var owner: TestOwner
-        var items = listOf(guide(R.string.common_processing))
+        var items = listOf(guide(CommonR.string.compatibility_status_not_exempt))
         var settingsActions = 0
         var settingsOpenSuccess = true
         var dismisses = 0
@@ -335,27 +345,29 @@ class BackgroundSettingsDialogTest {
     }
 
     private companion object {
-        fun threeGuides() = listOf(
-            guide(R.string.common_processing).copy(
+        fun fourGuides() = listOf(
+            guide(CommonR.string.compatibility_status_not_exempt),
+            guide(CommonR.string.compatibility_status_background_unknown).copy(
+                id = PermissionGuideId.BACKGROUND_ACTIVITY,
                 titleRes = CommonR.string.compatibility_battery_title_power_strategy,
                 messageRes = CommonR.string.compatibility_battery_xiaomi,
             ),
-            guide(R.string.common_processing).copy(
+            guide(null).copy(
                 id = PermissionGuideId.AUTO_START,
                 titleRes = CommonR.string.compatibility_auto_start_title,
                 messageRes = CommonR.string.compatibility_auto_start_xiaomi,
             ),
-            guide(R.string.common_processing).copy(
+            guide(null).copy(
                 id = PermissionGuideId.MANUFACTURER_POPUP,
                 titleRes = CommonR.string.compatibility_popup_permission_title,
                 messageRes = CommonR.string.compatibility_popup_xiaomi,
             ),
         )
 
-        fun guide(status: Int) = PermissionGuideItem(
+        fun guide(status: Int?) = PermissionGuideItem(
             id = PermissionGuideId.BATTERY_OPTIMIZATION,
-            titleRes = R.string.common_back,
-            messageRes = R.string.location_error_disabled,
+            titleRes = CommonR.string.compatibility_battery_optimization_title,
+            messageRes = CommonR.string.compatibility_battery_optimization_message,
             settingsIntent = Intent("com.ytone.longcare.test.BACKGROUND_SETTINGS"),
             statusRes = status,
         )

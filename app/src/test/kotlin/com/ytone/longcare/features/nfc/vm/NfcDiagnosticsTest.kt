@@ -73,6 +73,7 @@ class NfcDiagnosticsTest {
                 "hasLatitude" to false,
                 "longitude" to "121.4737",
                 "latitude" to "31.2304",
+                "time" to "issue=FIX_AFTER_RECEIPT,fix=12,source=?,elapsed=0,shift=0",
                 "nfcId" to "RAW_TAG_001",
                 "identityNumber" to "310101199001011234",
                 "photoUrl" to "https://example.com/photo.jpg",
@@ -102,6 +103,7 @@ class NfcDiagnosticsTest {
         assertEquals(true, report.extras["hasLongitude"])
         assertEquals(false, report.extras["hasLatitude"])
         assertEquals(8, report.extras["planId"])
+        assertEquals("issue=FIX_AFTER_RECEIPT,fix=12,source=?,elapsed=0,shift=0", report.extras["time"])
 
         assertFalse(report.extras.containsKey("longitude"))
         assertFalse(report.extras.containsKey("latitude"))

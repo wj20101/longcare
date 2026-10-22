@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "phase": "B experimental partial CPU lock",
+  "status": "incomplete_event_log; aggregate outcome is sufficient to reject minute-SLA success",
+  "scope": "Real AMap; physical unplug/screen-off; isolated order/local upload counter; no care backend writes",
+  "window": {
+    "startElapsedRealtime": 2938373556,
+    "endElapsedRealtimeExclusive": 2938673556,
+    "durationMs": 300000,
+    "deviceWallMinusElapsedRangeMs": [
+      1789654721784,
+      1789654721785
+    ],
+    "estimatedDeviceWall": [
+      "2026-10-21T22:31:35.340+08:00",
+      "2026-10-21T22:36:35.340+08:00"
+    ],
+    "boundaryUncertainty": "Start extrapolated from host/USB mapping; observation and command latency are unquantified. Reconnection events excluded."
+  },
+  "dataIntegrity": {
+    "complete": false,
+    "retainedProbeRecordCount": 39,
+    "middleRecordsMissing": true,
+    "evidence": [
+      "Before-unplug durable count is uploads4/client1; after-unplug is uploads7/client2.",
+      "Retained probe.log jumps from first upload/client1 to later query/client2, omitting uploads2..7, CPU-lock acquisition and client2 creation.",
+      "Retained health lifetime count cb7/ok7 contradicts interpreting zero retained SDK/HTTP events in the window as zero actual events."
+    ],
+    "captureFailureCauseKnown": false
+  },
+  "localUploadSuccessBounds": {
+    "beforeSnapshotElapsedRealtime": 2938317140,
+    "beforeSnapshotUploads": 4,
+    "afterSnapshotElapsedRealtime": 2938745980,
+    "afterSnapshotUploads": 7,
+    "maximumInsideFixedWindow": 3,
+    "minimumInsideFixedWindow": 1,
+    "lastUploadCounterWallMillis": 1792593281874,
+    "lastUploadCounterEstimatedElapsedRealtime": 2938560090,
+    "lastUploadCounterSinceWindowStartMs": 186534,
+    "lastUploadCounterBucketIndex": 3,
+    "exactFive60sBucketCounts": null,
+    "five60sBucketCountLowerBounds": [
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    "five60sBucketCountUpperBounds": [
+      2,
+      2,
+      2,
+      3,
+      0
+    ],
+    "jointBound": "sum of all five bucket counts is between1 and3; per-bucket upper bounds are not jointly additive",
+    "lastBucketZeroBasis": "No durable upload counter update follows lastUpload within the later after-unplug observation; lastUpload precedes the fifth bucket.",
+    "timestampLimitation": "lastUpload is written by the local repository immediately before returning success, not an exact retained http_end timestamp; exact HTTP completion distribution cannot be recovered."
+  },
+  "retainedEventsOnly": {
+    "sdkCallbackCount": 0,
+    "httpSuccessCount": 0,
+    "clientCreates": 0,
+    "orderQueryCount": 1,
+    "interpretation": "Counts describe retained records only, not actual runtime counts; exact raw callback/source-tick/bucket counts and callback/query maximum gaps are unknown."
+  },
+  "mainLoop": {
+    "retainedQueryMaximumGapMs": 510395,
+    "actualQueryMaximumGapMs": null,
+    "healthMaxTickGapMs": 15139,
+    "healthMaxSleepGapMs": 1,
+    "healthReportSequence": "3",
+    "healthLifetimeCounts": "cb=7,rej=0,ok=7,fail=0,cancel=0,reuse=0",
+    "healthTimestampLimitation": "JSON lacks absolute elapsed timestamp; the health record is bracketed by a query near the window end and one just after it.",
+    "mainLoopStoppedEstablished": false,
+    "uidFreezeEstablished": false,
+    "interpretation": "The15.139s maximum health tick gap is evidence of continued scheduled processing over that reporting period. Missing intermediate query lines do not establish main-loop suspension or UID freezing.",
+    "reportingHealthContext": {
+      "category": "location",
+      "eventCode": "reporting_health",
+      "level": "INFO",
+      "description": "定位上报间隔诊断",
+      "orderId": "9000001",
+      "stage": "summary",
+      "reason": "callback_silence",
+      "reportSequence": "3",
+      "clientId": "2b69a9e9-a028-4476-b257-d3352e419301",
+      "successGapMs": "107083",
+      "maxSuccessGapMs": "130546",
+      "observedMs": "526220",
+      "time": "issue=none,fix=-24,source=24,elapsed=107118,shift=0",
+      "accuracy": "40.0",
+      "locationType": "5",
+      "sdkErrorCode": "0",
+      "maxTickGapMs": "15139",
+      "maxSleepGapMs": "1",
+      "counts": "cb=7,rej=0,ok=7,fail=0,cancel=0,reuse=0",
+      "runtime": "idle=false,screen=false,net=true,validated=true,exempt=false,save=false",
+      "sdkState": "count=3,null=0,ageMs=107137,intervalMs=30000,visible=false,recoveryUsed=true"
+    }
+  },
+  "cpuSuspendBounds": {
+    "before": {
+      "sourceLine": 18,
+      "event": "http_end",
+      "pid": 22128,
+      "client": 1,
+      "wallMillis": 1792592863544,
+      "elapsedRealtime": 2938141760,
+      "uptimeMillis": 2324725896,
+      "cpuLockRequested": false,
+      "cpuLockHeld": false,
+      "request": 1,
+      "orderId": 9000001,
+      "outcome": "success",
+      "screenOn": true,
+      "deviceIdle": false,
+      "powerSave": false,
+      "batteryExempt": false
+    },
+    "after": {
+      "sourceLine": 22,
+      "event": "order_query",
+      "pid": 22128,
+      "client": 2,
+      "wallMillis": 1792593403127,
+      "elapsedRealtime": 2938681343,
+      "uptimeMillis": 2325265479,
+      "cpuLockRequested": true,
+      "cpuLockHeld": true,
+      "orderId": 9000001,
+      "screenOn": false,
+      "deviceIdle": false,
+      "powerSave": false,
+      "batteryExempt": false
+    },
+    "bracketElapsedMs": 539583,
+    "bracketUptimeMs": 539583,
+    "recordedBracketSuspendMs": 0,
+    "recordedWindowSuspendLowerBoundMs": 0,
+    "recordedWindowSuspendUpperBoundMs": 0,
+    "clockReadCaveat": "Adjacent elapsed/uptime reads are millisecond observations, not atomic hardware capture. Recorded bounds are zero at this resolution; do not claim sub-millisecond certainty.",
+    "cpuSleepingExplainsOutage": false
+  },
+  "wakeLockEvidence": {
+    "beforeSource": "cpu-lock-power.txt",
+    "afterSource": "B-after-power.txt",
+    "tag": "longcare:LocationProbe",
+    "uid": 10216,
+    "pid": 22128,
+    "beforeAcquisitionAge": "80ms",
+    "afterAcquisitionAge": "8m12s508ms LONG",
+    "historyLongWakeOwner": "u0a216:longcare:LocationProbe",
+    "retainedInWindowCpuLockHeld": [
+      true
+    ],
+    "interpretation": "App-requested PARTIAL_WAKE_LOCK is present in power snapshots and history, and elapsed−uptime is unchanged across a bracket containing the whole window."
+  },
+  "batteryHistory": {
+    "keyRecords": [
+      {
+        "line": 2,
+        "text": "0 (10) RESET:TIME: 2026-10-21-22-31-00"
+      },
+      {
+        "line": 3,
+        "text": "0 (2) 098 status=discharging health=good plug=none temp=283 volt=4275 charge=3164 +running +wake_lock +wifi_radio +screen phone_signal_strength=great brightness=dim +wifi_running +wifi +usb_data wifi_signal_strength=4 wifi_suppl=completed fg=1000:\"com.miui.securitycenter\""
+      },
+      {
+        "line": 9,
+        "text": "0 (2) 098 longwake=u0a216:\"longcare:LocationProbe\""
+      },
+      {
+        "line": 14,
+        "text": "+6s003ms (3) 098 -screen stats=0:\"screen-state\""
+      },
+      {
+        "line": 59,
+        "text": "+4m08s034ms (2) 097 device_idle=light -job=1000:\"com.android.settings/.dangerousoptions.DangerousOptionsJobService\""
+      },
+      {
+        "line": 88,
+        "text": "+6m32s600ms (3) 097 status=charging +screen screenwake=1000:\"android.server.power:POWER\""
+      },
+      {
+        "line": 90,
+        "text": "+6m32s855ms (4) 097 plug=ac temp=273 volt=4278 +plugged stats=0:\"screen-state\""
+      },
+      {
+        "line": 91,
+        "text": "+6m32s871ms (4) 097 volt=4359 +wifi_scan +audio brightness=dim device_idle=off +charging +usb_data active=1000:\"charging\""
+      }
+    ],
+    "historyResetDeviceWall": "2026-10-21T22:31:00+08:00",
+    "fixedWindowRelativeToResetMs": [
+      35340,
+      335340
+    ],
+    "lightDozeEntryRelativeMs": 248034,
+    "lightDozeEntryAfterWindowStartMs": 212694,
+    "lightDozeObserved": true,
+    "deepDozeObserved": false,
+    "runningStateDropped": false,
+    "causalLimit": "CPU stayed running while light Doze was still observed. This does not by itself identify which AMap request or network policy caused the remaining gaps."
+  },
+  "timeValidation": {
+    "healthRejections": 0,
+    "healthTimeDiagnostic": "issue=none,fix=-24,source=24,elapsed=107118,shift=0",
+    "observedTimeRejection": false,
+    "exactPerCallbackTimeRejectionCountKnown": false
+  },
+  "assessment": {
+    "minuteGoalMet": false,
+    "reason": "At most3 additional local successes between snapshots that contain the full300s window cannot cover5 complete one-minute buckets.",
+    "directProductionWakeLockJustified": false,
+    "reasonAgainstDirectProductionLock": "The experimental CPU lock eliminated observable CPU sleep but did not achieve the minute upload goal; retained logs are incomplete, and neither SDK-only silence nor UID freezing is established.",
+    "nextEvidence": "Recover/bound the missing log segment or use an app-private bounded test trace in the next controlled experiment. Keep CPU, SDK, admission and upload counts separate."
+  }
+}

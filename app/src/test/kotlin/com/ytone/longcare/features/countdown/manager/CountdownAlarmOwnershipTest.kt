@@ -358,6 +358,110 @@ class CountdownAlarmOwnershipTest {
         assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
     }
 
+    @Test
+    @Config(sdk = [28, 31, 34, 36])
+    fun `future pending alarm restores original full identity and deadline after platform loss`() = runTest {
+        val manager = newManager(backgroundScope)
+        val trigger = System.currentTimeMillis() + 60_000L
+        manager.scheduleCountdownAlarm(firstOrder, "原护理", trigger)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        val recreated = newManager(backgroundScope)
+
+        assertTrue(recreated.restorePendingCountdownAlarm({ true }))
+
+        val restored = shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent
+        assertEquals(firstOrder, CountdownNotificationManager.extractOrderKey(restored))
+        assertEquals(owner, restored.getStringExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER))
+        assertEquals(trigger, restored.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+        assertEquals("原护理", CountdownNotificationManager.extractServiceName(restored, ""))
+    }
+
+    @Test
+    @Config(sdk = [31, 34, 36])
+    fun `permission grant restoration rechecks exact capability and preserves pending metadata`() = runTest {
+        val manager = newManager(backgroundScope)
+        manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000L)
+        val original = alarmIntent(firstOrder)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        ShadowAlarmManager.setCanScheduleExactAlarms(false)
+        assertFalse(manager.restorePendingCountdownAlarm({ true }, requireExactAlarm = true))
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+        assertTrue(manager.ownsAlarm(original))
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        assertTrue(manager.restorePendingCountdownAlarm({ true }, requireExactAlarm = true))
+        assertEquals(original.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L), alarms.nextAlarmClock?.triggerTime)
+    }
+
+    @Test fun `restoration never resurrects cancelled expired or foreign account alarms`() = runTest {
+        val manager = newManager(backgroundScope)
+        val trigger = System.currentTimeMillis() + 60_000L
+        manager.scheduleCountdownAlarm(firstOrder, "护理", trigger)
+        manager.cancelCountdownAlarmForOrder(firstOrder)
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() - 1L)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        manager.scheduleCountdownAlarm(firstOrder, "护理", trigger)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        session.value = SessionState.LoggedIn(user.copy(userId = 99))
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        session.value = SessionState.LoggedOut
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        session.value = SessionState.Unknown
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+    }
+
+    @Test fun `restoration rechecks privacy terminal state and the latest replacement record`() = runTest {
+        val manager = newManager(backgroundScope)
+        val trigger = System.currentTimeMillis() + 60_000L
+        manager.scheduleCountdownAlarm(firstOrder, "旧护理", trigger)
+        manager.scheduleCountdownAlarm(secondOrder, "新护理", trigger + 30_000L)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        assertFalse(manager.restorePendingCountdownAlarm({ false }))
+        orderState.value = ServiceOrderStateModel(secondOrder.orderId, ServiceOrderStateModel.STATE_COMPLETED)
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        orderState.value = null
+        assertTrue(manager.restorePendingCountdownAlarm({ true }))
+        val restored = shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent
+        assertEquals(secondOrder, CountdownNotificationManager.extractOrderKey(restored))
+        assertEquals(trigger + 30_000L, restored.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+    }
+
+    @Test fun `initial resolved session retries restoration once after a slow cold start`() = runTest {
+        val manager = newManager(backgroundScope)
+        manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000L)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        session.value = SessionState.Unknown
+        manager.startSessionObservation { true }
+        runCurrent()
+        advanceTimeBy(6_000L)
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+        session.value = SessionState.LoggedIn(user)
+        runCurrent()
+        assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        orderState.value = ServiceOrderStateModel(firstOrder.orderId, ServiceOrderStateModel.STATE_IN_PROGRESS)
+        runCurrent()
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+    }
+
+    @Test fun `cancel while session restoration is pending cannot recreate an alarm`() = runTest {
+        val manager = newManager(backgroundScope)
+        manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000L)
+        session.value = SessionState.Unknown
+        manager.startSessionObservation { true }
+        runCurrent()
+        manager.cancelCountdownAlarmForOrder(firstOrder)
+        session.value = SessionState.LoggedIn(user)
+        runCurrent()
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+    }
+
+    private fun newManager(scope: kotlinx.coroutines.CoroutineScope) = CountdownNotificationManager(
+        context, notifications, alarms, repository, recovery, orders, lifecycle, scope,
+    )
+
     private fun legacyIntent(): Intent {
         context.getSharedPreferences("countdown_notification_prefs", Context.MODE_PRIVATE).edit()
             .putLong("key_last_scheduled_order_id", firstOrder.orderId).commit()

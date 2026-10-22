@@ -75,6 +75,7 @@ fun PhotoUploadScreen(
         onPhotoLimitReached = { maxCount ->
             showMessage(resources.getString(R.string.photo_upload_limit_reached, maxCount))
         },
+        onPhotoProcessingFailed = showMessage,
     )
     
     fun openCameraForTask(taskType: ImageTaskType) {

@@ -156,11 +156,12 @@ class ImageRepository @Inject constructor(
      * 标记上传成功
      */
     override suspend fun markAsSuccess(imageId: Long, cloudKey: String) {
-        orderImageDao.updateUploadSuccess(
+        val updatedRows = orderImageDao.updateUploadSuccess(
             id = imageId,
             status = ImageUploadStatus.SUCCESS.value,
             cloudKey = cloudKey,
         )
+        check(updatedRows == 1) { "Order photo upload result has no matching local record" }
     }
     
     /**

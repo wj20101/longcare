@@ -18,37 +18,57 @@ internal fun takeManualFacePhoto(
     executor: Executor,
     viewModel: ManualFaceCaptureViewModel
 ) {
-    imageCapture?.takePicture(
-        executor,
-        object : ImageCapture.OnImageCapturedCallback() {
-            override fun onCaptureSuccess(image: ImageProxy) {
-                try {
-                    val originalBitmap = imageProxyToBitmap(image)
-                    val rotationDegrees = image.imageInfo.rotationDegrees
-                    val correctedBitmap = correctImageOrientation(originalBitmap, rotationDegrees)
-                    viewModel.onPhotoCaptured(correctedBitmap)
-                } catch (e: Exception) {
-                    KLogger.e("CameraCapture", "图片处理失败", e)
+    if (imageCapture == null) {
+        viewModel.onPhotoCaptureFailed(
+            ManualFaceCaptureFailureStage.CAMERA_CAPTURE,
+            ManualFaceCaptureFailure.CAMERA_CAPTURE,
+            IllegalStateException("Camera capture is not ready"),
+        )
+        return
+    }
+    if (!viewModel.startCapture()) return
+    try {
+        imageCapture.takePicture(
+            executor,
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    try {
+                        val originalBitmap = imageProxyToBitmap(image)
+                        val rotationDegrees = image.imageInfo.rotationDegrees
+                        val correctedBitmap = correctImageOrientation(originalBitmap, rotationDegrees)
+                        viewModel.onPhotoCaptured(correctedBitmap)
+                    } catch (e: Exception) {
+                        KLogger.e("CameraCapture", "图片处理失败", e)
+                        viewModel.onPhotoCaptureFailed(
+                            stage = ManualFaceCaptureFailureStage.IMAGE_PROCESSING,
+                            failure = ManualFaceCaptureFailure.IMAGE_PROCESSING,
+                            error = e,
+                        )
+                    } finally {
+                        image.close()
+                    }
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    KLogger.e("CameraCapture", "拍照失败", exception)
                     viewModel.onPhotoCaptureFailed(
-                        stage = ManualFaceCaptureFailureStage.IMAGE_PROCESSING,
-                        failure = ManualFaceCaptureFailure.IMAGE_PROCESSING,
-                        error = e,
+                        stage = ManualFaceCaptureFailureStage.CAMERA_CAPTURE,
+                        failure = ManualFaceCaptureFailure.CAMERA_CAPTURE,
+                        error = exception,
                     )
-                } finally {
-                    image.close()
                 }
             }
-
-            override fun onError(exception: ImageCaptureException) {
-                KLogger.e("CameraCapture", "拍照失败", exception)
-                viewModel.onPhotoCaptureFailed(
-                    stage = ManualFaceCaptureFailureStage.CAMERA_CAPTURE,
-                    failure = ManualFaceCaptureFailure.CAMERA_CAPTURE,
-                    error = exception,
-                )
-            }
-        }
-    )
+        )
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        // Synchronous dispatch failures do not invoke CameraX's asynchronous onError.
+        viewModel.onPhotoCaptureFailed(
+            ManualFaceCaptureFailureStage.CAMERA_CAPTURE,
+            ManualFaceCaptureFailure.CAMERA_CAPTURE,
+            error,
+        )
+    }
 }
 
 private fun imageProxyToBitmap(image: ImageProxy): Bitmap {

@@ -58,7 +58,10 @@ class SelectionTest(unittest.TestCase):
                 result = self.select(path)
                 self.assertEqual("true", result["run_instrumentation"])
                 self.assertIn("MainActivitySmokeTest", result["smoke_test_classes"])
+                self.assertIn("CountdownAlarmPermissionFallbackIntegrationTest", result["smoke_test_classes"])
+                self.assertIn("AlarmRingtonePlaybackIntegrationTest", result["smoke_test_classes"])
                 self.assertNotIn("ExampleInstrumentedTest", result["smoke_test_classes"])
+                self.assertNotIn("HomeDevicePerformanceTest", result["smoke_test_classes"])
 
     def test_manual_and_missing_base_never_skip(self):
         for env in ({"GITHUB_EVENT_NAME": "workflow_dispatch"}, {"BASE_REF": "missing"}):
@@ -70,6 +73,9 @@ class SelectionTest(unittest.TestCase):
                 self.assertIn("run_build=true", output)
                 self.assertIn("run_instrumentation=true", output)
                 self.assertIn("AmapContinuousRecoveryTest", output)
+                self.assertIn("CountdownAlarmPermissionFallbackIntegrationTest", output)
+                self.assertIn("AlarmRingtonePlaybackIntegrationTest", output)
+                self.assertNotIn("HomeDevicePerformanceTest", output)
 
     def test_webview_and_navigation_have_relevant_tests(self):
         result = self.select("app/src/main/kotlin/com/ytone/longcare/platform/webview/NativeBridge.kt")
@@ -87,9 +93,35 @@ class SelectionTest(unittest.TestCase):
         result = self.select("app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownNotificationManager.kt")
         self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
         self.assertIn("ServiceCountdownBackgroundInitializationTest", result["smoke_test_classes"])
+        self.assertIn("CountdownAlarmPermissionFallbackIntegrationTest", result["smoke_test_classes"])
+        self.assertIn("AlarmRingtonePlaybackIntegrationTest", result["smoke_test_classes"])
         self.assertIn("BackgroundSettingsDialogTest", result["smoke_test_classes"])
         result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/servicecountdown/ui/ServiceCountdownPermissionFlowTest.kt")
         self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
+
+    def test_alarm_fallback_test_change_selects_its_own_class(self):
+        result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/countdown/manager/CountdownAlarmPermissionFallbackIntegrationTest.kt")
+        self.assertEqual("true", result["run_instrumentation"])
+        self.assertIn("CountdownAlarmPermissionFallbackIntegrationTest", result["smoke_test_classes"])
+        self.assertIn("AlarmRingtonePlaybackIntegrationTest", result["smoke_test_classes"])
+
+    def test_home_physical_performance_probe_remains_opt_in(self):
+        result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/maindashboard/ui/HomeDevicePerformanceTest.kt")
+        self.assertEqual("true", result["run_instrumentation"])
+        self.assertIn("HomeDeviceStatusCardTest", result["smoke_test_classes"])
+        self.assertNotIn("HomeDevicePerformanceTest", result["smoke_test_classes"])
+
+    def test_alarm_playback_changes_select_offline_real_player_regression(self):
+        for path in (
+            "app/src/main/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtoneService.kt",
+            "app/src/main/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtonePlaybackController.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtonePlaybackIntegrationTest.kt",
+        ):
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertEqual("true", result["run_instrumentation"])
+                self.assertIn("AlarmRingtonePlaybackIntegrationTest", result["smoke_test_classes"])
+                self.assertNotIn("HomeDevicePerformanceTest", result["smoke_test_classes"])
 
     def test_home_changes_include_device_card_and_polling_regression(self):
         for path in (

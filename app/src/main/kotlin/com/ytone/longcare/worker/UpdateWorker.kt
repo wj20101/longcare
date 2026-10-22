@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
+import com.ytone.longcare.common.network.ApiRequestException
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.DeviceUtils
 import com.ytone.longcare.domain.system.SystemRepository
@@ -53,13 +54,29 @@ class UpdateWorker @AssistedInject constructor(
                 Result.failure()
             }
             is ApiResult.Exception -> {
+                val requestError = result.exception as? ApiRequestException
+                val errorKind = requestError?.kind ?: ApiRequestException.Kind.UNKNOWN
+                val transientFailure = when (errorKind) {
+                    ApiRequestException.Kind.CONNECTION,
+                    ApiRequestException.Kind.TIMEOUT -> true
+                    ApiRequestException.Kind.HTTP -> requestError?.httpCode in TRANSIENT_HTTP_CODES
+                    ApiRequestException.Kind.INVALID_RESPONSE,
+                    ApiRequestException.Kind.UNKNOWN -> false
+                }
+                val willRetry = transientFailure && runAttemptCount < MAX_RETRY_COUNT
                 DiagnosticEventTracker.trackError(
                     category = UPDATE_DIAGNOSTIC_CATEGORY,
                     event = "version_check_exception",
                     description = "版本检查接口异常",
                     throwable = result.exception,
+                    extras = mapOf(
+                        "attempt" to runAttemptCount + 1,
+                        "errorKind" to errorKind.name,
+                        "httpCode" to requestError?.httpCode,
+                        "willRetry" to willRetry,
+                    ),
                 )
-                if (runAttemptCount < MAX_RETRY_COUNT) Result.retry() else Result.failure()
+                if (willRetry) Result.retry() else Result.failure()
             }
         }
     }
@@ -67,5 +84,6 @@ class UpdateWorker @AssistedInject constructor(
     private companion object {
         val UPDATE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.APP_UPDATE
         const val MAX_RETRY_COUNT = 2
+        val TRANSIENT_HTTP_CODES = setOf(408, 429, 500, 502, 503, 504)
     }
 }

@@ -53,7 +53,7 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
         initLogger()
         locationSessionLifecycleObserver.start()
-        countdownNotificationManager.startSessionObservation()
+        countdownNotificationManager.startSessionObservation { privacyConsentManager.isPrivacyConsented }
 
         // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
         if (privacyConsentManager.isPrivacyConsented) {

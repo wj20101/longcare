@@ -18,14 +18,25 @@ import com.ytone.longcare.model.EndOrderResultModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import java.net.SocketTimeoutException
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class OrderRepositoryImpl @Inject constructor(
+class OrderRepositoryImpl internal constructor(
     private val apiService: LongCareApiService,
     private val orderDetails: OrderDetailRepository,
+    private val checkoutTimeoutMillis: Long,
 ) : OrderRepository {
+    @Inject constructor(apiService: LongCareApiService, orderDetails: OrderDetailRepository) :
+        this(apiService, orderDetails, 30_000L)
+
+    // Only our own deadline is mapped; parent cancellation still cancels Retrofit and propagates.
+    // An EndOrder timeout has an unknown server outcome: never replay it or report success here.
+    private suspend fun <T> checkoutRequest(block: suspend () -> ApiResult<T>): ApiResult<T> =
+        withTimeoutOrNull(checkoutTimeoutMillis) { block() }
+            ?: ApiResult.Exception(SocketTimeoutException("checkout_request_timeout"))
 
     override suspend fun getTodayOrderList(): ApiResult<List<TodayServiceOrderModel>> =
         apiService.getTodayOrderList()
@@ -90,7 +101,7 @@ class OrderRepositoryImpl @Inject constructor(
         longitude: String,
         latitude: String,
         endType: Int
-    ): ApiResult<EndOrderResultModel> =
+    ): ApiResult<EndOrderResultModel> = checkoutRequest {
         apiService.endOrder(
             EndOrderParamModel(
                 orderId = orderId,
@@ -104,6 +115,7 @@ class OrderRepositoryImpl @Inject constructor(
                 endType = endType,
             )
         )
+    }
 
     override suspend fun bindLocation(
         orderId: Long,
@@ -123,13 +135,14 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun checkEndOrder(
         orderId: Long,
         projectIdList: List<Int>
-    ): ApiResult<Unit> =
+    ): ApiResult<Unit> = checkoutRequest {
         apiService.checkEndOrder(
             CheckEndOrderParamModel(
                 orderid = orderId,
                 porjectIdList = projectIdList,
             )
         )
+    }
 
     override suspend fun getOrderState(orderId: Long): ApiResult<ServiceOrderStateModel> =
         apiService.getOrderState(OrderStateParamModel(orderId = orderId))

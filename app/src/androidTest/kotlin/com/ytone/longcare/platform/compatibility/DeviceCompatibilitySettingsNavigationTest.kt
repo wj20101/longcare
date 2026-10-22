@@ -1,6 +1,7 @@
 package com.ytone.longcare.platform.compatibility
 
 import android.accessibilityservice.AccessibilityService
+import android.provider.Settings
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.compose.LocalActivity
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.Lifecycle
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
@@ -28,7 +30,9 @@ import org.junit.Test
 class DeviceCompatibilitySettingsNavigationTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun battery_settings_return_to_the_same_dialog() = verifySettingsRoundTrip(PermissionGuideId.BATTERY_OPTIMIZATION)
+    @Test fun system_battery_optimization_settings_return_to_the_same_dialog() = verifySettingsRoundTrip(PermissionGuideId.BATTERY_OPTIMIZATION)
+
+    @Test fun background_activity_settings_return_to_the_same_dialog() = verifySettingsRoundTrip(PermissionGuideId.BACKGROUND_ACTIVITY)
 
     @Test fun manufacturer_auto_start_settings_return_to_the_same_dialog() = verifySettingsRoundTrip(PermissionGuideId.AUTO_START)
 
@@ -64,7 +68,7 @@ class DeviceCompatibilitySettingsNavigationTest {
         compose.waitForIdle()
         val initialRefreshes = refreshes.get()
         val description = context.getString(R.string.background_settings_open_description, context.getString(selected.titleRes))
-        val row = compose.onNodeWithContentDescription(description).fetchSemanticsNode()
+        val row = compose.onNodeWithContentDescription(description).performScrollTo().assertIsDisplayed().fetchSemanticsNode()
         val click = requireNotNull(row.config[SemanticsActions.OnClick].action)
         // Invoke the real row action; global touch injection is restricted on some MIUI builds.
         instrumentation.runOnMainSync { assertTrue(click()) }
@@ -73,7 +77,8 @@ class DeviceCompatibilitySettingsNavigationTest {
         val automation = instrumentation.uiAutomation
         val expectedPackage = selected.settingsIntent.resolveActivity(context.packageManager)?.packageName
         val appLabel = context.applicationInfo.loadLabel(context.packageManager).toString()
-        val requiresAppLabel = id == PermissionGuideId.MANUFACTURER_POPUP ||
+        val requiresAppLabel = selected.settingsIntent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS ||
+            id == PermissionGuideId.MANUFACTURER_POPUP ||
             (selected.settingsIntent.component != null && id != PermissionGuideId.AUTO_START)
         val deadline = SystemClock.uptimeMillis() + 10_000
         var settingsRoot: AccessibilityNodeInfo? = null
