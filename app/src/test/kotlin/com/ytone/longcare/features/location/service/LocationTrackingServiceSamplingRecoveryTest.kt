@@ -52,6 +52,10 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
+import org.robolectric.shadow.api.Shadow
+import org.robolectric.shadows.ShadowPowerManager
 import org.robolectric.util.ReflectionHelpers
 
 /** Actual Service lifecycle and session coordinator; only SDK, runtime conditions and HTTP are ports. */
@@ -376,21 +380,20 @@ class LocationTrackingServiceSamplingRecoveryTest {
         }
     }
 
-    @Test fun `sampling wake lock renews its lease until reporting cancellation releases it`() = runTest {
+    @Test
+    @Config(shadows = [RecordingWakeLockShadow::class])
+    fun `sampling wake lock renews its lease until reporting cancellation releases it`() = runTest {
         withFixture {
-            var held = false
-            val lock = mockk<PowerManager.WakeLock>(relaxed = true)
-            every { lock.isHeld } answers { held }
-            every { lock.acquire(any<Long>()) } answers { held = true }
-            every { lock.release() } answers { held = false }
-            ReflectionHelpers.setField(service, "samplingWakeLock", lock)
-
             start()
-            verify(exactly = 1) { lock.acquire(180_000L) }
+            val lock = samplingWakeLock()
+            val lockShadow = Shadow.extract<RecordingWakeLockShadow>(lock)
+            assertEquals(listOf(180_000L), lockShadow.acquisitionTimeouts)
             // The lease is renewed, not a bound on total order-time CPU retention.
+            // Coroutine virtual time checks calls; this does not validate Android-clock expiry.
             advanceTimeBy(195_000L)
             runCurrent()
-            verify(exactly = 14) { lock.acquire(180_000L) }
+            assertEquals(List(14) { 180_000L }, lockShadow.acquisitionTimeouts)
+            assertEquals(14, lockShadow.timesHeld)
             assertTrue(lock.isHeld)
 
             manager.stopReporting()
@@ -399,8 +402,8 @@ class LocationTrackingServiceSamplingRecoveryTest {
             assertFalse(lock.isHeld)
             advanceTimeBy(60_000L)
             runCurrent()
-            verify(exactly = 14) { lock.acquire(180_000L) }
-            verify(exactly = 1) { lock.release() }
+            assertEquals(List(14) { 180_000L }, lockShadow.acquisitionTimeouts)
+            assertEquals(1, lockShadow.releaseCalls)
         }
     }
 
@@ -425,33 +428,38 @@ class LocationTrackingServiceSamplingRecoveryTest {
         }
     }
 
-    @Test fun `wake lock acquisition failure does not cancel sampling and a later health tick can retry`() = runTest {
+    @Test
+    @Config(shadows = [RecordingWakeLockShadow::class])
+    fun `wake lock acquisition failure does not cancel sampling and a later health tick can retry`() = runTest {
         withFixture {
-            var held = false
-            val lock = mockk<PowerManager.WakeLock>(relaxed = true)
-            every { lock.isHeld } answers { held }
-            every { lock.acquire(any<Long>()) } throws SecurityException("wake lock denied")
-            every { lock.release() } answers { held = false }
+            val lock = service.getSystemService(PowerManager::class.java)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sampling-test")
+                .apply { setReferenceCounted(false) }
+            val lockShadow = Shadow.extract<RecordingWakeLockShadow>(lock)
+            lockShadow.denyAcquisition = true
             ReflectionHelpers.setField(service, "samplingWakeLock", lock)
 
             start()
+            assertEquals(listOf(180_000L), lockShadow.acquisitionTimeouts)
             assertFalse(lock.isHeld)
             assertEquals(1, subscriptions)
             assertTrue(samplingEnabled)
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             assertFalse(shadowOf(service).isStoppedBySelf)
+            assertEquals(0, lockShadow.timesHeld)
 
-            every { lock.acquire(any<Long>()) } answers { held = true }
+            lockShadow.denyAcquisition = false
             advanceTimeBy(15_000L)
             runCurrent()
             assertTrue(lock.isHeld)
+            assertEquals(1, lockShadow.timesHeld)
             assertEquals(1, startedSubscriptions)
 
             enabled = false
             tick()
             assertFalse(lock.isHeld)
-            verify(exactly = 1) { lock.release() }
+            assertEquals(1, lockShadow.releaseCalls)
         }
     }
 
@@ -487,6 +495,28 @@ class LocationTrackingServiceSamplingRecoveryTest {
             sample()
             coVerify(exactly = 1) { service.locationRepository.addPosition(10, any(), any()) }
             verify(exactly = 0) { controller.start(any(), any(), any()) }
+        }
+    }
+
+    /** Keep the built-in shadow's held/ref-count/timeout behavior; record calls and inject denial. */
+    @Implements(PowerManager.WakeLock::class)
+    class RecordingWakeLockShadow : ShadowPowerManager.ShadowWakeLock() {
+        val acquisitionTimeouts = mutableListOf<Long>()
+        var denyAcquisition = false
+        var releaseCalls = 0
+            private set
+
+        @Implementation
+        override fun acquire(timeout: Long) {
+            acquisitionTimeouts += timeout
+            if (denyAcquisition) throw SecurityException("wake lock denied")
+            super.acquire(timeout)
+        }
+
+        @Implementation
+        override fun release(flags: Int) {
+            releaseCalls += 1
+            super.release(flags)
         }
     }
 
