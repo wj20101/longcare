@@ -53,7 +53,9 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -103,6 +105,19 @@ class ServiceCountdownBackgroundInitializationTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun wait_for_accepts_observed_success_once_and_still_rejects_a_missed_deadline() {
+        var reads = 0
+        waitFor("the first successful observation must be accepted", timeoutMillis = 0L) {
+            ++reads == 1 // A second read would see a different transient lifecycle state.
+        }
+        assertEquals("success must not be re-read after leaving the polling loop", 1, reads)
+        val error = assertThrows(AssertionError::class.java) {
+            waitFor("condition never became true", timeoutMillis = 0L) { false }
+        }
+        assertEquals("condition never became true", error.message)
     }
 
     @Test
@@ -266,7 +281,7 @@ class ServiceCountdownBackgroundInitializationTest {
         val gateway = RecordingGateway()
         val viewModel = renderCountdown(details, gateway)
         waitFor("first countdown read did not start") { details.readEntered.isCompleted }
-        assertTrue(compose.activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+        assertTrue(hostIsResumed())
 
         backgroundHost(lockScreen)
 
@@ -322,7 +337,7 @@ class ServiceCountdownBackgroundInitializationTest {
                 AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN))
         }
         waitFor("host did not leave RESUMED") {
-            !compose.activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            !hostIsResumed()
         }
         if (lockScreen) {
             val power = instrumentation.targetContext.getSystemService(PowerManager::class.java)
@@ -334,21 +349,43 @@ class ServiceCountdownBackgroundInitializationTest {
         audioManager.activePlaybackConfigurations.any { it.audioAttributes.usage == AudioAttributes.USAGE_ALARM }
 
     private fun restoreHost() {
-        shell("input keyevent KEYCODE_WAKEUP")
-        shell("wm dismiss-keyguard")
+        // The body may already have restored this host. Reordering an already resumed Activity
+        // delivers another intent and can introduce an unnecessary PAUSED -> RESUMED transition.
+        if (!hostIsResumed()) {
+            shell("input keyevent KEYCODE_WAKEUP")
+            shell("wm dismiss-keyguard")
+            instrumentation.runOnMainSync {
+                val host = compose.activity
+                if (!host.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    host.startActivity(Intent(host, NavigationStateTestActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                }
+            }
+            waitFor("test host did not return; unlock the test device if it has a secure keyguard", 60_000L) {
+                hostIsResumed()
+            }
+        }
+        hostWasBackgrounded = false
+    }
+
+    private fun hostIsResumed(): Boolean {
+        var resumed = false
         instrumentation.runOnMainSync {
-            compose.activity.startActivity(Intent(compose.activity, NavigationStateTestActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            resumed = compose.activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
         }
-        waitFor("test host did not return; unlock the test device if it has a secure keyguard", 60_000L) {
-            compose.activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-        }
+        return resumed
     }
 
     private fun waitFor(message: String, timeoutMillis: Long = 10_000L, condition: () -> Boolean) {
         val deadline = SystemClock.uptimeMillis() + timeoutMillis
-        while (!condition() && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(50L)
-        assertTrue(message, condition())
+        while (true) {
+            // A successful observation completes the wait. Re-reading here can spuriously fail
+            // if a lifecycle state changes between the loop condition and a final assertion.
+            if (condition()) return
+            if (SystemClock.uptimeMillis() >= deadline) break
+            SystemClock.sleep(50L)
+        }
+        fail(message)
     }
 
     private fun shell(command: String) {
