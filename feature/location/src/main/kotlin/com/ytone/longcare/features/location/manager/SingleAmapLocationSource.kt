@@ -26,7 +26,7 @@ class SingleAmapLocationSource @Inject constructor(
     private val clientFactory: AmapLocationClientFactory,
     private val amapApiKeyProvider: AmapApiKeyProvider,
 ) {
-    private val singleRequest = SingleLocationRequest()
+    private val singleRequest = SingleLocationRequest(SystemClock::elapsedRealtime)
 
     private fun buildSingleLocationOption(remainingMs: Long) = newAmapLocationOption().apply {
         isOnceLocation = true
@@ -41,15 +41,20 @@ class SingleAmapLocationSource @Inject constructor(
             failure.location?.isMock != true &&
                 failure.location?.errorCode != AMapLocation.ERROR_CODE_FAILURE_SIMULATION_LOCATION &&
                 failure.reason == LocationFailure.QUALITY
-        }) { remaining -> getIsolatedLocation(remaining, requestId) }
+        }) { _, deadline -> getIsolatedLocation(deadline, requestId) }
     }
 
     private suspend fun getIsolatedLocation(
-        remainingMs: Long,
+        deadlineElapsedRealtime: Long,
         requestId: String,
     ): LocationAcquisition = withContext(Dispatchers.Main.immediate) {
-        val attemptStarted = System.nanoTime()
-        val apiKey = amapApiKeyProvider.getAmapApiKey()?.takeIf { it.isNotBlank() }
+        fun deadlineReached() = SystemClock.elapsedRealtime() >= deadlineElapsedRealtime
+        if (deadlineReached()) return@withContext LocationAcquisition.Failure(LocationFailure.TIMEOUT)
+        val keyResult = runCatching { amapApiKeyProvider.getAmapApiKey() }
+        currentCoroutineContext().ensureActive()
+        keyResult.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+        if (deadlineReached()) return@withContext LocationAcquisition.Failure(LocationFailure.TIMEOUT)
+        val apiKey = keyResult.getOrThrow()?.takeIf { it.isNotBlank() }
             ?: return@withContext LocationAcquisition.Failure(LocationFailure.CONFIGURATION)
         currentCoroutineContext().ensureActive()
         var client: AmapClientHandle? = null
@@ -57,11 +62,14 @@ class SingleAmapLocationSource @Inject constructor(
         try {
             val isolatedClient = clientFactory.create(apiKey)
             client = isolatedClient
+            if (deadlineReached()) return@withContext LocationAcquisition.Failure(LocationFailure.TIMEOUT)
             suspendCancellableCoroutine { continuation ->
                 val finished = AtomicBoolean(false)
                 listener = AMapLocationListener { location ->
                     if (finished.compareAndSet(false, true)) {
-                        val result = if (location != null && location.errorCode == AMapLocation.LOCATION_SUCCESS) {
+                        val result = if (deadlineReached()) {
+                            LocationAcquisition.Failure(LocationFailure.TIMEOUT)
+                        } else if (location != null && location.errorCode == AMapLocation.LOCATION_SUCCESS) {
                             val sample = location.toSample(requestId)
                             val rejection = LocationQuality.rejection(sample, System.currentTimeMillis(), SystemClock.elapsedRealtime())
                             if (rejection == null) {
@@ -78,8 +86,19 @@ class SingleAmapLocationSource @Inject constructor(
                 continuation.invokeOnCancellation { finished.set(true) }
                 if (!continuation.isActive) return@suspendCancellableCoroutine
                 isolatedClient.setLocationListener(requireNotNull(listener))
-                val setupMs = (System.nanoTime() - attemptStarted) / 1_000_000
-                isolatedClient.setLocationOption(buildSingleLocationOption(remainingMs - setupMs))
+                if (!continuation.isActive) return@suspendCancellableCoroutine
+                if (deadlineReached()) {
+                    if (finished.compareAndSet(false, true))
+                        continuation.resume(LocationAcquisition.Failure(LocationFailure.TIMEOUT))
+                    return@suspendCancellableCoroutine
+                }
+                isolatedClient.setLocationOption(buildSingleLocationOption(deadlineElapsedRealtime - SystemClock.elapsedRealtime()))
+                if (!continuation.isActive) return@suspendCancellableCoroutine
+                if (deadlineReached()) {
+                    if (finished.compareAndSet(false, true))
+                        continuation.resume(LocationAcquisition.Failure(LocationFailure.TIMEOUT))
+                    return@suspendCancellableCoroutine
+                }
                 isolatedClient.startLocation()
             }
         } catch (cancelled: CancellationException) {

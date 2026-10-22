@@ -16,8 +16,9 @@ import java.io.IOException
  */
 internal class MappedApiResultCall<Raw, Data>(
     private val delegate: Call<Raw>,
-    private val responseMapper: (Raw) -> ApiResult<Data>,
+    private val responseMapper: (Raw, Request) -> ApiResult<Data>,
 ) : Call<ApiResult<Data>> {
+    private val mappingLock = Any()
 
     override fun enqueue(callback: Callback<ApiResult<Data>>) {
         delegate.enqueue(
@@ -26,10 +27,20 @@ internal class MappedApiResultCall<Raw, Data>(
                     call: Call<Raw>,
                     response: Response<Raw>,
                 ) {
-                    callback.onResponse(
-                        this@MappedApiResultCall,
-                        mapResponse(response),
-                    )
+                    if (delegate.isCanceled) {
+                        callback.onFailure(this@MappedApiResultCall, IOException("Canceled"))
+                        return
+                    }
+                    val mapped = try {
+                        mapResponse(response)
+                    } catch (cancelled: CancellationException) {
+                        callback.onFailure(this@MappedApiResultCall, cancelled)
+                        return
+                    } catch (cancelled: IOException) {
+                        callback.onFailure(this@MappedApiResultCall, cancelled)
+                        return
+                    }
+                    callback.onResponse(this@MappedApiResultCall, mapped)
                 }
 
                 override fun onFailure(
@@ -79,7 +90,8 @@ internal class MappedApiResultCall<Raw, Data>(
             )
         }
 
-    private fun mapResponse(response: Response<Raw>): Response<ApiResult<Data>> {
+    private fun mapResponse(response: Response<Raw>): Response<ApiResult<Data>> = synchronized(mappingLock) {
+        if (delegate.isCanceled) throw IOException("Canceled")
         val result =
             if (!response.isSuccessful) {
                 ApiResult.Exception(
@@ -91,7 +103,7 @@ internal class MappedApiResultCall<Raw, Data>(
                     ApiResult.Exception(ApiRequestErrorMapper.emptyBody())
                 } else {
                     try {
-                        responseMapper(body)
+                        responseMapper(body, response.raw().request)
                     } catch (cancellation: CancellationException) {
                         throw cancellation
                     } catch (exception: Exception) {
@@ -101,12 +113,12 @@ internal class MappedApiResultCall<Raw, Data>(
                     }
                 }
             }
-        return Response.success(result)
+        Response.success(result)
     }
 
     override fun isExecuted(): Boolean = delegate.isExecuted
 
-    override fun cancel() = delegate.cancel()
+    override fun cancel() = synchronized(mappingLock) { delegate.cancel() }
 
     override fun isCanceled(): Boolean = delegate.isCanceled
 

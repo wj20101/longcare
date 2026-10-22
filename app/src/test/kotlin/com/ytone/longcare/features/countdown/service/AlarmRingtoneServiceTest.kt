@@ -4,7 +4,10 @@ import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
 import android.os.Looper
 import androidx.core.app.ServiceCompat
 import androidx.test.core.app.ApplicationProvider
@@ -120,6 +123,50 @@ class AlarmRingtoneServiceTest {
         val application = shadowOf(context as Application)
         assertNull(application.nextStartedService)
         assertEquals(AlarmRingtoneService::class.java.name, application.nextStoppedService.component?.className)
+    }
+
+    @Test
+    @Config(sdk = [24, 28, 31, 36])
+    fun `start dispatches once using the platform API and preserves original identity`() {
+        var foregroundCalls = 0
+        var legacyCalls = 0
+        var received: Intent? = null
+        val recordingContext = object : ContextWrapper(context) {
+            override fun startForegroundService(service: Intent): ComponentName {
+                foregroundCalls++
+                received = service
+                return ComponentName(context, AlarmRingtoneService::class.java)
+            }
+            override fun startService(service: Intent): ComponentName {
+                legacyCalls++
+                received = service
+                return ComponentName(context, AlarmRingtoneService::class.java)
+            }
+        }
+
+        AlarmRingtoneService.startRingtone(recordingContext, CountdownAlarm(orderKey, "护理", "1:2:3", 1234L))
+
+        assertEquals(if (Build.VERSION.SDK_INT >= 26) 1 else 0, foregroundCalls)
+        assertEquals(if (Build.VERSION.SDK_INT >= 26) 0 else 1, legacyCalls)
+        assertEquals(orderKey, CountdownNotificationManager.extractOrderKey(received!!))
+        assertEquals("1:2:3", received!!.getStringExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER))
+        assertEquals(1234L, received!!.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+    }
+
+    @Test
+    @Config(sdk = [28, 31, 36])
+    fun `native start exceptions propagate without ordinary service or activity workaround`() {
+        val failure = SecurityException("start denied")
+        val rejectedContext = object : ContextWrapper(context) {
+            override fun startForegroundService(service: Intent): ComponentName? = throw failure
+            override fun startService(service: Intent): ComponentName? = error("Must not retry as ordinary service")
+            override fun startActivity(intent: Intent) = error("Must not force an activity")
+        }
+
+        val caught = assertThrows(SecurityException::class.java) {
+            AlarmRingtoneService.startRingtone(rejectedContext, CountdownAlarm(orderKey, "护理", "1:2:3", 1234L))
+        }
+        assertSame(failure, caught)
     }
 
     private fun createService(): AlarmRingtoneService {

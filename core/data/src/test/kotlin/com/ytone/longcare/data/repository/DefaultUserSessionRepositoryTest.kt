@@ -15,6 +15,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -184,6 +185,98 @@ class DefaultUserSessionRepositoryTest {
         }
         repository.login(User(userId = 7, token = "token"))
         observer.await()
+    }
+
+    @Test
+    fun `matching observation may prepare face session but authentication stays closed until mutation finishes`() {
+        val tracker = UserSessionTracker()
+        val user = User(userId = 1)
+        tracker.observe(user)
+        val old = tracker.sessionSnapshot.value.generation
+        tracker.beginChange(user)
+        tracker.observe(user)
+        assertTrue(tracker.sessionGeneration.value != null)
+        assertEquals(null, tracker.sessionSnapshot.value.user)
+        tracker.finishChange(user)
+        assertEquals(user, tracker.sessionSnapshot.value.user)
+        assertTrue(tracker.sessionSnapshot.value.generation > old)
+    }
+
+    @Test
+    fun `conditional logout cannot clear a relogin with the same user and token`() = runTest {
+        val store = FailingReadDataStore(0)
+        val repository = DefaultUserSessionRepository(store, backgroundScope, UserSessionTracker())
+        val user = User(companyId = 1, accountId = 2, userId = 3, token = "same-test-token")
+        repository.login(user)
+        val oldGeneration = repository.sessionSnapshot.value.generation
+        repository.login(user)
+        assertEquals(null, repository.logoutIfCurrent(oldGeneration))
+        assertEquals(user, User.ADAPTER.decode(requireNotNull(store.persisted.value[APP_USER_KEY])))
+        val currentGeneration = repository.sessionSnapshot.value.generation
+        val loggedOutGeneration = repository.logoutIfCurrent(currentGeneration)
+        assertTrue(requireNotNull(loggedOutGeneration) > currentGeneration)
+        assertEquals(loggedOutGeneration, repository.sessionSnapshot.value.generation)
+        assertEquals(null, repository.sessionSnapshot.value.user)
+        assertEquals(null, store.persisted.value[APP_USER_KEY])
+    }
+
+    @Test
+    fun `conditional logout rechecks after a concurrent login holding the mutation mutex`() = runTest {
+        val values = MutableStateFlow(emptyPreferences())
+        var gate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+        val store = object : DataStore<Preferences> {
+            override val data = values
+            override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences {
+                gate?.await()
+                return transform(values.value).also { values.value = it }
+            }
+        }
+        val repository = DefaultUserSessionRepository(store, backgroundScope, UserSessionTracker())
+        repository.login(User(userId = 1))
+        val oldGeneration = repository.sessionSnapshot.value.generation
+        gate = kotlinx.coroutines.CompletableDeferred()
+        val login = async { repository.login(User(userId = 2)) }
+        repository.sessionSnapshot.first { it.user == null }
+        val logout = async { repository.logoutIfCurrent(oldGeneration) }
+        gate.complete(Unit)
+        login.await()
+        assertEquals(null, logout.await())
+        assertEquals(2, repository.sessionSnapshot.value.user?.userId)
+        assertEquals(2, User.ADAPTER.decode(requireNotNull(values.value[APP_USER_KEY])).userId)
+    }
+
+    @Test
+    fun `conditional logout checks durable identity instead of clearing unpublished newer credentials`() = runTest {
+        val store = FailingReadDataStore(0)
+        val repository = DefaultUserSessionRepository(store, backgroundScope, UserSessionTracker())
+        repository.login(User(userId = 1))
+        val generation = repository.sessionSnapshot.value.generation
+        // Simulate a durable change whose flow publication has not run yet.
+        store.edit { it[APP_USER_KEY] = User(userId = 2).encode() }
+        assertEquals(null, repository.logoutIfCurrent(generation))
+        assertEquals(2, User.ADAPTER.decode(requireNotNull(store.persisted.value[APP_USER_KEY])).userId)
+    }
+
+    @Test
+    fun `durable clear never republishes old authentication when session publication times out`() = runTest {
+        val values = MutableStateFlow(emptyPreferences())
+        var suppressPublication = false
+        val store = object : DataStore<Preferences> {
+            override val data = values.filter { !suppressPublication }
+            override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences =
+                transform(values.value).also { values.value = it }
+        }
+        val repository = DefaultUserSessionRepository(store, backgroundScope, UserSessionTracker())
+        repository.login(User(userId = 1))
+        val generation = repository.sessionSnapshot.value.generation
+        suppressPublication = true
+        try {
+            repository.logoutIfCurrent(generation)
+            fail("Unpublished logout must not claim completion")
+        } catch (_: IOException) {
+            assertEquals(null, values.value[APP_USER_KEY])
+            assertEquals(null, repository.sessionSnapshot.value.user)
+        }
     }
 
     private class FailingReadDataStore(var failuresRemaining: Int) : DataStore<Preferences> {

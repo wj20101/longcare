@@ -3,7 +3,10 @@ package com.ytone.longcare.features.countdown.manager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioManager
 import android.os.Build
+import android.provider.Settings
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,12 +23,28 @@ internal class CountdownNotificationUiDelegate(
     private val channelId: String,
     private val dismissAlarmRequestCode: Int,
     private val countdownAlarmActivityRequestCode: Int,
+    private val fallbackChannelId: String = "${channelId}_fallback",
 ) {
     fun buildCountdownCompletionNotification(
         orderKey: OrderKey,
         serviceName: String,
         owner: String,
         triggerTimeMillis: Long,
+    ): android.app.Notification = buildNotification(orderKey, serviceName, owner, triggerTimeMillis, fallback = false)
+
+    fun buildCountdownFallbackNotification(
+        orderKey: OrderKey,
+        serviceName: String,
+        owner: String,
+        triggerTimeMillis: Long,
+    ): android.app.Notification = buildNotification(orderKey, serviceName, owner, triggerTimeMillis, fallback = true)
+
+    private fun buildNotification(
+        orderKey: OrderKey,
+        serviceName: String,
+        owner: String,
+        triggerTimeMillis: Long,
+        fallback: Boolean,
     ): android.app.Notification {
         logI("构建倒计时完成通知: orderId=${orderKey.orderId}, serviceName=$serviceName")
 
@@ -59,7 +78,7 @@ internal class CountdownNotificationUiDelegate(
             false
         )
 
-        val builder = NotificationCompat.Builder(context, channelId)
+        val builder = NotificationCompat.Builder(context, if (fallback) fallbackChannelId else channelId)
             .setContentTitle(context.getString(R.string.countdown_notification_title))
             .setContentText(
                 context.getString(R.string.countdown_notification_content, serviceName),
@@ -75,6 +94,13 @@ internal class CountdownNotificationUiDelegate(
             .setLights(0xFF0000FF.toInt(), 1000, 500)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setTimeoutAfter(0)
+
+        if (fallback) {
+            // On API 26+ the fallback channel owns sound and the user can mute/change it.
+            // Pre-channel devices use the same selected default alarm, not a replacement tone.
+            @Suppress("DEPRECATION")
+            builder.setSound(Settings.System.DEFAULT_ALARM_ALERT_URI, AudioManager.STREAM_ALARM)
+        }
 
         if (alarmActivityPendingIntent != null) {
             builder.setContentIntent(alarmActivityPendingIntent)
@@ -130,6 +156,20 @@ internal class CountdownNotificationUiDelegate(
             .build()
 
         notificationManagerCompat.createNotificationChannel(channel)
+        val fallbackChannel = NotificationChannelCompat.Builder(
+            fallbackChannelId, NotificationManagerCompat.IMPORTANCE_HIGH,
+        )
+            .setName(context.getString(R.string.countdown_fallback_notification_channel_name))
+            .setDescription(context.getString(R.string.countdown_fallback_notification_channel_description))
+            .setVibrationEnabled(false)
+            .setShowBadge(true)
+            .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI, AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build())
+            .build()
+        // Recreating an existing channel must not override the user's sound/importance choices.
+        notificationManagerCompat.createNotificationChannel(fallbackChannel)
         logI("倒计时通知渠道已确保存在: $channelId")
     }
 

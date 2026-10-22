@@ -571,6 +571,7 @@ class LocationTrackingServiceSamplingRecoveryTest {
                     every { isLocationServiceEnabled() } answers { enabled }
                 }
                 privacyConsentManager = mockk { every { isPrivacyConsented } answers { consent } }
+                foregroundStateVerifier = mockk { every { isForeground(any(), any()) } returns true }
             }
             every { service.locationClock.currentTimeMillis() } answers { WALL_START + testScheduler.currentTime }
             every { service.locationClock.elapsedRealtime() } answers { testScheduler.currentTime }

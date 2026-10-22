@@ -32,6 +32,7 @@ import com.ytone.longcare.features.location.reporting.LocationReportingStatus
 import com.ytone.longcare.features.location.tracker.LocationEventTracker
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.core.LocationKeepAliveManager
+import com.ytone.longcare.core.common.service.ForegroundServiceStateVerifier
 import com.ytone.longcare.features.location.reporting.LocationClock
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.features.location.reporting.LocationSampleEvaluator
@@ -79,6 +80,7 @@ open class LocationTrackingService : Service() {
     @Inject lateinit var userSessionRepository: UserSessionRepository
     @Inject lateinit var runtimeReadiness: LocationRuntimeReadiness
     @Inject lateinit var privacyConsentManager: PrivacyConsentManager
+    @Inject lateinit var foregroundStateVerifier: ForegroundServiceStateVerifier
 
     private var foregroundEntered = false
     private var recoveryJob: Job? = null
@@ -173,6 +175,11 @@ open class LocationTrackingService : Service() {
         createNotificationChannel()
         ServiceCompat.startForeground(this, NOTIFICATION_ID, createNotification(),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)
+        // AOSP may silently ignore promotion (for example a restricted app-op). A normal
+        // startForeground return alone must not authorize SDK collection without a real FGS.
+        check(foregroundStateVerifier.isForeground(this, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)) {
+            "location_foreground_promotion_rejected"
+        }
         foregroundEntered = true
         lastNotificationText = R.string.location_tracking_preparing
     }

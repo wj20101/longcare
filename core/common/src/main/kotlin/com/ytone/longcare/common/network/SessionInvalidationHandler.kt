@@ -5,7 +5,11 @@ import kotlinx.coroutines.flow.StateFlow
 data class SessionInvalidation(
     val id: Long,
     val reason: String,
+    val loggedOutGeneration: Long,
 )
+
+/** Token-free identity attached to the actual request that supplied its encrypted auth header. */
+data class RequestSessionGeneration(val value: Long)
 
 /**
  * 统一处理服务端会话失效。
@@ -16,7 +20,8 @@ data class SessionInvalidation(
 interface SessionInvalidationHandler {
     val invalidations: StateFlow<SessionInvalidation?>
 
-    fun invalidate(reason: String)
+    fun invalidate(reason: String, generation: Long)
 
-    fun consume(id: Long)
+    /** Return false for a queued event belonging to an older login; check before showing UI. */
+    fun consume(id: Long): Boolean
 }

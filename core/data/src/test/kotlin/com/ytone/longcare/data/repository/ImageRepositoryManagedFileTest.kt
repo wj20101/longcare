@@ -11,6 +11,8 @@ import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import org.junit.Assert.fail
+import org.junit.Assert.assertEquals
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
@@ -23,6 +25,25 @@ class ImageRepositoryManagedFileTest {
             orderImageDao = orderImageDao,
             imagePipeline = imagePipeline,
         )
+
+    @Test
+    fun `upload success fails when local record no longer exists`() = runTest {
+        coEvery { orderImageDao.updateUploadSuccess(7L, any(), "cloud-key", any()) } returns 0
+
+        try {
+            repository.markAsSuccess(7L, "cloud-key")
+            fail("A missing row cannot be reported as a persisted upload")
+        } catch (error: IllegalStateException) {
+            assertEquals("Order photo upload result has no matching local record", error.message)
+        }
+    }
+
+    @Test
+    fun `upload success accepts exactly one persisted local record`() = runTest {
+        coEvery { orderImageDao.updateUploadSuccess(7L, any(), "cloud-key", any()) } returns 1
+
+        repository.markAsSuccess(7L, "cloud-key")
+    }
 
     @Test
     fun `deleting an order also deletes its managed image files`() =

@@ -3,11 +3,11 @@ package com.ytone.longcare.features.countdown.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
-import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.common.utils.logI
@@ -52,8 +52,16 @@ class AlarmRingtoneService : Service() {
                 putExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, alarm.triggerTimeMillis)
                 CountdownAlarmDiagnostics.attach(this, alarm.diagnostics)
             }
-            // 使用Compat库确保兼容性，自动处理Android 8.0+的前台服务启动
-            ContextCompat.startForegroundService(context, intent)
+            // Android 9 can silently reject a background-restricted FGS start by returning
+            // null. AndroidX discards that nullable result, so use the equivalent platform API.
+            val component = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+            checkNotNull(component) {
+                "Alarm ringtone foreground service start was rejected"
+            }
         }
         
         /**

@@ -121,8 +121,9 @@ class MainActivity : AppCompatActivity() {
                 sessionInvalidationHandler.invalidations
                     .filterNotNull()
                     .collect { invalidation ->
-                        toastHelper.showLong(R.string.session_expired)
-                        sessionInvalidationHandler.consume(invalidation.id)
+                        if (sessionInvalidationHandler.consume(invalidation.id)) {
+                            toastHelper.showLong(R.string.session_expired)
+                        }
                     }
             }
         }

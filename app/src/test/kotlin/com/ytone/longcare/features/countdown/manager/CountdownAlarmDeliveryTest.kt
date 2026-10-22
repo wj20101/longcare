@@ -9,6 +9,8 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +18,7 @@ import android.os.Parcel
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
 import androidx.test.core.app.ApplicationProvider
 import com.ytone.longcare.domain.location.LocationRecoveryStore
 import com.ytone.longcare.domain.order.OrderRepository
@@ -118,6 +121,7 @@ class CountdownAlarmDeliveryTest {
         manager.onAlarmTriggered(intent)
 
         verify(exactly = 1) { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, any<Notification>()) }
+        assertEquals(CountdownNotificationManager.COUNTDOWN_FALLBACK_CHANNEL_ID, published.captured.channelId)
         assertNotNull(published.captured.fullScreenIntent)
         val shown = shadowOf(published.captured.contentIntent).savedIntent
         assertEquals(order, CountdownNotificationManager.extractOrderKey(shown))
@@ -126,9 +130,74 @@ class CountdownAlarmDeliveryTest {
         assertNull(shadowOf(context as Application).nextStartedActivity)
     }
 
+    @Test
+    @Config(sdk = [28, 31, 34, 36])
+    fun `nullable native foreground start publishes audible fallback with original ownership`() = runTest {
+        unmockkObject(AlarmRingtoneService.Companion)
+        var startCalls = 0
+        context = object : ContextWrapper(context) {
+            override fun startForegroundService(service: Intent): ComponentName? {
+                startCalls++
+                return null
+            }
+            override fun startService(service: Intent): ComponentName? = error("Must not retry as ordinary service")
+        }
+        createManager(backgroundScope)
+        val intent = schedule()
+        val published = slot<Notification>()
+        every { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, capture(published)) } just runs
+
+        manager.onAlarmTriggered(intent)
+
+        assertEquals(1, startCalls)
+        assertEquals(CountdownNotificationManager.COUNTDOWN_FALLBACK_CHANNEL_ID, published.captured.channelId)
+        val contentIntent = shadowOf(published.captured.contentIntent).savedIntent
+        assertEquals(order, CountdownNotificationManager.extractOrderKey(contentIntent))
+        assertEquals(intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L),
+            contentIntent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+        assertNull(shadowOf(context.applicationContext as Application).nextStartedActivity)
+    }
+
+    @Test
+    @Config(sdk = [28, 34])
+    fun `a blocked original countdown channel is not bypassed by audible fallback`() = runTest {
+        val systemNotifications = context.getSystemService(NotificationManager::class.java)
+        systemNotifications.createNotificationChannel(android.app.NotificationChannel(
+            CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID, "blocked", NotificationManager.IMPORTANCE_NONE))
+        createManager(backgroundScope)
+        val intent = schedule()
+        every { AlarmRingtoneService.startRingtone(any(), any()) } throws SecurityException("start denied")
+
+        manager.onAlarmTriggered(intent)
+
+        verify(exactly = 0) { notifications.notify(any<Int>(), any<Notification>()) }
+    }
+
+    @Test fun `a blocked reminder channel group is not bypassed by fallback`() = runTest {
+        createManager(backgroundScope)
+        val intent = schedule()
+        every { AlarmRingtoneService.startRingtone(any(), any()) } throws SecurityException("start denied")
+        val compat = mockk<NotificationManagerCompat>(relaxed = true)
+        val group = mockk<androidx.core.app.NotificationChannelGroupCompat>()
+        every { group.isBlocked } returns true
+        mockkStatic(NotificationManagerCompat::class)
+        every { NotificationManagerCompat.from(context) } returns compat
+        every { compat.areNotificationsEnabled() } returns true
+        every { compat.getNotificationChannelCompat(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID) } returns
+            androidx.core.app.NotificationChannelCompat.Builder("countdown", NotificationManager.IMPORTANCE_HIGH)
+                .setName("countdown").setGroup("blocked_group").build()
+        every { compat.getNotificationChannelGroupCompat("blocked_group") } returns group
+
+        manager.onAlarmTriggered(intent)
+
+        verify(exactly = 0) { notifications.notify(any<Int>(), any<Notification>()) }
+    }
+
     @Test fun `foreground promotion rejection retains fallback and releases playback resources`() = runTest {
         createManager(backgroundScope)
         val intent = schedule()
+        val published = slot<Notification>()
+        every { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, capture(published)) } just runs
         val controller = Robolectric.buildService(AlarmRingtoneService::class.java)
         val service = controller.get()
         ReflectionHelpers.setField(service, "injected", true)
@@ -142,10 +211,38 @@ class CountdownAlarmDeliveryTest {
             service.onStartCommand(intent, 0, 1)
 
             verify(exactly = 1) { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, any<Notification>()) }
+            assertEquals(CountdownNotificationManager.COUNTDOWN_FALLBACK_CHANNEL_ID, published.captured.channelId)
             assertTrue(shadowOf(service).isStoppedBySelf)
             assertFalse(ReflectionHelpers.getField<PowerManager.WakeLock>(service, "wakeLock").isHeld)
             verify(exactly = 0) { playback.start() }
             verify(exactly = 1) { playback.stop() }
+        } finally {
+            controller.destroy()
+        }
+    }
+
+    @Test
+    @Config(sdk = [28, 34])
+    fun `silently ignored foreground promotion cannot start media playback`() = runTest {
+        createManager(backgroundScope)
+        val intent = schedule()
+        val controller = Robolectric.buildService(AlarmRingtoneService::class.java)
+        val service = controller.get()
+        ReflectionHelpers.setField(service, "injected", true)
+        service.countdownNotificationManager = manager
+        controller.create()
+        val playback = mockk<AlarmRingtonePlaybackController>(relaxed = true)
+        ReflectionHelpers.setField(service, "playbackController", playback)
+        mockkStatic(ServiceCompat::class)
+        every { ServiceCompat.startForeground(any(), any(), any(), any()) } just runs
+        try {
+            service.onStartCommand(intent, 0, 1)
+
+            verify(exactly = 0) { playback.start() }
+            verify(exactly = 1) { playback.stop() }
+            verify(exactly = 1) { notifications.notify(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_ID, any<Notification>()) }
+            assertTrue(shadowOf(service).isStoppedBySelf)
+            assertFalse(ReflectionHelpers.getField<PowerManager.WakeLock>(service, "wakeLock").isHeld)
         } finally {
             controller.destroy()
         }
@@ -198,6 +295,9 @@ class CountdownAlarmDeliveryTest {
         try {
             assertTrue(manager.startAlarmForeground(controller.get(), alarm))
             assertNotNull(shadowOf(controller.get()).lastForegroundNotification)
+            assertEquals(CountdownNotificationManager.COUNTDOWN_NOTIFICATION_CHANNEL_ID,
+                shadowOf(controller.get()).lastForegroundNotification.channelId)
+            assertNull(shadowOf(controller.get()).lastForegroundNotification.sound)
         } finally {
             controller.destroy()
         }
@@ -236,15 +336,30 @@ class CountdownAlarmDeliveryTest {
     }
 
     @Test
-    @Config(sdk = [30, 34])
-    fun `diagnostic records the exact API used instead of conflating all non AlarmClock modes`() = runTest {
+    @Config(sdk = [24, 28, 30, 31, 34, 36])
+    fun `visible alarm clock is used on every supported API with exact alarm capability`() = runTest {
         createManager(backgroundScope)
         val intent = schedule()
         val fields = CountdownAlarmDiagnostics.fields(CountdownAlarmDiagnostics.read(intent),
             intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L), "scheduled")
-        assertEquals(if (Build.VERSION.SDK_INT >= 31) "alarm_clock" else "exact_allow_idle", fields["scheduleMode"])
+        assertEquals("alarm_clock", fields["scheduleMode"])
+        assertEquals(intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L),
+            alarms.nextAlarmClock?.triggerTime)
         assertNull(fields["fallback"])
         assertNull(fields["receiverDelayMs"])
+    }
+
+    @Test
+    @Config(sdk = [28, 30])
+    fun `pre Android twelve alarm clock does not require newer exact alarm permission`() {
+        scheduleCountdownAlarmInSystem(context, alarms, 3001, "COUNTDOWN_ALARM_", order,
+            "护理", System.currentTimeMillis() + 60_000L, canUseExactAlarm = false, owner = "1:2:3")
+        val intent = shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent
+        val fields = CountdownAlarmDiagnostics.fields(CountdownAlarmDiagnostics.read(intent),
+            intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L), "scheduled")
+        assertEquals("alarm_clock", fields["scheduleMode"])
+        assertEquals(true, fields["canScheduleExact"])
+        assertNull(fields["fallback"])
     }
 
     @Test fun `inexact permission fallback remains visible after Intent parcel round trip`() = runTest {
@@ -318,6 +433,29 @@ class CountdownAlarmDeliveryTest {
             match { it["outcome"] == "validation_rejected" && it["validationFailure"] == "session_unresolved_or_logged_out" },
             "3", true) }
         verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `accepted identity is not replayed when clock rollback makes its deadline future again`() = runTest {
+        createManager(backgroundScope)
+        val intent = schedule()
+        val trigger = intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L)
+        alarms.cancel(shadowOf(alarms).scheduledAlarms.single().operation)
+        manager.onAlarmTriggered(intent)
+        manager.onAlarmTriggered(intent)
+        // A future deadline plus accepted delivery is also the post-rollback persistent state.
+        createManager(backgroundScope)
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        manager.scheduleCountdownAlarm(order, "护理", trigger)
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+
+        val replacement = schedule(extraDelay = 30_000L)
+        manager.onAlarmTriggered(replacement)
+        verify(exactly = 2) { AlarmRingtoneService.startRingtone(any(), any()) }
+        manager.scheduleCountdownAlarm(OrderKey(678L, 3), "新订单", trigger + 90_000L)
+        val newOrder = shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent
+        manager.onAlarmTriggered(newOrder)
+        verify(exactly = 3) { AlarmRingtoneService.startRingtone(any(), any()) }
     }
 
     private fun createManager(scope: kotlinx.coroutines.CoroutineScope) {

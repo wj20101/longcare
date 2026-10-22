@@ -69,6 +69,7 @@ class ContinuousAmapLocationManager @Inject constructor(
         private const val REPORTING_INTERVAL_MS = 30_000L
         /** 服务动作短时采集间隔（毫秒） */
         private const val ACTION_INTERVAL_MS = 3_000L
+        private const val ACTION_TIMEOUT_MS = 30_000L
         private const val ACTION_WARM_SAMPLE_TOLERANCE_MS = 3_000L
         // 高德错误码 4 官方建议保留默认 30 秒；业务动作仍由自己的 30 秒总预算取消。
         private const val CONTINUOUS_HTTP_TIMEOUT_MILLIS = 30_000L
@@ -186,18 +187,21 @@ class ContinuousAmapLocationManager @Inject constructor(
         }
     }
 
-    private suspend fun ensureSampling() = withContext(Dispatchers.Main.immediate) {
+    private suspend fun ensureSampling(shouldContinue: () -> Boolean = { true }) = withContext(Dispatchers.Main.immediate) {
         currentCoroutineContext().ensureActive()
+        if (!shouldContinue()) return@withContext
         if (trackingOwner != null && !samplingEnabled) return@withContext
         val owner = trackingOwner
         val generation = samplingGeneration
-        val key = if (continuousClient == null) amapApiKeyProvider.getAmapApiKey()?.takeIf { it.isNotBlank() }
-            ?: throw IllegalStateException("amap_api_key_unavailable") else null
+        val keyResult = if (continuousClient == null) runCatching { amapApiKeyProvider.getAmapApiKey() } else null
         currentCoroutineContext().ensureActive()
+        keyResult?.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+        if (!shouldContinue()) return@withContext
         // Reading configuration may suspend; a pause or owner switch wins over the late key result.
         if (trackingOwner != owner || samplingGeneration != generation ||
             (trackingOwner != null && !samplingEnabled)) return@withContext
-        if (continuousClient == null) startContinuousClient(requireNotNull(key))
+        if (continuousClient == null) startContinuousClient(keyResult?.getOrThrow()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("amap_api_key_unavailable"))
         else continuousClient?.let {
             applySamplingOption(it)
             updateAppVisibility(it)
@@ -472,8 +476,11 @@ class ContinuousAmapLocationManager @Inject constructor(
         var failureType: String? = null
         var lastSdkErrorCode: Int? = null
         var observedSample: com.ytone.longcare.model.LocationResult? = null
+        // Main's coroutine timeout uses Handler uptime, which stops during deep sleep. Keep an
+        // elapsed-realtime deadline as the acceptance boundary without changing sample quality.
+        fun deadlineReached() = SystemClock.elapsedRealtime() - startedAt >= ACTION_TIMEOUT_MS
         try {
-            val acquired = withTimeoutOrNull(30_000L) {
+            val acquired = withTimeoutOrNull(ACTION_TIMEOUT_MS) {
                 val (previousEvent, warmSample) = withContext(Dispatchers.Main.immediate) {
                     val previous = latestEvent()
                     clientId = continuousClient?.requestId
@@ -482,6 +489,7 @@ class ContinuousAmapLocationManager @Inject constructor(
                         is LocationAcquisition.Failure -> previous.location
                         null -> null
                     }?.takeIf { it.requestId == clientId }
+                    if (deadlineReached()) return@withContext previous to null
                     if (trackingOwner != null && !samplingEnabled) return@withContext previous to null
                     val warm = (previous as? LocationAcquisition.Success)?.location?.takeIf { sample ->
                         val rejection = ServiceOrderLocationQuality.rejection(
@@ -494,6 +502,7 @@ class ContinuousAmapLocationManager @Inject constructor(
                     if (warm == null) highRequested = true
                     previous to warm
                 }
+                if (deadlineReached()) return@withTimeoutOrNull null
                 if (warmSample != null) {
                     warm = true
                     clientId = warmSample.requestId
@@ -501,10 +510,14 @@ class ContinuousAmapLocationManager @Inject constructor(
                 }
                 if (withContext(Dispatchers.Main.immediate) { trackingOwner != null && !samplingEnabled })
                     return@withTimeoutOrNull LocationAcquisition.Failure(LocationFailure.SERVICE_DISABLED)
-                ensureSampling()
+                ensureSampling { !deadlineReached() }
+                if (deadlineReached()) return@withTimeoutOrNull null
                 clientId = withContext(Dispatchers.Main.immediate) { continuousClient?.requestId }
+                if (deadlineReached()) return@withTimeoutOrNull null
                 observedSample = observedSample?.takeIf { it.requestId == clientId }
                 samples.first { event ->
+                    // A late callback terminates waiting, but cannot replace in-budget evidence.
+                    if (deadlineReached()) return@first true
                     // 旧回调只允许上面的合格热位置；旧失败或不合格点不作为新动作证据。
                     if (event === previousEvent) return@first false
                     callbacks++
@@ -537,67 +550,73 @@ class ContinuousAmapLocationManager @Inject constructor(
                         }
                     }
                 }.let { event ->
-                    if (event is LocationAcquisition.Success && !event.location.isMock)
+                    if (deadlineReached()) null
+                    else if (event is LocationAcquisition.Success && !event.location.isMock)
                         LocationAcquisition.Success(event.location.copy(requestId = actionId)) else requireNotNull(evidence)
                 }
             }
-            timedOut = acquired == null
-            outcome = acquired ?: evidence ?: LocationAcquisition.Failure(LocationFailure.TIMEOUT)
-            return requireNotNull(outcome)
+            timedOut = acquired == null || (acquired is LocationAcquisition.Success && deadlineReached())
+            outcome = acquired.takeUnless { timedOut } ?: evidence ?: LocationAcquisition.Failure(LocationFailure.TIMEOUT)
         } catch (error: CancellationException) {
             cancelled = true
             throw error
         } catch (_: SecurityException) {
             outcome = LocationAcquisition.Failure(LocationFailure.PERMISSION)
-            return requireNotNull(outcome)
         } catch (error: Exception) {
             failureType = error.javaClass.simpleName
             outcome = LocationAcquisition.Failure(LocationFailure.CONFIGURATION)
-            return requireNotNull(outcome)
         } finally {
-            runCatching {
-                val diagnosticNow = SystemClock.elapsedRealtime()
-                val diagnosticWallNow = System.currentTimeMillis()
-                val location = when (val result = outcome) {
-                    is LocationAcquisition.Success -> result.location
-                    is LocationAcquisition.Failure -> result.location
-                    null -> null
-                } ?: observedSample
-                LocationEventTracker.trackEvent(
-                    LocationEventTracker.EventType.SERVICE_ACTION_RESULT,
-                    extras = linkedMapOf(
-                        "actionId" to actionId, "clientId" to clientId,
-                        "result" to if (cancelled) "cancelled" else when (val result = outcome) {
-                            is LocationAcquisition.Success -> "success"
-                            is LocationAcquisition.Failure -> result.reason.name
-                            null -> "unknown"
-                        },
-                        "durationMs" to (diagnosticNow - startedAt).coerceAtLeast(0L),
-                        "warm" to warm, "timedOut" to timedOut, "warmRejection" to warmRejection,
-                        "qualityReason" to lastRejection, "callbackCount" to callbacks,
-                        "errorCount" to errors, "rejectedCount" to rejected,
-                        "errorCode" to lastSdkErrorCode, "failureType" to failureType, "accuracy" to location?.accuracy,
-                        "locationType" to location?.locationType,
-                        "time" to location?.let { locationTimeDiagnostic(
-                            it, diagnosticWallNow, diagnosticNow,
-                            LocationQuality.timeIssue(it, diagnosticWallNow, diagnosticNow)?.name,
-                        ) },
-                        "rawGapMs" to observedSample?.receivedElapsedRealtime?.takeIf { it > 0L }
-                            ?.let { (diagnosticNow - it).coerceAtLeast(0L) },
-                    ) + diagnosticSnapshot().filterKeys { it != "clientId" },
-                    reportToServer = !cancelled,
-                    userId = diagnosticUserId,
-                )
-            }
-
+            // Retain this client's state before standalone cleanup releases it. Cleanup can itself
+            // resume after sleep, so settle the final deadline and outcome before logging/returning.
+            val closingSnapshot = runCatching { diagnosticSnapshot() }.getOrDefault(emptyMap())
             try {
                 withContext(NonCancellable + Dispatchers.Main.immediate) {
                     highRequested = false
                     refreshOrRelease()
                 }
             } finally {
+                if (!cancelled && outcome is LocationAcquisition.Success && deadlineReached()) {
+                    timedOut = true
+                    outcome = evidence ?: LocationAcquisition.Failure(LocationFailure.TIMEOUT)
+                }
+                runCatching {
+                    val diagnosticNow = SystemClock.elapsedRealtime()
+                    val diagnosticWallNow = System.currentTimeMillis()
+                    val location = when (val result = outcome) {
+                        is LocationAcquisition.Success -> result.location
+                        is LocationAcquisition.Failure -> result.location
+                        null -> null
+                    } ?: observedSample
+                    LocationEventTracker.trackEvent(
+                        LocationEventTracker.EventType.SERVICE_ACTION_RESULT,
+                        extras = linkedMapOf(
+                            "actionId" to actionId, "clientId" to clientId,
+                            "result" to if (cancelled) "cancelled" else when (val result = outcome) {
+                                is LocationAcquisition.Success -> "success"
+                                is LocationAcquisition.Failure -> result.reason.name
+                                null -> "unknown"
+                            },
+                            "durationMs" to (diagnosticNow - startedAt).coerceAtLeast(0L),
+                            "warm" to warm, "timedOut" to timedOut, "warmRejection" to warmRejection,
+                            "qualityReason" to lastRejection, "callbackCount" to callbacks,
+                            "errorCount" to errors, "rejectedCount" to rejected,
+                            "errorCode" to lastSdkErrorCode, "failureType" to failureType, "accuracy" to location?.accuracy,
+                            "locationType" to location?.locationType,
+                            "time" to location?.let { locationTimeDiagnostic(
+                                it, diagnosticWallNow, diagnosticNow,
+                                LocationQuality.timeIssue(it, diagnosticWallNow, diagnosticNow)?.name,
+                            ) },
+                            "rawGapMs" to observedSample?.receivedElapsedRealtime?.takeIf { it > 0L }
+                                ?.let { (diagnosticNow - it).coerceAtLeast(0L) },
+                        ) + closingSnapshot.filterKeys { it != "clientId" },
+                        reportToServer = !cancelled,
+                        userId = diagnosticUserId,
+                    )
+                }
+
                 serviceRequest.unlock()
             }
         }
+        return requireNotNull(outcome)
     }
 }

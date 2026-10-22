@@ -26,6 +26,64 @@ class PhotoUploadDelegateTest {
     fun cleanup() { unmockkAll() }
 
     @Test
+    fun `retry after Room failure reuses cloud object and commits before success`() = runTest {
+        KLogger.updateConfig { enabled = false }
+        mockkObject(CrashReportGateway)
+        every { CrashReportGateway.userId } returns "123"
+        every { CrashReportGateway.postCaughtException(any()) } just Runs
+        mockkStatic(Uri::class)
+        every { Uri.parse(any()) } returns mockk()
+        val images = mockk<OrderImageRepository>()
+        var commits = 0
+        coEvery { images.markAsSuccess(1L, "cloud-key") } coAnswers {
+            if (++commits == 1) throw java.io.IOException("disk full")
+        }
+        val queue = PhotoTaskQueueDelegate(backgroundScope, images, mockk(), mockk())
+        queue.imageTasks.value = listOf(
+            ImageTask("1", "file:///photo.jpg", ImageTaskType.BEFORE_CARE,
+                resultUri = "file:///photo.jpg", status = ImageTaskStatus.SUCCESS),
+        )
+        val uploader = mockk<PhotoCloudUploader>()
+        coEvery { uploader.upload(any(), any()) } returns UploadedPhoto("cloud-key")
+        val messages = mockk<PhotoUploadMessages> {
+            every { cloudUploadFailed } returns "上传失败"
+        }
+        val delegate = PhotoUploadDelegate(uploader, mockk(), mockk(), queue, messages)
+
+        assertTrue(delegate.uploadSuccessfulImagesToCloud().isFailure)
+        assertFalse(queue.imageTasks.value.single().isUploaded)
+        assertTrue(delegate.uploadSuccessfulImagesToCloud().isSuccess)
+
+        assertTrue(queue.imageTasks.value.single().isUploaded)
+        coVerify(exactly = 1) { uploader.upload(any(), any()) }
+        coVerify(exactly = 2) { images.markAsSuccess(1L, "cloud-key") }
+    }
+
+    @Test
+    fun `failed local task blocks publish even when another photo succeeded`() = runTest {
+        KLogger.updateConfig { enabled = false }
+        mockkObject(CrashReportGateway)
+        every { CrashReportGateway.userId } returns "123"
+        every { CrashReportGateway.postCaughtException(any()) } just Runs
+        val queue = PhotoTaskQueueDelegate(backgroundScope, mockk(), mockk(), mockk())
+        queue.imageTasks.value = listOf(
+            ImageTask("1", "file:///first.jpg", ImageTaskType.BEFORE_CARE,
+                resultUri = "file:///first.jpg", status = ImageTaskStatus.SUCCESS),
+            ImageTask("temporary-id", "file:///second.jpg", ImageTaskType.BEFORE_CARE,
+                status = ImageTaskStatus.FAILED),
+        )
+        val uploader = mockk<PhotoCloudUploader>()
+        val messages = mockk<PhotoUploadMessages> {
+            every { imageProcessingFailed } returns "保存失败"
+        }
+        val delegate = PhotoUploadDelegate(uploader, mockk(), mockk(), queue, messages)
+
+        assertTrue(delegate.uploadSuccessfulImagesToCloud().isFailure)
+        assertFalse(delegate.isUploading.value)
+        coVerify(exactly = 0) { uploader.upload(any(), any()) }
+    }
+
+    @Test
     fun `upload success waits for Room before publishing uploaded state`() = runTest {
         mockkStatic(Uri::class)
         every { Uri.parse(any()) } returns mockk()

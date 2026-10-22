@@ -55,7 +55,7 @@ class CountdownAlarmPermissionFallbackIntegrationTest {
         assertNotNull(metadata)
         val fields = CountdownAlarmDiagnostics.fields(metadata!!.diagnostics, 0L, "scheduled")
         assertEquals(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "inexact_allow_idle" else "exact_allow_idle",
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "inexact_allow_idle" else "alarm_clock",
             fields["scheduleMode"],
         )
     }

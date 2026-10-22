@@ -1,6 +1,7 @@
 package com.ytone.longcare.domain.repository
 
 import com.ytone.longcare.model.User
+import com.ytone.longcare.model.UserSessionSnapshot
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -44,6 +45,12 @@ interface UserSessionRepository {
      * 一个 [StateFlow]，发射当前的会话状态 [SessionState]。
      */
     val sessionState: StateFlow<SessionState>
+
+    /** User and generation must be captured together; never combine independently read fields. */
+    val sessionSnapshot: StateFlow<UserSessionSnapshot>
+
+    /** Atomically clear only this request's session; return its logged-out generation, or null. */
+    suspend fun logoutIfCurrent(generation: Long): Long?
 
     /**
      * 登录用户，并持久化用户信息。

@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.app.AlarmManagerCompat
 import androidx.core.app.PendingIntentCompat
 import com.ytone.longcare.common.utils.klogE
 import com.ytone.longcare.common.utils.klogI
@@ -46,22 +45,17 @@ internal fun scheduleCountdownAlarmInSystem(
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }, PendingIntent.FLAG_UPDATE_CURRENT, false)
 
-    val supportsAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val useAlarmClock =
-        supportsAlarmClock &&
-            canUseExactAlarm &&
-            showIntent != null
-    val mode = when {
-        useAlarmClock -> "alarm_clock"
-        supportsAlarmClock -> "inexact_allow_idle"
-        else -> "exact_allow_idle"
-    }
+    // AlarmClock is available since API 21, including all supported devices. Only the
+    // exact-alarm permission check is Android 12+; older devices need the same visible alarm.
+    val exactAlarmAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || canUseExactAlarm
+    val useAlarmClock = exactAlarmAllowed && showIntent != null
+    val mode = if (useAlarmClock) "alarm_clock" else "inexact_allow_idle"
     val fallback = when {
-        useAlarmClock || !supportsAlarmClock -> null
-        !canUseExactAlarm -> "exact_permission_missing"
+        useAlarmClock -> null
+        !exactAlarmAllowed -> "exact_permission_missing"
         else -> "show_intent_missing"
     }
-    CountdownAlarmDiagnostics.scheduled(intent, mode, fallback, canUseExactAlarm)
+    CountdownAlarmDiagnostics.scheduled(intent, mode, fallback, exactAlarmAllowed)
     var pendingIntent = PendingIntentCompat.getBroadcast(
         context,
         countdownAlarmRequestCode,
@@ -93,8 +87,8 @@ internal fun scheduleCountdownAlarmInSystem(
                 pendingIntent
             )
         }
-    } else if (supportsAlarmClock) {
-        if (!canUseExactAlarm) {
+    } else {
+        if (!exactAlarmAllowed) {
             klogI("⚠️ 无精确闹钟权限，降级为 setAndAllowWhileIdle")
         } else {
             klogE("⚠️ AlarmClock 所需 Activity PendingIntent 为空，降级为 setAndAllowWhileIdle")
@@ -105,14 +99,6 @@ internal fun scheduleCountdownAlarmInSystem(
             pendingIntent
         )
         klogI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
-    } else {
-        AlarmManagerCompat.setExactAndAllowWhileIdle(
-            alarmManager,
-            AlarmManager.RTC_WAKEUP,
-            triggerTimeMillis,
-            pendingIntent
-        )
-        klogI("✅ 通过ExactAndAllowWhileIdle设置倒计时闹钟: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
     }
 
     return CountdownScheduleMetadata(

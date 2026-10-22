@@ -20,74 +20,56 @@ class DefaultSessionInvalidationHandler @Inject constructor(
     private val userSessionRepository: UserSessionRepository,
     @ApplicationScope private val applicationScope: CoroutineScope,
 ) : SessionInvalidationHandler {
-
     private val nextId = AtomicLong()
-    private val _invalidations = MutableStateFlow<SessionInvalidation?>(null)
+    private val mutableInvalidations = MutableStateFlow<SessionInvalidation?>(null)
     private val lock = Any()
-    private var invalidatedSessionKey: String? = null
-    private var observedLoggedOutAfterInvalidation = false
-
-    override val invalidations: StateFlow<SessionInvalidation?> = _invalidations
+    private val pendingGenerations = mutableSetOf<Long>()
+    override val invalidations: StateFlow<SessionInvalidation?> = mutableInvalidations
 
     init {
         applicationScope.launch {
-            userSessionRepository.sessionState.collect { state ->
+            userSessionRepository.sessionSnapshot.collect {
                 synchronized(lock) {
-                    when (state) {
-                        SessionState.LoggedOut -> {
-                            if (invalidatedSessionKey != null) {
-                                observedLoggedOutAfterInvalidation = true
-                            }
-                        }
-
-                        is SessionState.LoggedIn -> {
-                            if (observedLoggedOutAfterInvalidation) {
-                                invalidatedSessionKey = null
-                                observedLoggedOutAfterInvalidation = false
-                                _invalidations.value = null
-                            }
-                        }
-
-                        SessionState.Unknown -> Unit
-                    }
+                    val event = mutableInvalidations.value
+                    if (event != null && !isCurrent(event)) mutableInvalidations.value = null
                 }
             }
         }
     }
 
-    override fun invalidate(reason: String) {
-        val invalidation = synchronized(lock) {
-            val user = userSessionRepository.sessionState.value.user ?: return
-            val sessionKey = "${user.userId}:${user.token}"
-            if (invalidatedSessionKey == sessionKey) {
-                return
-            }
-
-            invalidatedSessionKey = sessionKey
-            SessionInvalidation(
-                id = nextId.incrementAndGet(),
-                reason = reason,
-            )
+    override fun invalidate(reason: String, generation: Long) {
+        synchronized(lock) {
+            val current = userSessionRepository.sessionSnapshot.value
+            if (current.user == null || current.generation != generation || !pendingGenerations.add(generation)) return
         }
-
         applicationScope.launch {
             try {
-                userSessionRepository.logout()
+                // The comparison and durable clear share the repository's login/logout mutation mutex.
+                val loggedOutGeneration = userSessionRepository.logoutIfCurrent(generation) ?: return@launch
+                val event = SessionInvalidation(nextId.incrementAndGet(), reason, loggedOutGeneration)
+                synchronized(lock) {
+                    if (isCurrent(event)) mutableInvalidations.value = event
+                }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 logE("Failed to persist invalidated session logout", throwable = exception)
+            } finally {
+                synchronized(lock) { pendingGenerations.remove(generation) }
             }
-            _invalidations.value = invalidation
         }
     }
 
-    override fun consume(id: Long) {
-        synchronized(lock) {
-            val current = _invalidations.value
-            if (current?.id == id) {
-                _invalidations.compareAndSet(current, null)
-            }
-        }
+    private fun isCurrent(event: SessionInvalidation): Boolean {
+        val current = userSessionRepository.sessionSnapshot.value
+        return current.user == null && current.generation == event.loggedOutGeneration &&
+            userSessionRepository.sessionState.value == SessionState.LoggedOut
+    }
+
+    override fun consume(id: Long): Boolean = synchronized(lock) {
+        val current = mutableInvalidations.value ?: return@synchronized false
+        if (current.id != id) return@synchronized false
+        mutableInvalidations.value = null
+        isCurrent(current)
     }
 }

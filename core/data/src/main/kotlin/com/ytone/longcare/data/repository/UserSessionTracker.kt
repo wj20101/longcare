@@ -2,6 +2,7 @@ package com.ytone.longcare.data.repository
 
 import com.ytone.longcare.domain.faceauth.FaceVerificationSession
 import com.ytone.longcare.model.User
+import com.ytone.longcare.model.UserSessionSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -15,9 +16,12 @@ class UserSessionTracker @Inject constructor() : FaceVerificationSession {
     private var identity: List<Any?>? = null
     private var generation = 0L
     private var changing = false
+    private var mutationInProgress = false
     private var pendingIdentity: List<Any?>? = null
     private val mutableGeneration = MutableStateFlow<Long?>(null)
     override val sessionGeneration = mutableGeneration.asStateFlow()
+    private val mutableSnapshot = MutableStateFlow(UserSessionSnapshot(0L, null))
+    internal val sessionSnapshot = mutableSnapshot.asStateFlow()
     internal val credentials = TencentCredentialCache()
     internal val orderInfo = OrderInfoMemoryCache()
 
@@ -32,11 +36,13 @@ class UserSessionTracker @Inject constructor() : FaceVerificationSession {
 
     internal fun beginChange(nextUser: User? = null) = synchronized(lock) {
         changing = true
+        mutationInProgress = true
         pendingIdentity = nextUser.identity()
         invalidate()
     }
 
     internal fun finishChange(user: User?) = synchronized(lock) {
+        mutationInProgress = false
         changing = false
         pendingIdentity = null
         publish(user)
@@ -52,15 +58,21 @@ class UserSessionTracker @Inject constructor() : FaceVerificationSession {
 
     private fun publish(user: User?) {
         val next = user.identity()
-        if (next == identity) return
+        if (next == identity) {
+            mutableSnapshot.value = UserSessionSnapshot(generation, user.takeUnless { mutationInProgress })
+            return
+        }
         invalidate()
         identity = next
-        if (next != null) mutableGeneration.value = ++generation
+        if (next != null) mutableGeneration.value = generation
+        mutableSnapshot.value = UserSessionSnapshot(generation, user.takeUnless { mutationInProgress })
     }
 
     private fun invalidate() {
         identity = null
+        generation++
         mutableGeneration.value = null
+        mutableSnapshot.value = UserSessionSnapshot(generation, null)
         credentials.clear()
         orderInfo.clear()
     }

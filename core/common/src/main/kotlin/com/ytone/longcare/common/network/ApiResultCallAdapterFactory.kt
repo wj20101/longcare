@@ -69,7 +69,7 @@ private class StandardApiResultCallAdapter<T>(
     override fun responseType(): Type = responseType
 
     override fun adapt(call: Call<ApiResponse<T>>): Call<ApiResult<T>> =
-        MappedApiResultCall(call) { response ->
+        MappedApiResultCall(call) { response, request ->
             if (response.isSuccess()) {
                 response.data
                     ?.let { ApiResult.Success(it) }
@@ -79,7 +79,9 @@ private class StandardApiResultCallAdapter<T>(
                     SessionInvalidationCode.requiresLogout(response.resultCode) &&
                     !suppressSessionInvalidation
                 ) {
-                    sessionInvalidationHandler.invalidate(response.resultMsg)
+                    request.tag(RequestSessionGeneration::class.java)?.let {
+                        sessionInvalidationHandler.invalidate(response.resultMsg, it.value)
+                    }
                 }
                 ApiResult.Failure(
                     code = response.resultCode,

@@ -39,6 +39,12 @@ data class PendingNfcScan(
     val tagId: String,
 )
 
+internal data class NfcWorkflowIdentity(
+    val orderKey: OrderKey,
+    val signInMode: SignInMode,
+    val endOderInfo: EndOderInfo?,
+)
+
 enum class NfcLoadingReason {
     CARD_RECOGNIZED_FETCHING_LOCATION,
     WAITING_FOR_LOCATION_PERMISSION,
@@ -93,6 +99,8 @@ internal data class NfcUserMessages(
     val orderDetailLoadFailed: String,
     val bindLocationFailed: String,
     val locationUnavailable: String,
+    val workflowInterrupted: String = locationUnavailable,
+    val submissionInterrupted: String = networkError,
 )
 
 internal fun ResourceTextResolver.nfcUserMessages(): NfcUserMessages = NfcUserMessages(
@@ -100,4 +108,6 @@ internal fun ResourceTextResolver.nfcUserMessages(): NfcUserMessages = NfcUserMe
     orderDetailLoadFailed = text(R.string.nfc_order_detail_load_failed),
     bindLocationFailed = text(R.string.nfc_bind_location_failed),
     locationUnavailable = text(R.string.nfc_location_unavailable),
+    workflowInterrupted = text(R.string.nfc_workflow_interrupted),
+    submissionInterrupted = text(R.string.nfc_submission_interrupted),
 )

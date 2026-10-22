@@ -3,6 +3,7 @@ package com.ytone.longcare.features.countdown.service
 import android.app.Application
 import android.content.Context
 import android.media.MediaPlayer
+import android.media.AudioAttributes
 import androidx.test.core.app.ApplicationProvider
 import io.mockk.*
 import org.junit.After
@@ -46,5 +47,26 @@ class AlarmRingtonePlaybackControllerTest {
         assertEquals("IOException", controller.lastStartFailureType)
         verify(exactly = 1) { anyConstructed<MediaPlayer>().release() }
         verify(exactly = 0) { anyConstructed<MediaPlayer>().start() }
+    }
+
+    @Test
+    @Config(sdk = [28, 34])
+    fun `alarm media uses alarm audio policy without regulatory audibility enforcement`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        mockkConstructor(MediaPlayer::class)
+        val attributes = slot<AudioAttributes>()
+        every { anyConstructed<MediaPlayer>().setDataSource(any<Context>(), any<android.net.Uri>()) } just runs
+        every { anyConstructed<MediaPlayer>().setAudioAttributes(capture(attributes)) } just runs
+        every { anyConstructed<MediaPlayer>().isLooping = any() } just runs
+        every { anyConstructed<MediaPlayer>().setVolume(any(), any()) } just runs
+        // Stop before hardware playback; this test inspects the exact attributes sent to MediaPlayer.
+        every { anyConstructed<MediaPlayer>().prepare() } throws IOException("test stops before playback")
+        every { anyConstructed<MediaPlayer>().release() } just runs
+
+        AlarmRingtonePlaybackController(context).start()
+
+        assertEquals(AudioAttributes.USAGE_ALARM, attributes.captured.usage)
+        assertEquals(AudioAttributes.CONTENT_TYPE_SONIFICATION, attributes.captured.contentType)
+        assertEquals(0, attributes.captured.flags and AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
     }
 }

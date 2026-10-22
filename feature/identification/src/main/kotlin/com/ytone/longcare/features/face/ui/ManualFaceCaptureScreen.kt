@@ -110,8 +110,14 @@ fun ManualFaceCaptureScreen(
                     CameraPreviewContent(
                         onImageCapture = { capture -> imageCapture = capture },
                         onTakePhoto = {
-                            viewModel.startCapture()
                             takeManualFacePhoto(imageCapture, captureExecutor, viewModel)
+                        },
+                        onCameraError = { error ->
+                            viewModel.onPhotoCaptureFailed(
+                                com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureFailureStage.CAMERA_CAPTURE,
+                                com.ytone.longcare.features.face.viewmodel.ManualFaceCaptureFailure.CAMERA_CAPTURE,
+                                error,
+                            )
                         },
                         isCapturing = currentState is ManualFaceCaptureState.CapturingPhoto
                     )

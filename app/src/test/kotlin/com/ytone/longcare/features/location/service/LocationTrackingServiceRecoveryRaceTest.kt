@@ -90,6 +90,54 @@ class LocationTrackingServiceRecoveryRaceTest {
         }
     }
 
+    @Test fun `silently ignored foreground promotion blocks SDK and releases acceptance for visible retry`() = runTest {
+        val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
+        manager.setAccount(LocationAccount(1, 2, 3))
+        runCurrent()
+        val service = service(manager)
+        every { service.foregroundStateVerifier.isForeground(service, any()) } returns false
+        try {
+            manager.prepareOrderStart(10)
+            manager.onOrderStarted(10)
+            service.onStartCommand(startIntent(10), 0, 1)
+            runCurrent()
+
+            assertTrue(shadowOf(service).isStoppedBySelf)
+            assertFalse(keepAlive.hasAcceptedStart())
+            assertEquals(LocationReportingStatus.INTERRUPTED, manager.status.value)
+            verify(exactly = 0) {
+                service.continuousAmapLocationManager.startContinuousLocation(any(), any())
+            }
+            coVerify(exactly = 0) { service.locationRepository.addPosition(any(), any(), any()) }
+
+            manager.onAppVisible()
+            verify(exactly = 2) { controller.start(any(), any(), 10) }
+            assertEquals(LocationReportingStatus.PREPARING, manager.status.value)
+        } finally {
+            manager.stopReporting()
+            service.onDestroy()
+            runCurrent()
+        }
+    }
+
+    @Test fun `sticky bootstrap never reads recovery data after an ignored foreground promotion`() = runTest {
+        val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
+        val service = service(manager)
+        every { service.foregroundStateVerifier.isForeground(service, any()) } returns false
+        try {
+            service.onStartCommand(null, 0, 1)
+            runCurrent()
+            assertTrue(shadowOf(service).isStoppedBySelf)
+            coVerify(exactly = 0) { store.read() }
+            verify(exactly = 0) {
+                service.continuousAmapLocationManager.startContinuousLocation(any(), any())
+            }
+        } finally {
+            service.onDestroy()
+            runCurrent()
+        }
+    }
+
     @Test fun `delayed account observer cannot rebind an old order before SDK collection starts`() = runTest {
         val manager = LocationReportingManager(keepAlive, orders, backgroundScope, store)
         manager.setAccount(LocationAccount(1, 2, 3))
@@ -267,6 +315,7 @@ class LocationTrackingServiceRecoveryRaceTest {
             recoveryStore = store
             userSessionRepository = mockk(relaxed = true)
             runtimeReadiness = mockk(relaxed = true)
+            foregroundStateVerifier = mockk { every { isForeground(any(), any()) } returns true }
             privacyConsentManager = mockk {
                 every { isPrivacyConsented } returns true
             }

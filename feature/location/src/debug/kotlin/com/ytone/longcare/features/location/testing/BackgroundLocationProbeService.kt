@@ -96,6 +96,9 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         sessionState = MutableStateFlow(loggedIn(probeAccount()))
         userSessionRepository = object : UserSessionRepository {
             override val sessionState = this@BackgroundLocationProbeService.sessionState
+            // This UI/probe fake never authenticates real network requests.
+            override val sessionSnapshot = kotlinx.coroutines.flow.MutableStateFlow(com.ytone.longcare.model.UserSessionSnapshot(0L, null))
+            override suspend fun logoutIfCurrent(generation: Long): Long? = null
             override suspend fun login(user: User) = error("probe does not change account")
             override suspend fun updateUser(user: User) = error("probe does not change account")
             override suspend fun logout() = error("probe does not change account")
