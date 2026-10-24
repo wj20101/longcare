@@ -15,6 +15,7 @@
 | 厂商评估 | [QLZ 接入](integrations/qlz-sdk.md) | BLE、SDK、H5、接口与厂商风险 |
 | 历史合规 | [2026-05 隐私整改](compliance/2026-05-app-store-privacy-remediation.md) | 历史材料，不证明当前线上政策已复核 |
 | 测试分支资料 | [定位测试入口](../validation/location-sdk-foreground-20261022/README.md)、[历史对照报告](../validation/location-sdk-foreground-20261022/report.md) | 按用户明确要求提交的脱敏证据；历史 APK 与当前未验收候选分开，不是生产验收 |
+| 计时与定位验证 | [单调计时与共享定位验证记录](../validation/location-shared-sampling-20261024/README.md) | 提交前检查、历史设备证据和持续定位的剩余边界 |
 
 ## 文档维护规则
 
