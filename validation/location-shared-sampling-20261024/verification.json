@@ -1,0 +1,169 @@
+{
+  "recordedAtUtc": "2026-10-24T00:39:29.931671+00:00",
+  "baseCommit": "31b5d94227cfeb897969f58e1a7b5b06292b852f",
+  "scope": "Final reviewed sources validated in an isolated filesystem export using the committed dependency catalog. Historical device runs precede the review fixes; no final-device rerun is claimed.",
+  "commands": [
+    "./gradlew --no-daemon testDebugUnitTest :core:model:test :core:domain:test :app:lintDebug :app:assembleDebug :app:compileDebugAndroidTestKotlin :core:data:assembleDebugAndroidTest --console=plain",
+    "./gradlew --no-daemon :feature:location:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:compileDebugAndroidTestKotlin --console=plain",
+    "bash scripts/quality/preflight_local.sh --local-fast"
+  ],
+  "gradlePassed": true,
+  "preflightPassed": true,
+  "jvmTotals": {
+    "tests": 1371,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "modules": {
+    "app": {
+      "tests": 731,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/common": {
+      "tests": 51,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/data": {
+      "tests": 119,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/model": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core/ui": {
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/carddiagnostics": {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/home": {
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/identification": {
+      "tests": 90,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/location": {
+      "tests": 272,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/photoupload": {
+      "tests": 32,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "feature/servicecountdown": {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "integration/txface": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 12,
+    "hints": 2,
+    "warningScope": "Six dependency update notices and six existing third-party SDK findings, including repeated locations."
+  },
+  "debugApkSha256": "88506a8e5c48ca53424b95d6352b0ffd7d98878ef39c8157257caeac2d9a5572",
+  "dependencyCatalogSha256": "6991ead4e31f4e8bbabbe40658f898956e4d3f020421d261502f2e8b43dd6abc",
+  "unrelatedWorkingCatalogChangesPreserved": true,
+  "knownUnresolved": "Historical Huawei run had a 135.447-second callback gap after the passing five-minute window. The root cause and sustained-location acceptance remain unresolved.",
+  "reviewedSourceHashes": {
+    "app/schemas/com.ytone.longcare.data.database.LongCareDatabase/4.json": "b83c552872f1af4a7b33ad3b8ac0efa020b10cb0bd0e62a000d7ce194aa63f02",
+    "app/src/androidTest/kotlin/com/ytone/longcare/features/servicecountdown/ui/ServiceCountdownBackgroundInitializationTest.kt": "93df67e94b35939c711082544607bef1b2a5dd03297ba772aa907920ecc05d4a",
+    "app/src/main/AndroidManifest.xml": "cb9c6b25d725b847a0f89f75e1403dabeac5c2c1163d00884cc0432bfa305b13",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownAlarmDelegate.kt": "cdae0bb31aefd77a10840bad9824b1ba5ba64bee5fcd28c577d70dc5ead0a578",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownAlarmDelegateScheduling.kt": "5aaf90228464fd311358ec1d23209de4909a60d862c9c26c27bd389d9c3b326b",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/manager/CountdownNotificationManager.kt": "e06a51542a4d8dac4a7afb5e0db59f327f105e220a2433bdad0f893e19b7907d",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/receiver/CountdownAlarmReceiver.kt": "f3b6404fbabead1cbb503628808a397b2ae0fafb3fca64373b136a91dd90ef88",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtonePlaybackController.kt": "ffb6ef78d1fe3abc126656732d1df1cb5825c395e19d6ff9bbaf79a4d0449071",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtoneService.kt": "d410f3027beb2968f625f88b7dc37a552332461b448e4c19b3efbdf2fd1b5c1f",
+    "app/src/main/kotlin/com/ytone/longcare/features/countdown/tracker/CountdownEventTracker.kt": "df7882f8a39b0352c5773bf84219baf4c849756e04c4d703bcdc16b96f941f74",
+    "app/src/main/kotlin/com/ytone/longcare/features/service/receiver/BootCompletedReceiver.kt": "489d5d3195c3e268b365e9d9ad69a7ac44d546ca7a4470dca9aec3dd14bfc375",
+    "app/src/main/kotlin/com/ytone/longcare/features/servicecountdown/service/ServiceCountdownSystemGatewayImpl.kt": "9c90b2bad2c0872de0b74261e893659f1f460497504ca4557f39698810fc2571",
+    "app/src/test/kotlin/com/ytone/longcare/features/countdown/manager/CountdownAlarmDeliveryTest.kt": "b10d5b67436f8458aa039d7a9016d2009c904c71096c5e81a2bc9f12a39bd57a",
+    "app/src/test/kotlin/com/ytone/longcare/features/countdown/manager/CountdownAlarmOwnershipTest.kt": "6515c0be0bfb627ed169c30222b32ccc1349c1529c325dce9c78852d26647906",
+    "app/src/test/kotlin/com/ytone/longcare/features/countdown/service/AlarmRingtonePlaybackDiagnosticsTest.kt": "5fd72338081a7c4b3923c9f3dabb80612a20bf8c434d2ede2def3fe2ad36b659",
+    "app/src/test/kotlin/com/ytone/longcare/features/countdown/tracker/CountdownAlarmDiagnosticsTest.kt": "d9de00671b117a06844a14228ce99a23b2b79f207c5870e48bc5dfff5ba29ff7",
+    "app/src/test/kotlin/com/ytone/longcare/features/nursingexecution/ui/NursingExecutionErrorScreenTest.kt": "7c1e656aeb3fe2ef469fb1a746e70b6d5af1252efd22c0503c2e95543ee937ee",
+    "app/src/test/kotlin/com/ytone/longcare/features/selectservice/ui/SelectServiceStartLifecycleTest.kt": "da27b2595e4070b7b25714da6709913d456e79b7956ea7fc4d97be8eaa8572b2",
+    "app/src/test/kotlin/com/ytone/longcare/features/service/receiver/BootCompletedReceiverSessionTest.kt": "433c7bd07a6c9e29cfde19f0c7401b7a8c4b717b814f7b10c766cbfe7637d6eb",
+    "app/src/test/kotlin/com/ytone/longcare/features/servicecountdown/ui/ServiceEndLocationRegressionTest.kt": "322af15bab61a189292ea291a515f75fc160a2e99cc963a38e24de4e2cc689ff",
+    "app/src/test/kotlin/com/ytone/longcare/features/servicecountdown/vm/ServiceCountdownViewModelTest.kt": "8b53058f4c439ec3a7acf5211697b568597f32afcee658c62987ea22473a8b3b",
+    "core/data/src/androidTest/kotlin/com/ytone/longcare/di/LongCareDatabaseMigrationTest.kt": "d891f7fd7d4a74ba54649f98b3811c8d6999124ea06cc6521bae88d763975e64",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/database/DatabaseMigrations.kt": "39960e229f2eccb6167247b57751c3dcc5ce458297d4bbef31262a739b48c99a",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/database/LongCareDatabase.kt": "5206467198593636720b5a2717aded4cb38d660921d6c30fa6d932c24394d91b",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/database/dao/OrderLocalStateDao.kt": "e7d44aa860dcc087850ade59e8b649bd8df7c2ac3a582f2feb82e0d74b5f799b",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/database/entity/EntityMappers.kt": "de8739d1e58fee3fba5b8d23034dcf48d0a8a8a4b7b239cdc1d5235348405fbb",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/database/entity/RoomEntities.kt": "7575e3b5c39446f55a5b0a1ddd93a7d4b1b579ff4a87884d8ddce91cc1fb3e7c",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/repository/UnifiedOrderRepository.kt": "0dd04c8334aac6fd76661be3489709d6845d0a8618016680cf22213c5a9e62f1",
+    "core/data/src/main/kotlin/com/ytone/longcare/data/time/AndroidServiceTimeProvider.kt": "c6299421429c6b3a3baa3fda260c03c6231b46ab62d050bd494121c7f77255ca",
+    "core/data/src/main/kotlin/com/ytone/longcare/di/DatabaseModule.kt": "a6fc78abc39e01ed34a75b15d21730d63655d44b622ce688037cd0b3fe14175d",
+    "core/data/src/main/kotlin/com/ytone/longcare/di/ServiceTimeModule.kt": "bafada1e7bea341b1ddba06a084648d75a00e68115573c5605bec6be0532380d",
+    "core/data/src/test/kotlin/com/ytone/longcare/data/repository/UnifiedOrderRepositoryTest.kt": "e1aae63d1f9323ebbbc4dec860ab01eb1841f08757bee047d3a4e1633718f5e9",
+    "core/data/src/test/kotlin/com/ytone/longcare/data/time/AndroidServiceTimeProviderTest.kt": "cf7c516225e1f97d0b844137bdd8cd783e05ecc80f1a7c17beaab846c6f954bf",
+    "core/data/src/test/kotlin/com/ytone/longcare/di/DatabaseRetentionTest.kt": "a890cd7155fe9e4f7564a9ac81a1b2277d230c32b6ee522bc390ecaec10e42af",
+    "core/domain/src/main/kotlin/com/ytone/longcare/domain/repository/OrderDetailRepository.kt": "6730693c741c50d872971ee0ae02b0b20a33d5f191a031df9c8d6687119e00a5",
+    "core/domain/src/main/kotlin/com/ytone/longcare/domain/time/ServiceTimeProvider.kt": "98f14ee02ded550ef79b5d4590c1b46b3704046e55531dfa5b2ad2f6c7df2ee8",
+    "core/model/build.gradle.kts": "6fccf326e61d7104cafa29b0f2132c67299c68ca5751897943363d5f58d3e850",
+    "core/model/src/main/kotlin/com/ytone/longcare/model/OrderLocalStateEntity.kt": "1088aab18a91edcc72921db998ec9a3f0b10ef8474dc20605782c262c3cb99a7",
+    "core/model/src/main/kotlin/com/ytone/longcare/model/ServiceCountdownDeadline.kt": "a7970bc9130382ada692dec0e9816d340217cfbfc7e020860b69d1cdfe80761a",
+    "core/model/src/main/kotlin/com/ytone/longcare/model/ServiceTimeSnapshot.kt": "d947a78deaac711d58c3d3932e6558b78baed66c4c8cc95512712f0e58d440f0",
+    "core/model/src/test/kotlin/com/ytone/longcare/model/ServiceCountdownDeadlineTest.kt": "d2125a82e9d1d108517ba11d883e3f5f7075c6dd12558ce7174eb4b2d7a9fd07",
+    "core/ui/src/main/kotlin/com/ytone/longcare/shared/vm/SharedOrderDetailViewModel.kt": "00b4a61df43e81990cab2751f774ba35d691528328563e0f532a82c673f98180",
+    "core/ui/src/test/kotlin/com/ytone/longcare/shared/vm/OrderDetailErrorTest.kt": "f30e9b41f0d728ab5f7706cd3f0898e1a5230bf93cc3d5196ad7abcd0ac72a18",
+    "core/ui/src/test/kotlin/com/ytone/longcare/shared/vm/OrderDetailRequestIsolationTest.kt": "c4fdd155ddbcc39bdee6ffd87785787af22d0747e9252ef200ea4281d8ffd06a",
+    "core/ui/src/test/kotlin/com/ytone/longcare/shared/vm/OrderStartResultTest.kt": "b20a283dd7f921ba9e6cf6d093be133ab6e91109a613afa3699462ce30284c8a",
+    "feature/location/src/debug/kotlin/com/ytone/longcare/features/location/testing/BackgroundLocationProbeService.kt": "0c4282842437b1d864eda8bb62c44a307fd97513d3bc521912e9d4b20e62d505",
+    "feature/location/src/debug/kotlin/com/ytone/longcare/features/location/testing/ProbeSdkLogCapture.kt": "581f955f4c3b96146c06be2110844b86b9511a000ebfffeff8f01958b353879d",
+    "feature/location/src/main/kotlin/com/ytone/longcare/features/location/di/LocationCoreBindModule.kt": "c00187be7db207125fd0596e904ff39b5112e6c59458af6691697010049976bf",
+    "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/AmapClientProvider.kt": "901b54023de986def7eb997209e4806455636416fc79c355e581e505badc2fc3",
+    "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/AmapLocationClientFactory.kt": "997c6b4e87a0f84d02c31b35d54a7f71eeae956d2262ff397f625a193192e525",
+    "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/ContinuousAmapLocationManager.kt": "2b951e741b804c3c89aa2f9bb7e82449079e72647fb04f5c8bddee5fa5cce590",
+    "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/SerializedAmapClientProvider.kt": "2ac937229f9d04f212587325f932321814182ff43e6dfc0d3813ee7477d10f67",
+    "feature/location/src/main/kotlin/com/ytone/longcare/features/location/manager/SingleAmapLocationSource.kt": "d5d20e781adab8be9bdbfb69e71c08580e82580c14ebcbf928a5b66d1b2c0311",
+    "feature/location/src/test/kotlin/com/ytone/longcare/features/location/manager/AmapLocationAcquisitionTest.kt": "2e93b767649b94fcbfcdca2ba033a06fa4001dc0334a699ead30e0f51f6f444d",
+    "feature/location/src/test/kotlin/com/ytone/longcare/features/location/manager/SerializedAmapClientProviderTest.kt": "0948efbb6e206041f494a9303520d48bd54be908fe7a37ca4b0ebb11b0dd5575",
+    "feature/location/src/testDebug/kotlin/com/ytone/longcare/features/location/testing/ProbeSdkLogCaptureTest.kt": "96e00e64c63d5600c8138305ac6502e9d7ea46766c30c4659dfb8dbb9447b939",
+    "feature/servicecountdown/src/main/kotlin/com/ytone/longcare/features/servicecountdown/domain/ServiceCountdownSystemGateway.kt": "61ca1de8dc4cf0e20f84bcf3879038e3a2b7ebd4b770c207c157ed21b009f7ef",
+    "feature/servicecountdown/src/main/kotlin/com/ytone/longcare/features/servicecountdown/vm/ServiceCountdownTimerDelegate.kt": "18f0cc1c0c6d71e9a195ac68cde101ffe9fc3113adabedecb1952825c550c8ca",
+    "feature/servicecountdown/src/main/kotlin/com/ytone/longcare/features/servicecountdown/vm/ServiceCountdownViewModel.kt": "8f746a1ef91e25f41e870169051a11ddc3efe3c6379c5210b4ef0b000a4bd546",
+    "feature/servicecountdown/src/test/kotlin/com/ytone/longcare/features/servicecountdown/vm/ServiceCountdownTimerDelegateTest.kt": "28138318239634985b997490e55d585cf360e841e547ff4cab38481f94eefbb4"
+  },
+  "localGateLogHashes": {
+    "gradle.log": "9d65d03fdafa3078f88e06908c8d14306c03da6c2a1b3bc54b11196cd5059f2f",
+    "final-location.log": "f828accb631b51e04e87f85bdfd66ba624af2549b3ba60f3fdca1681d83bc855",
+    "final-preflight.log": "d4e337460cba33a79b2840d155499e8320cc3555e3aa35cac6d6bf3c5e1c7d3c"
+  }
+}
