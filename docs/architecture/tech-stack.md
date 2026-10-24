@@ -1,6 +1,6 @@
 # 技术栈与构建基线
 
-最后核对：2026-10-21（Gradle 9.8.2 补丁升级；其余条目按现有构建配置核对）
+最后核对：2026-10-24（核对 Serialization、WebKit、DataStore 与 OkHttp 升级；其余条目按现有构建配置核对）
 
 本文是便于阅读的快照。版本发生冲突时，以 `constants.gradle.kts`、`gradle/libs.versions.toml`、`gradle-wrapper.properties` 和各模块 `build.gradle.kts` 为准。应用版本号仅在 [constants.gradle.kts](../../constants.gradle.kts) 维护，本文不重复记录。
 
@@ -36,14 +36,14 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | Lifecycle | AndroidX Lifecycle | 2.11.0 |
 | DI | Dagger Hilt / AndroidX Hilt | 2.60.1 / 1.4.0 |
 | Persistence | Room | 2.8.5 |
-| Preferences | DataStore | 1.2.1 |
+| Preferences | DataStore | [1.3.0](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0) |
 | Background | WorkManager | 2.12.0 |
 | Camera | CameraX | 1.6.2 |
 | Face detection | ML Kit Face Detection | 16.1.7 |
-| Network | Retrofit / OkHttp | 3.0.0 / 5.5.0 |
+| Network | Retrofit / OkHttp | 3.0.0 / [5.5.1](https://lysine.dev/okhttp/changelogs/changelog/#version-551) |
 | Network I/O | Okio | 3.18.2 |
-| WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | 1.17.1 |
-| Serialization | Moshi / kotlinx.serialization | 1.15.2 / 1.11.0 |
+| WebView | AndroidX WebKit（渲染进程异常保护；关闭接口直接注册 NativeBridge） | [1.18.0](https://developer.android.com/jetpack/androidx/releases/webkit#1.18.0) |
+| Serialization | Moshi / kotlinx.serialization | 1.15.2 / [1.12.0](https://github.com/Kotlin/kotlinx.serialization/releases/tag/v1.12.0) |
 | Images | Coil | 3.6.3 |
 | Async | kotlinx.coroutines | 1.11.0 |
 | Location | AMap Location | 11.3.101 |

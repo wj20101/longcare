@@ -30,14 +30,20 @@ import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.common.diagnostics.DiagnosticCategory
 import com.ytone.longcare.features.countdown.service.AlarmRingtoneService
 import com.ytone.longcare.features.countdown.service.AlarmRingtonePlaybackController
+import com.ytone.longcare.domain.time.ServiceTimeProvider
+import com.ytone.longcare.model.ServiceCountdownDeadline
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderStateModel
 import com.ytone.longcare.model.User
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.*
@@ -59,6 +65,12 @@ import org.robolectric.util.ReflectionHelpers
 @Config(application = Application::class, sdk = [34])
 class CountdownAlarmDeliveryTest {
     @get:Rule val mainDispatcherRule = MainDispatcherRule(StandardTestDispatcher())
+    private var clock: ServiceTimeSnapshot? = null
+    private var clockSequence: Iterator<ServiceTimeSnapshot>? = null
+    private val timeProvider = ServiceTimeProvider {
+        clockSequence?.takeIf { it.hasNext() }?.next()
+            ?: clock ?: ServiceTimeSnapshot(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime(), 7)
+    }
     private lateinit var context: Context
     private lateinit var alarms: AlarmManager
     private lateinit var notifications: NotificationManager
@@ -488,13 +500,220 @@ class CountdownAlarmDeliveryTest {
         verify(exactly = 3) { AlarmRingtoneService.startRingtone(any(), any()) }
     }
 
+    @Test fun `early RTC delivery after forward correction waits for the monotonic deadline`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        val early = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        clock = ServiceTimeSnapshot(1_320_000L, 120_000L, 7)
+
+        manager.onAlarmTriggered(early)
+
+        verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any()) }
+        verify(exactly = 0) { notifications.notify(any<Int>(), any<Notification>()) }
+        assertEquals("monotonic_deadline_not_reached", CountdownAlarmDiagnostics.fields(
+            CountdownAlarmDiagnostics.read(early), deadline.wallTimeMillis, "validation_rejected")["validationFailure"])
+        assertEquals(1_360_000L, alarms.nextAlarmClock.triggerTime)
+        val rescheduled = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        assertEquals(deadline.wallTimeMillis, rescheduled.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+        assertTrue(manager.ownsAlarm(early))
+
+        clock = ServiceTimeSnapshot(1_360_000L, 160_000L, 7)
+        manager.onAlarmTriggered(rescheduled)
+        manager.onAlarmTriggered(early)
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `early delivery crossing the monotonic deadline during rearm keeps one pending reminder`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        val early = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        // The old RTC delivery arrives one millisecond early. The rearm's own snapshot
+        // reaches the deadline: rejecting the old Intent must still leave a deliverable alarm.
+        clock = ServiceTimeSnapshot(1_360_000L, 160_000L, 7)
+        clockSequence = listOf(
+            ServiceTimeSnapshot(1_359_999L, 159_999L, 7),
+            requireNotNull(clock),
+        ).iterator()
+
+        manager.onAlarmTriggered(early)
+
+        assertFalse(requireNotNull(clockSequence).hasNext())
+        assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(1_360_000L, alarms.nextAlarmClock.triggerTime)
+        verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any()) }
+        val rescheduled = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        assertEquals(deadline.wallTimeMillis, rescheduled.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+
+        manager.onAlarmTriggered(rescheduled)
+        manager.onAlarmTriggered(early)
+
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `late initial session resolution rearms a same boot deadline missed during clock change loading`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val deadline = ServiceCountdownDeadline(1_005_000L, 105_000L, 7)
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        val beforeClockChange = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        session.value = SessionState.Unknown
+        clock = ServiceTimeSnapshot(700_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        manager.startSessionObservation { true }
+        val boundedSessionWait = async { manager.awaitResolvedSession() }
+        runCurrent()
+
+        advanceTimeBy(5_001L)
+        runCurrent()
+        assertFalse(boundedSessionWait.await())
+        // The old RTC alarm is still far in the future after rollback; the first resolved
+        // session must recover the now-due elapsed deadline without another TIME_SET broadcast.
+        assertEquals(deadline.wallTimeMillis, alarms.nextAlarmClock.triggerTime)
+        clock = ServiceTimeSnapshot(705_001L, 105_001L, 7)
+        session.value = SessionState.LoggedIn(User(companyId = 1, accountId = 2, userId = 3))
+        runCurrent()
+
+        assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(705_001L, alarms.nextAlarmClock.triggerTime)
+        verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any()) }
+        val recovered = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        assertEquals(deadline.wallTimeMillis, recovered.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+
+        manager.onAlarmTriggered(recovered)
+        manager.onAlarmTriggered(beforeClockChange)
+
+        assertFalse(manager.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `dismissed consumed identity stays consumed after reboot and clock rollback`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        val intent = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        clock = ServiceTimeSnapshot(1_060_000L, 160_000L, 7)
+        manager.onAlarmTriggered(intent)
+        manager.dismissAlarm(order, "1:2:3", deadline.wallTimeMillis)
+        assertFalse(manager.ownsAlarm(intent))
+
+        clock = ServiceTimeSnapshot(760_000L, 5_000L, 8)
+        createManager(backgroundScope)
+        assertFalse(manager.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        manager.onAlarmTriggered(intent)
+
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `retrying a consumed identity cannot cancel the replacement reminder`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val consumed = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        manager.scheduleCountdownAlarm(order, "旧护理", consumed.wallTimeMillis, consumed)
+        val oldIntent = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        clock = ServiceTimeSnapshot(1_060_000L, 160_000L, 7)
+        manager.onAlarmTriggered(oldIntent)
+        val replacement = ServiceCountdownDeadline(1_120_000L, 220_000L, 7)
+        manager.scheduleCountdownAlarm(order, "新护理", replacement.wallTimeMillis, replacement)
+        val active = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+
+        manager.scheduleCountdownAlarm(order, "迟到的旧护理", consumed.wallTimeMillis, consumed)
+        manager.onAlarmTriggered(oldIntent)
+
+        assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(replacement.wallTimeMillis, alarms.nextAlarmClock.triggerTime)
+        assertTrue(manager.ownsAlarm(active))
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+        clock = ServiceTimeSnapshot(1_120_000L, 220_000L, 7)
+        manager.onAlarmTriggered(active)
+        verify(exactly = 2) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `a different owner order plan or original deadline is a new deliverable identity`() = runTest {
+        val originalUser = User(companyId = 1, accountId = 2, userId = 3)
+        val original = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        val candidates = listOf(
+            Triple(originalUser.copy(userId = 4), order, original),
+            Triple(originalUser, order.copy(orderId = 678L), original),
+            Triple(originalUser, order.copy(planId = order.planId + 1), original),
+            Triple(originalUser, order, ServiceCountdownDeadline(1_120_000L, 220_000L, 7)),
+        )
+        for ((candidateUser, candidateOrder, candidateDeadline) in candidates) {
+            session.value = SessionState.LoggedIn(originalUser)
+            clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+            createManager(backgroundScope)
+            manager.scheduleCountdownAlarm(order, "原护理", original.wallTimeMillis, original)
+            val originalIntent = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+            clock = ServiceTimeSnapshot(1_060_000L, 160_000L, 7)
+            manager.onAlarmTriggered(originalIntent)
+
+            session.value = SessionState.LoggedIn(candidateUser)
+            manager.scheduleCountdownAlarm(candidateOrder, "新护理", candidateDeadline.wallTimeMillis, candidateDeadline)
+            val next = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+            assertTrue(manager.ownsAlarm(next))
+            clock = ServiceTimeSnapshot(candidateDeadline.wallTimeMillis, requireNotNull(candidateDeadline.elapsedRealtimeMillis), 7)
+            manager.onAlarmTriggered(next)
+        }
+        verify(exactly = 8) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `cancellation before delivery does not consume the reminder identity`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        manager.cancelCountdownAlarmForOrder(order)
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+        createManager(backgroundScope)
+
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        val intent = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        clock = ServiceTimeSnapshot(1_060_000L, 160_000L, 7)
+        manager.onAlarmTriggered(intent)
+
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
+    @Test fun `TIME_SET at elapsed deadline registers one pending delivery without starting playback`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        createManager(backgroundScope)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        manager.scheduleCountdownAlarm(order, "护理", deadline.wallTimeMillis, deadline)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        clock = ServiceTimeSnapshot(760_000L, 160_000L, 7)
+        createManager(backgroundScope)
+
+        assertFalse(manager.restorePendingCountdownAlarm({ true }))
+        assertTrue(manager.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+        assertTrue(manager.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+        assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(760_000L, alarms.nextAlarmClock.triggerTime)
+        verify(exactly = 0) { AlarmRingtoneService.startRingtone(any(), any()) }
+
+        val intent = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+        assertEquals(deadline.wallTimeMillis, intent.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+        manager.onAlarmTriggered(intent)
+        manager.onAlarmTriggered(intent)
+        assertFalse(manager.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+        verify(exactly = 1) { AlarmRingtoneService.startRingtone(any(), any()) }
+    }
+
     private fun createManager(scope: kotlinx.coroutines.CoroutineScope) {
         val repository = mockk<UserSessionRepository> { every { sessionState } returns session }
         val lifecycle = mockk<ServiceOrderLifecycle> {
             every { orderState } returns this@CountdownAlarmDeliveryTest.orderState
         }
         manager = CountdownNotificationManager(context, notifications, alarms, repository,
-            mockk<LocationRecoveryStore>(), mockk<OrderRepository>(), lifecycle, scope)
+            mockk<LocationRecoveryStore>(), mockk<OrderRepository>(), lifecycle, scope, timeProvider)
     }
 
     private fun schedule(extraDelay: Long = 0L): Intent {

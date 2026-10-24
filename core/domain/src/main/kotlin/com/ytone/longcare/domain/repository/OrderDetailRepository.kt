@@ -4,6 +4,7 @@ import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceTimeSnapshot
 
 interface OrderDetailRepository {
     suspend fun getOrderInfo(orderKey: OrderKey, forceRefresh: Boolean = false): ApiResult<ServiceOrderInfoModel>
@@ -11,7 +12,7 @@ interface OrderDetailRepository {
     suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>)
     suspend fun getSelectedProjectIds(orderKey: OrderKey): List<Int>
     /** 保存首次确认的服务起点；重复准备不能延长倒计时。 */
-    suspend fun startLocalService(orderKey: OrderKey, startedAtMillis: Long)
+    suspend fun startLocalService(orderKey: OrderKey, startedAt: ServiceTimeSnapshot)
     suspend fun endLocalService(orderKey: OrderKey)
     suspend fun updateFaceVerification(orderKey: OrderKey, completed: Boolean)
     suspend fun getLocalState(orderKey: OrderKey): OrderLocalStateEntity?

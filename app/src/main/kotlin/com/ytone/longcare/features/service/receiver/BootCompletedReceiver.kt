@@ -57,7 +57,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
         // 验证广播Action
         val exactPermissionGranted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED
-        if (!exactPermissionGranted && intent.action != Intent.ACTION_BOOT_COMPLETED &&
+        val clockChanged = intent.action == Intent.ACTION_TIME_CHANGED
+        if (!clockChanged && !exactPermissionGranted && intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
             intent.action != "android.intent.action.QUICKBOOT_POWERON") {
             logE("收到非重启相关的广播: ${intent.action}")
@@ -89,9 +90,10 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 countdownNotificationManager.restorePendingCountdownAlarm(
                     canRestore = { privacyConsentManager.isPrivacyConsented },
                     requireExactAlarm = exactPermissionGranted,
+                    allowDueMonotonicAlarm = clockChanged,
                 )
                 // Exact-alarm grant only restores the ownership-checked countdown record.
-                if (exactPermissionGranted) return@launch
+                if (exactPermissionGranted || clockChanged) return@launch
 
                 val pendingOrders = pendingOrdersStorage.getAllPendingOrders()
                 if (pendingOrders.isEmpty()) {

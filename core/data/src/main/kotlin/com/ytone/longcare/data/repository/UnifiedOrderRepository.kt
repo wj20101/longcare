@@ -16,6 +16,7 @@ import com.ytone.longcare.model.OrderInfoParamModel
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -77,10 +78,15 @@ class UnifiedOrderRepository @Inject constructor(
         return orderProjectDao.getSelectedProjectIds(orderKey.orderId)
     }
 
-    override suspend fun startLocalService(orderKey: OrderKey, startedAtMillis: Long) {
+    override suspend fun startLocalService(orderKey: OrderKey, startedAt: ServiceTimeSnapshot) {
         val orderId = orderKey.orderId
         orderLocalStateDao.insertIfAbsent(OrderLocalStateEntity(orderId = orderId).toDb())
-        orderLocalStateDao.startService(orderId, startedAtMillis)
+        orderLocalStateDao.startService(
+            orderId = orderId,
+            timestamp = startedAt.wallTimeMillis,
+            elapsedRealtime = startedAt.elapsedRealtimeMillis,
+            bootCount = startedAt.bootCount,
+        )
     }
 
     override suspend fun endLocalService(orderKey: OrderKey) {

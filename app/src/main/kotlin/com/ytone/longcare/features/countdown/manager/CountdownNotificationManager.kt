@@ -17,6 +17,8 @@ import androidx.core.content.ContextCompat
 import com.ytone.longcare.common.utils.logE
 import com.ytone.longcare.R
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.ServiceCountdownDeadline
+import com.ytone.longcare.domain.time.ServiceTimeProvider
 import com.ytone.longcare.core.common.di.ApplicationScope
 import com.ytone.longcare.core.common.service.ForegroundServiceStateVerifier
 import com.ytone.longcare.domain.location.LocationRecoveryStore
@@ -67,6 +69,7 @@ class CountdownNotificationManager @Inject constructor(
     private val orderRepository: OrderRepository,
     private val serviceOrderLifecycle: ServiceOrderLifecycle,
     @param:ApplicationScope private val applicationScope: CoroutineScope,
+    private val timeProvider: ServiceTimeProvider,
 ) {
 
     companion object {
@@ -86,8 +89,14 @@ class CountdownNotificationManager @Inject constructor(
         internal const val EXTRA_ALARM_OWNER = "extra_countdown_owner"
         internal const val EXTRA_TRIGGER_TIME = "extra_countdown_trigger_time"
         private const val KEY_TRIGGER_TIME = "trigger_time"
+        private const val KEY_ELAPSED_DEADLINE = "elapsed_deadline"
+        private const val KEY_DEADLINE_BOOT = "deadline_boot"
         private const val KEY_SERVICE_NAME = "service_name"
         private const val KEY_DELIVERY_ACCEPTED = "delivery_accepted"
+        private const val KEY_CONSUMED_OWNER = "last_consumed_owner"
+        private const val KEY_CONSUMED_ORDER_ID = "last_consumed_order_id"
+        private const val KEY_CONSUMED_PLAN_ID = "last_consumed_plan_id"
+        private const val KEY_CONSUMED_TRIGGER_TIME = "last_consumed_trigger_time"
         private const val KEY_ALARM_OWNER = "alarm_owner"
         private const val KEY_ACTIVE_PLAN_ID = "active_plan_id"
         private const val KEY_LAST_SCHEDULED_ORDER_ID = "key_last_scheduled_order_id"
@@ -169,8 +178,10 @@ class CountdownNotificationManager @Inject constructor(
                 onSessionChanged()
                 if (awaitingInitialSession && userSessionRepository.sessionState.value !is SessionState.Unknown) {
                     awaitingInitialSession = false
-                    // Also covers a boot/grant receiver whose bounded session wait timed out.
-                    restorePendingCountdownAlarm(canRestore)
+                    // Also covers a clock-change receiver whose bounded session wait timed
+                    // out. Only a known same-boot deadline can be delivered after becoming
+                    // due during cold-start session loading; old-boot alarms stay expired.
+                    restorePendingCountdownAlarm(canRestore, allowDueMonotonicAlarm = true)
                 }
             }
         }
@@ -201,7 +212,19 @@ class CountdownNotificationManager @Inject constructor(
     suspend fun acceptAlarm(intent: Intent): Boolean = try {
         withTimeoutOrNull(5_000L) {
             if (!awaitResolvedSession()) return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "session_unresolved_or_logged_out")
-            if (ownsAlarm(intent)) return@withTimeoutOrNull true
+            if (ownsAlarm(intent)) {
+                // A forward wall-clock correction can deliver the old RTC alarm before
+                // TIME_SET has re-registered it. Duration, not that RTC delivery, is authoritative.
+                val now = timeProvider.snapshot()
+                val deadline = storedDeadline()
+                if (deadline.usesMonotonicTime(now) && deadline.remainingMillis(now) > 0L) {
+                    // Re-sampling time while restoring may cross the deadline. In that
+                    // case register an immediate delivery instead of losing this alarm.
+                    restorePendingCountdownAlarm(canRestore = { true }, allowDueMonotonicAlarm = true)
+                    return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "monotonic_deadline_not_reached")
+                }
+                return@withTimeoutOrNull true
+            }
             if (intent.hasExtra(EXTRA_ALARM_OWNER)) return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, ownershipRejectionReason(intent))
             val orderKey = extractOrderKey(intent)
             val owner = currentOwner() ?: return@withTimeoutOrNull CountdownAlarmDiagnostics.validationFailed(intent, "logged_out")
@@ -255,14 +278,19 @@ class CountdownNotificationManager @Inject constructor(
     fun scheduleCountdownAlarm(
         orderKey: OrderKey,
         serviceName: String,
-        triggerTimeMillis: Long
+        triggerTimeMillis: Long,
+        deadline: ServiceCountdownDeadline = ServiceCountdownDeadline(triggerTimeMillis),
     ) {
+        require(deadline.wallTimeMillis == triggerTimeMillis)
         val owner = currentOwner() ?: return
         val state = serviceOrderLifecycle.orderState.value
         if (state?.orderId == orderKey.orderId && !state.isInProgress()) {
             if (activeOrderKey() == orderKey) clearAlarm()
             return
         }
+        // Closing playback clears the active record, but must not let wall fallback re-arm it.
+        // Check before replacing any newer active record with a stale page's consumed identity.
+        if (wasConsumed(orderKey, owner, triggerTimeMillis)) return
         if (prefs.getString(KEY_ALARM_OWNER, null) != owner || activeOrderKey() != orderKey ||
             prefs.getLong(KEY_TRIGGER_TIME, 0L) != triggerTimeMillis) {
             clearAlarm()
@@ -270,32 +298,48 @@ class CountdownNotificationManager @Inject constructor(
             // A wall-clock rollback or page resume must not re-arm an already accepted identity.
             return
         }
-        prefs.edit {
+        val elapsedDeadline = deadline.elapsedRealtimeMillis
+        val deadlineBoot = deadline.bootCount
+        prefs.edit(commit = true) {
             putString(KEY_ALARM_OWNER, owner)
             putLong(KEY_LAST_SCHEDULED_ORDER_ID, orderKey.orderId)
             putInt(KEY_ACTIVE_PLAN_ID, orderKey.planId)
             putLong(KEY_TRIGGER_TIME, triggerTimeMillis)
             putString(KEY_SERVICE_NAME, serviceName)
+            if (elapsedDeadline != null && deadlineBoot != null) {
+                putLong(KEY_ELAPSED_DEADLINE, elapsedDeadline)
+                putInt(KEY_DEADLINE_BOOT, deadlineBoot)
+            } else {
+                remove(KEY_ELAPSED_DEADLINE)
+                remove(KEY_DEADLINE_BOOT)
+            }
         }
-        if (!alarmDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTimeMillis, owner)) {
+        if (!alarmDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTimeMillis, owner,
+                scheduledTimeMillis = deadline.triggerAtMillis(timeProvider.snapshot()))) {
             clearAlarm()
         }
     }
 
-    /** Restore only the current, future, unconsumed identity; never start playback from boot. */
+    /** Restore the current unconsumed identity; expired wall fallbacks are never replayed. */
     @Synchronized
-    fun restorePendingCountdownAlarm(canRestore: () -> Boolean, requireExactAlarm: Boolean = false): Boolean {
+    fun restorePendingCountdownAlarm(canRestore: () -> Boolean, requireExactAlarm: Boolean = false,
+        allowDueMonotonicAlarm: Boolean = false): Boolean {
         if (!canRestore() || (requireExactAlarm && !canScheduleExactAlarms())) return false
         val orderKey = activeOrderKey() ?: return false
         if (orderKey.orderId <= 0L) return false
         val owner = prefs.getString(KEY_ALARM_OWNER, null) ?: return false
         val triggerTime = prefs.getLong(KEY_TRIGGER_TIME, 0L)
-        if (triggerTime <= System.currentTimeMillis() || prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false) ||
+        val deadline = storedDeadline()
+        val now = timeProvider.snapshot()
+        val canDeliverDueAlarm = allowDueMonotonicAlarm && deadline.usesMonotonicTime(now)
+        if ((deadline.remainingMillis(now) <= 0L && !canDeliverDueAlarm) || prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false) ||
+            wasConsumed(orderKey, owner, triggerTime) ||
             !ownsAlarm(orderKey, owner, triggerTime)) return false
         val serviceName = prefs.getString(KEY_SERVICE_NAME, null)
             ?: context.getString(R.string.countdown_alarm_default_service)
         // Do not call the public scheduler: it may assign a newly logged-in owner to old data.
-        val restored = alarmDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTime, owner)
+        val restored = alarmDelegate.scheduleCountdownAlarm(orderKey, serviceName, triggerTime, owner,
+            scheduledTimeMillis = deadline.triggerAtMillis(now).coerceAtLeast(now.wallTimeMillis))
         if (!restored || !ownsAlarm(orderKey, owner, triggerTime)) {
             clearAlarm()
             return false
@@ -331,6 +375,19 @@ class CountdownNotificationManager @Inject constructor(
         return OrderKey(prefs.getLong(KEY_LAST_SCHEDULED_ORDER_ID, NO_ORDER_ID), prefs.getInt(KEY_ACTIVE_PLAN_ID, 0))
     }
 
+    /** A bounded final-delivery record, independent of the active notification/playback state. */
+    private fun wasConsumed(orderKey: OrderKey, owner: String, triggerTimeMillis: Long): Boolean =
+        triggerTimeMillis > 0L && prefs.getString(KEY_CONSUMED_OWNER, null) == owner &&
+            prefs.getLong(KEY_CONSUMED_ORDER_ID, NO_ORDER_ID) == orderKey.orderId &&
+            prefs.getInt(KEY_CONSUMED_PLAN_ID, -1) == orderKey.planId &&
+            prefs.getLong(KEY_CONSUMED_TRIGGER_TIME, 0L) == triggerTimeMillis
+
+    private fun storedDeadline() = ServiceCountdownDeadline(
+        wallTimeMillis = prefs.getLong(KEY_TRIGGER_TIME, 0L),
+        elapsedRealtimeMillis = if (prefs.contains(KEY_ELAPSED_DEADLINE)) prefs.getLong(KEY_ELAPSED_DEADLINE, 0L) else null,
+        bootCount = if (prefs.contains(KEY_DEADLINE_BOOT)) prefs.getInt(KEY_DEADLINE_BOOT, -1) else null,
+    )
+
     private fun currentOwner(session: SessionState = userSessionRepository.sessionState.value): String? = session.user?.let {
         "${it.companyId}:${it.accountId}:${it.userId}"
     }
@@ -341,6 +398,7 @@ class CountdownNotificationManager @Inject constructor(
         if (orderKey == null && owner == null) return
         val triggerTime = prefs.getLong(KEY_TRIGGER_TIME, 0L)
         alarmDelegate.cancelCountdownAlarm()
+        // Keep the last consumed identity after dismiss/cancel; only active playback is cleared.
         prefs.edit {
             remove(KEY_ALARM_OWNER)
             remove(KEY_LAST_SCHEDULED_ORDER_ID)
@@ -348,6 +406,8 @@ class CountdownNotificationManager @Inject constructor(
             remove(KEY_TRIGGER_TIME)
             remove(KEY_SERVICE_NAME)
             remove(KEY_DELIVERY_ACCEPTED)
+            remove(KEY_ELAPSED_DEADLINE)
+            remove(KEY_DEADLINE_BOOT)
         }
         AlarmRingtoneService.stopRingtone(context)
         notificationManager.cancel(COUNTDOWN_NOTIFICATION_ID)
@@ -384,10 +444,17 @@ class CountdownNotificationManager @Inject constructor(
             trackDeliveryResult(alarm, "ownership_changed_before_service")
             return
         }
-        if (prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false)) return
+        if (prefs.getBoolean(KEY_DELIVERY_ACCEPTED, false) ||
+            wasConsumed(alarm.orderKey, alarm.owner, alarm.triggerTimeMillis)) return
         // Acceptance is not proof of audible playback. Persist before dispatch to avoid replay
-        // after reboot/clock rollback; a new owner/order/deadline clears this same-record flag.
-        prefs.edit(commit = true) { putBoolean(KEY_DELIVERY_ACCEPTED, true) }
+        // after reboot/clock rollback, including after dismissal removes the active record.
+        prefs.edit(commit = true) {
+            putBoolean(KEY_DELIVERY_ACCEPTED, true)
+            putString(KEY_CONSUMED_OWNER, alarm.owner)
+            putLong(KEY_CONSUMED_ORDER_ID, alarm.orderKey.orderId)
+            putInt(KEY_CONSUMED_PLAN_ID, alarm.orderKey.planId)
+            putLong(KEY_CONSUMED_TRIGGER_TIME, alarm.triggerTimeMillis)
+        }
         CountdownEventTracker.trackEvent(CountdownEventTracker.EventType.ALARM_TRIGGERED,
             alarm.orderKey.orderId,
             CountdownAlarmDiagnostics.fields(alarm.diagnostics, alarm.triggerTimeMillis, "validated"),

@@ -34,10 +34,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** 签到、签退借用服务中的同一采集流；销售、拍照仍使用独立单次请求。 */
+/** 签到、签退借用订单采集流；底层单次请求由共享 provider 与销售、拍照协调。 */
 @Singleton
 class ContinuousAmapLocationManager @Inject constructor(
-    private val clientFactory: AmapLocationClientFactory,
+    private val clientFactory: AmapClientProvider,
     private val amapApiKeyProvider: AmapApiKeyProvider,
     private val runtimeReadiness: AndroidLocationRuntimeReadiness,
 ) {
@@ -93,7 +93,7 @@ class ContinuousAmapLocationManager @Inject constructor(
     @Volatile private var lastCallbackElapsed = 0L
     fun latestEvent(): LocationAcquisition? = samples.replayCache.lastOrNull()
 
-    /** 每次收集创建独立客户端，避免旧订单的在途 SDK 结果进入新监听器。 */
+    /** 每次收集创建独立逻辑句柄；provider 隔离旧监听器并统一原生请求的生命周期。 */
     private fun initContinuousLocationClient(
         apiKey: String,
     ): ContinuousClient {
@@ -148,7 +148,7 @@ class ContinuousAmapLocationManager @Inject constructor(
     }
 
     private fun buildContinuousLocationOption(intervalMs: Long) = newAmapLocationOption().apply {
-        // SDK 3.7+ 支持持续定位；仅首次等待 Wi-Fi 刷新，约增加 1～3 秒。
+        // 表达业务周期；生产 provider 将每轮转换为有截止时间的真实单次请求。
         isOnceLocationLatest = true
         isOnceLocation = false
         interval = intervalMs
@@ -211,7 +211,8 @@ class ContinuousAmapLocationManager @Inject constructor(
         lastCallbackElapsed = startedAt
         val listener = AMapLocationListener { raw ->
             if (!request.active.get()) return@AMapLocationListener
-            // Count at the SDK boundary, before the shared flow can conflate a burst.
+            // Count provider outputs before the shared flow can conflate a burst. Provider
+            // lifecycle failures may be explicit error outputs; they are not native SDK fixes.
             request.callbackCount++
             request.lastCallbackAt = SystemClock.elapsedRealtime()
             if (raw == null) {
@@ -317,7 +318,7 @@ class ContinuousAmapLocationManager @Inject constructor(
     private fun applySamplingOption(request: ContinuousClient) {
         val interval = desiredInterval()
         if (request.appliedIntervalMs == interval) return
-        // 当前 SDK 在运行中应用 option 会内部重启采集；相同配置不重复下发。
+        // Provider 在下一轮应用节奏变化，不重启当前请求；相同配置不重复下发。
         // A throwing SDK call may have changed state before failing; its cadence is now unknown.
         request.appliedIntervalMs = null
         request.client.setLocationOption(buildContinuousLocationOption(interval))

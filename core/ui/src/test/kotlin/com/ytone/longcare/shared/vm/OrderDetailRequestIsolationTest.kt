@@ -72,5 +72,6 @@ class OrderDetailRequestIsolationTest {
 
     private fun model() = SharedOrderDetailViewModel(
         details, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+        mockk(relaxed = true),
     )
 }

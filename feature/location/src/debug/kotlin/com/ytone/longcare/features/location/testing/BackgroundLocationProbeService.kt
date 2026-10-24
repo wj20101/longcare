@@ -17,6 +17,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
+import com.amap.api.location.ILogCallback
 import com.ytone.longcare.domain.location.*
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.repository.SessionState
@@ -29,6 +30,7 @@ import com.ytone.longcare.features.location.manager.AmapLocationClientFactory
 import com.ytone.longcare.features.location.manager.ContinuousAmapLocationManager
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
 import com.ytone.longcare.features.location.manager.SdkAmapClientHandle
+import com.ytone.longcare.features.location.manager.SerializedAmapClientProvider
 import com.ytone.longcare.feature.location.R
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.features.location.service.LocationTrackingService
@@ -40,6 +42,7 @@ import com.ytone.longcare.model.result.ApiResult
 import java.lang.reflect.Proxy
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -68,6 +71,8 @@ class BackgroundLocationProbeService : LocationTrackingService() {
     private lateinit var trackingManager: LocationTrackingManager
     private var traceClientId: Int? = null
     private val traceFile by lazy { File(filesDir, "background-location-probe.jsonl") }
+    private val traceHandler = Handler(Looper.getMainLooper())
+    private val sdkLogSessions = mutableSetOf<SdkLogSession>()
     private var activeOrderId: Long
         get() = prefs.getLong("orderId", ORDER_ID)
         set(value) { prefs.edit().putLong("orderId", value).commit() }
@@ -155,15 +160,26 @@ class BackgroundLocationProbeService : LocationTrackingService() {
             }
         }
         val dependencies = EntryPointAccessors.fromApplication(applicationContext, ProbeLocationDependencies::class.java)
+        // Keep the production sampler and its account guard, with the same isolated business
+        // identity used by this service's order lifecycle and local receiver.
+        val sharedProvider = SerializedAmapClientProvider(dependencies.amapClientFactory(), userSessionRepository)
         val factory = object : AmapLocationClientFactory(this, privacyConsentManager) {
             override fun create(apiKey: String): AmapClientHandle {
                 val clientId = prefs.getInt("clients", 0) + 1
                 prefs.edit().putInt("clients", clientId).commit()
                 val realSource = prefs.getBoolean("realSource", false)
-                val client = if (realSource) dependencies.amapClientFactory().create(apiKey) else ProbeClient()
+                val rawSdkClient = prefs.getBoolean("rawSdkClient", false)
+                val client = when {
+                    !realSource -> ProbeClient()
+                    rawSdkClient -> dependencies.amapClientFactory().create(apiKey)
+                    else -> sharedProvider.create(apiKey)
+                }
                 traceClientId = clientId
-                trace("client_create", "client" to clientId, "source" to if (realSource) "amap" else "fake")
-                return TracedClient(client, clientId)
+                trace("client_create", "client" to clientId, "source" to if (realSource) "amap" else "fake",
+                    "clientKind" to if (!realSource) "fake" else if (rawSdkClient) "raw_sdk" else "shared_provider")
+                // SDK log registration is process-global; opt-in applies only at client creation.
+                return TracedClient(client, clientId, prefs.getBoolean("sdkLogs", false),
+                    nativeSdkBoundary = realSource && rawSdkClient)
             }
         }
         continuousAmapLocationManager = ContinuousAmapLocationManager(factory, object : AmapApiKeyProvider {
@@ -198,12 +214,13 @@ class BackgroundLocationProbeService : LocationTrackingService() {
 
     private fun applyControls(intent: Intent) {
         val edit = prefs.edit()
-        listOf("realSource", "sdkForeground", "stall", "httpFail", "httpSuspend", "locationEnabled", "permissionGranted").forEach { key ->
+        listOf("realSource", "sdkForeground", "sdkLogs", "rawSdkClient", "stall", "httpFail", "httpSuspend", "locationEnabled", "permissionGranted").forEach { key ->
             if (intent.hasExtra(key)) {
                 val value = intent.getBooleanExtra(key, false)
                 edit.putBoolean(key, value)
                 trace("gate", "name" to key, "value" to value,
-                    "simulated" to (key != "realSource" && key != "sdkForeground"))
+                    "simulated" to (key !in setOf("realSource", "sdkForeground", "sdkLogs", "rawSdkClient")),
+                    "appliesTo" to if (key in setOf("sdkLogs", "rawSdkClient")) "new_client" else "current_control")
             }
         }
         if (intent.hasExtra("errorCode")) {
@@ -282,11 +299,22 @@ class BackgroundLocationProbeService : LocationTrackingService() {
 
     override fun onDestroy() {
         trace("service_destroy")
-        super.onDestroy()
-        probeScope.cancel()
+        try { super.onDestroy() } finally {
+            sdkLogSessions.toList().forEach { it.close("service_destroy") }
+            probeScope.cancel()
+        }
     }
 
     private fun trace(event: String, vararg attributes: Pair<String, Any?>) {
+        // All trace producers share Main with the SDK-log consumer, including rotation.
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            traceHandler.post { trace(event, *attributes) }
+            return
+        }
+        writeTrace(event, *attributes)
+    }
+
+    private fun writeTrace(event: String, vararg attributes: Pair<String, Any?>): Boolean {
         val json = JSONObject().put("event", event).put("pid", Process.myPid())
             .put("client", traceClientId ?: JSONObject.NULL)
             .put("wallMillis", System.currentTimeMillis())
@@ -307,17 +335,81 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         Log.i(LOG_TAG, line)
         // Debug fixture only: retain unplugged observations beyond the system logcat ring.
         // Two bounded files contain event metadata, never coordinates or real care records.
-        runCatching {
+        return runCatching {
             if (traceFile.length() >= MAX_TRACE_BYTES) {
                 val previous = File(filesDir, "background-location-probe.previous.jsonl")
                 check(!previous.exists() || previous.delete())
                 check(traceFile.renameTo(previous))
             }
             traceFile.appendText(line + "\n")
-        }.onFailure { Log.w(LOG_TAG, "Probe trace unavailable", it) }
+        }.onFailure { Log.w(LOG_TAG, "Probe trace unavailable", it) }.isSuccess
     }
 
-    private inner class TracedClient(private val delegate: AmapClientHandle, private val clientId: Int) : AmapClientHandle {
+    private inner class SdkLogSession(private val sdk: SdkAmapClientHandle, private val clientId: Int) {
+        private val capture = ProbeSdkLogCapture(elapsedRealtime = SystemClock::elapsedRealtime,
+            uptimeMillis = SystemClock::uptimeMillis)
+        private val callback = ILogCallback { message, wallMillis -> capture.onLog(message, wallMillis) }
+        private var closed = false
+        // Main rather than Main.immediate prevents trySend from running trace I/O inline in an SDK callback.
+        private val consumer = probeScope.launch(Dispatchers.Main) {
+            for (event in capture.events) consume(event)
+        }
+
+        fun register() {
+            sdkLogSessions += this
+            trace("sdk_log_register_attempt", "client" to null, "registeredByClient" to clientId,
+                "scope" to "process_global")
+            val returned = runCatching { sdk.addLogCallback(callback) }.isSuccess
+            trace("sdk_log_register_returned", "client" to null, "registeredByClient" to clientId, "returned" to returned,
+                "scope" to "process_global", "acknowledged" to false)
+            if (!returned) close("registration_failed")
+        }
+
+        private fun consume(event: ProbeSdkLogEvent) {
+            val written = runCatching {
+                writeTrace("sdk_log", "client" to null, "registeredByClient" to clientId, "scope" to "process_global",
+                    "kind" to event.kind.traceName,
+                    "receivedElapsedRealtime" to event.receivedElapsedRealtime,
+                    "receivedUptimeMillis" to event.receivedUptimeMillis,
+                    "logWallMillis" to event.logWallMillis)
+            }.getOrDefault(false)
+            capture.onConsumed(written)
+        }
+
+        fun close(reason: String) {
+            if (closed) return
+            closed = true
+            val stoppedAt = SystemClock.elapsedRealtime()
+            capture.close()
+            val removed = runCatching { sdk.removeLogCallback(callback) }.isSuccess
+            // Main serializes this bounded drain with the consumer. Concurrent callback sends
+            // after close fail; an in-flight callback makes the final completeness flag false.
+            while (true) consume(capture.events.tryReceive().getOrNull() ?: break)
+            consumer.cancel()
+            val status = capture.snapshot()
+            trace("sdk_log_closed", "client" to null, "registeredByClient" to clientId,
+                "scope" to "process_global", "reason" to reason,
+                "stoppedAtElapsedRealtime" to stoppedAt, "removeReturned" to removed,
+                "matched" to status.matched, "enqueued" to status.enqueued, "consumed" to status.consumed,
+                "dropped" to status.dropped, "pending" to status.pending, "inFlight" to status.inFlight,
+                "afterClose" to status.afterClose, "callbackFailures" to status.callbackFailures,
+                "writeFailures" to status.writeFailures, "localCaptureComplete" to (removed && status.complete))
+            sdkLogSessions -= this
+            // A failed removal keeps the process lease occupied; never stack another registration.
+            if (removed) SDK_LOG_CAPTURE_ACTIVE.set(false)
+        }
+    }
+
+    private inner class TracedClient(private val delegate: AmapClientHandle, private val clientId: Int,
+        sdkLogsRequested: Boolean, private val nativeSdkBoundary: Boolean) : AmapClientHandle {
+        private val sdkLogs = if (sdkLogsRequested && delegate is SdkAmapClientHandle &&
+            SDK_LOG_CAPTURE_ACTIVE.compareAndSet(false, true)) {
+            SdkLogSession(delegate, clientId).also { it.register() }
+        } else {
+            if (sdkLogsRequested) trace("sdk_log_registration_skipped", "client" to clientId,
+                "reason" to if (delegate !is SdkAmapClientHandle) "not_raw_sdk_handle" else "process_capture_active")
+            null
+        }
         private var originalListener: AMapLocationListener? = null
         private var tracedListener: AMapLocationListener? = null
         private var sdkForegroundRequested = false
@@ -337,6 +429,7 @@ class BackgroundLocationProbeService : LocationTrackingService() {
             originalListener = listener
             val wrapped = AMapLocationListener { raw ->
                 trace("sdk_callback", "client" to clientId, "errorCode" to raw?.errorCode,
+                    "nativeSdkBoundary" to nativeSdkBoundary,
                     "accuracy" to raw?.accuracy, "locationTime" to raw?.time, "locationType" to raw?.locationType,
                     // Inspect SDK tick/UTC alongside type; Location.time alone may be refreshed for reused results.
                     "locationTickNanos" to raw?.locationTickTime, "locationUtcTime" to raw?.locationUtcTime,
@@ -382,6 +475,7 @@ class BackgroundLocationProbeService : LocationTrackingService() {
                     (delegate as SdkAmapClientHandle).disableBackgroundLocation()
                 }
             } finally {
+                sdkLogs?.close("client_destroy")
                 trace("client_destroy", "client" to clientId)
                 if (traceClientId == clientId) traceClientId = null
                 delegate.onDestroy()
@@ -431,6 +525,7 @@ class BackgroundLocationProbeService : LocationTrackingService() {
         private const val MAX_TRACE_BYTES = 1_048_576L
         private const val SDK_FOREGROUND_CHANNEL = "location_probe_sdk_foreground"
         private const val SDK_FOREGROUND_NOTIFICATION = 9_001
+        private val SDK_LOG_CAPTURE_ACTIVE = AtomicBoolean(false)
     }
 }
 

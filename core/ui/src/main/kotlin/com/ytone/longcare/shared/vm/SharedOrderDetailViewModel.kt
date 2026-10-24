@@ -15,6 +15,7 @@ import com.ytone.longcare.common.utils.messageRes
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.domain.time.ServiceTimeProvider
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.ServiceProjectM
@@ -43,6 +44,7 @@ class SharedOrderDetailViewModel @Inject constructor(
     private val locationFacade: LocationFacade,
     private val textResolver: ResourceTextResolver,
     private val serviceLifecycle: ServiceOrderLifecycle,
+    private val serviceTimeProvider: ServiceTimeProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OrderDetailUiState>(OrderDetailUiState.Initial)
@@ -178,14 +180,14 @@ class SharedOrderDetailViewModel @Inject constructor(
                 when (result) {
                     is ApiResult.Success -> {
                         // API 无服务端起点字段，以确认成功的本机时刻计时，不能等下一页加载完成。
-                        val confirmedAtMillis = System.currentTimeMillis()
+                        val confirmedAt = serviceTimeProvider.snapshot()
                         DiagnosticEventTracker.trackEvent(DiagnosticCategory.LOCATION, "service_start_location_success",
                             "正式开始服务位置提交成功", diagnosticExtras, userId, reportToServer = true)
                         serviceLifecycle.onOrderStarted(orderKey.orderId)
                         try {
                             // 仅保护服务端已确认的本地 Room 写入，页面释放不能丢失计时起点。
                             withContext(NonCancellable) {
-                                unifiedOrderRepository.startLocalService(orderKey, confirmedAtMillis)
+                                unifiedOrderRepository.startLocalService(orderKey, confirmedAt)
                             }
                         } catch (cancelled: CancellationException) {
                             throw cancelled

@@ -3,6 +3,7 @@ package com.ytone.longcare.features.servicecountdown.service
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.ServiceCountdownDeadline
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,12 +23,13 @@ class ServiceCountdownSystemGatewayImpl @Inject constructor(
     override fun scheduleCountdownAlarm(
         orderKey: OrderKey,
         serviceName: String,
-        triggerTimeMillis: Long,
+        deadline: ServiceCountdownDeadline,
     ) {
         countdownNotificationManager.scheduleCountdownAlarm(
             orderKey = orderKey,
             serviceName = serviceName,
-            triggerTimeMillis = triggerTimeMillis,
+            triggerTimeMillis = deadline.wallTimeMillis,
+            deadline = deadline,
         )
     }
 

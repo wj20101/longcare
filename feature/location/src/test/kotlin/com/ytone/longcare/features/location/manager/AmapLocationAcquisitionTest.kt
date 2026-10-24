@@ -70,6 +70,66 @@ class AmapLocationAcquisitionTest {
 
     @After fun cleanup() { Dispatchers.resetMain(); unmockkAll() }
 
+    @Test fun `shared provider keeps photo acquisition alive when reporting owner stops`() = runTest(dispatcher) {
+        useSharedProvider(backgroundScope)
+        val collector = backgroundScope.launch { manager.startContinuousLocation("order").collect() }
+        runCurrent()
+        val photo = async { singleSource.acquireCurrentLocation() }
+        runCurrent()
+        assertEquals(1, listeners.size)
+
+        collector.cancelAndJoin()
+        verify(exactly = 0) { client.stopLocation() }
+        verify(exactly = 0) { client.onDestroy() }
+        listeners.single().onLocationChanged(freshSample())
+        runCurrent()
+
+        assertTrue(photo.await() is LocationAcquisition.Success)
+        verify(exactly = 1) { factory.create("test-key") }
+        verify(exactly = 1) { client.onDestroy() }
+        assertNull(manager.diagnosticSnapshot()["clientId"])
+    }
+
+    @Test fun `periodic SDK stops do not reset reporting source deduplication`() = runTest(dispatcher) {
+        useSharedProvider(backgroundScope)
+        val received = mutableListOf<LocationAcquisition.Success>()
+        val collector = backgroundScope.launch {
+            manager.startContinuousLocation("order").filterIsInstance<LocationAcquisition.Success>().collect { received += it }
+        }
+        val clock = mockk<LocationClock> {
+            every { currentTimeMillis() } answers { System.currentTimeMillis() }
+            every { elapsedRealtime() } answers { SystemClock.elapsedRealtime() }
+        }
+        val evaluator = LocationSampleEvaluator(SystemClock.elapsedRealtime(), clock)
+        runCurrent()
+        val firstSource = SystemClock.elapsedRealtime()
+        listeners.last().onLocationChanged(freshSample(firstSource))
+        runCurrent()
+        assertNull(evaluator.rejection(received.single().location))
+        evaluator.onUploadStarted(received.single().location)
+
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(2, listeners.size)
+        listeners.last().onLocationChanged(freshSample(firstSource))
+        runCurrent()
+        assertEquals(2, received.size)
+        assertEquals(received.first().location.requestId, received.last().location.requestId)
+        assertEquals(LocationQuality.Rejection.ORDER, evaluator.rejection(received.last().location))
+        assertTrue(manager.diagnosticSnapshot()["sdkState"].toString().contains("gS=30/30"))
+
+        advanceTimeBy(30_000)
+        runCurrent()
+        listeners.last().onLocationChanged(freshSample())
+        runCurrent()
+        assertEquals(3, received.size)
+        assertNull(evaluator.rejection(received.last().location))
+        verify(exactly = 1) { factory.create("test-key") }
+        assertTrue(options.all { it.isOnceLocation && it.isOnceLocationLatest && !it.isLocationCacheEnable })
+        collector.cancelAndJoin()
+        verify(exactly = 1) { client.onDestroy() }
+    }
+
     @Test fun `source tick is converted from nanoseconds with one received clock snapshot`() {
         val raw = sample().also { every { it.locationTickTime } returns 8_123_456_789L }
         var receivedClockReads = 0
@@ -1774,6 +1834,26 @@ class AmapLocationAcquisitionTest {
     private fun freshSample(source: Long = SystemClock.elapsedRealtime()): AMapLocation = sample().also {
         every { it.time } returns System.currentTimeMillis()
         every { it.locationTickTime } returns TimeUnit.MILLISECONDS.toNanos(source)
+    }
+
+    private fun useSharedProvider(scope: CoroutineScope) {
+        val scheduled = mutableMapOf<Runnable, Job>()
+        val scheduler = object : AmapCycleScheduler {
+            override fun now() = SystemClock.elapsedRealtime()
+            override fun isMainThread() = true
+            override fun post(delayMs: Long, task: Runnable) {
+                scheduled[task] = scope.launch {
+                    delay(delayMs)
+                    scheduled.remove(task)
+                    task.run()
+                }
+            }
+            override fun remove(task: Runnable) { scheduled.remove(task)?.cancel() }
+        }
+        val provider = SerializedAmapClientProvider(factory, scheduler)
+        val key = mockk<AmapApiKeyProvider> { coEvery { getAmapApiKey() } returns "test-key" }
+        manager = ContinuousAmapLocationManager(provider, key, runtimeReadiness)
+        singleSource = SingleAmapLocationSource(provider, key)
     }
 
     private fun sample(): AMapLocation = mockk {

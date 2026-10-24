@@ -19,6 +19,11 @@ data class OrderLocalStateEntity(
     val localStatus: Int = LocalOrderStatus.PENDING.value,
     
     val localStartTimestamp: Long? = null,
+
+    /** Monotonic start, usable only when [localStartBootCount] matches the current boot. */
+    val localStartElapsedRealtime: Long? = null,
+
+    val localStartBootCount: Int? = null,
     
     val localEndTimestamp: Long? = null,
     

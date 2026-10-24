@@ -3,6 +3,7 @@ package com.ytone.longcare.di
 import android.content.Context
 import androidx.room.Room
 import com.ytone.longcare.data.database.LongCareDatabase
+import com.ytone.longcare.data.database.MIGRATION_3_4
 import com.ytone.longcare.data.database.dao.OrderDao
 import com.ytone.longcare.data.database.dao.OrderElderInfoDao
 import com.ytone.longcare.data.database.dao.OrderImageDao
@@ -39,6 +40,7 @@ object DatabaseModule {
             klass = LongCareDatabase::class.java,
             name = name
         )
+            .addMigrations(MIGRATION_3_4)
             .fallbackToDestructiveMigrationFrom(true, 1, 2)
             .build()
     }

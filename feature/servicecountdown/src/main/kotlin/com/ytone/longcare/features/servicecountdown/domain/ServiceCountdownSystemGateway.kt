@@ -1,6 +1,7 @@
 package com.ytone.longcare.features.servicecountdown.domain
 
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.ServiceCountdownDeadline
 
 /**
  * 服务倒计时系统能力网关。
@@ -14,7 +15,7 @@ interface ServiceCountdownSystemGateway {
     fun scheduleCountdownAlarm(
         orderKey: OrderKey,
         serviceName: String,
-        triggerTimeMillis: Long,
+        deadline: ServiceCountdownDeadline,
     )
 
     fun cancelCountdownAlarmForOrder(orderKey: OrderKey)

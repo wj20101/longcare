@@ -33,7 +33,7 @@ import com.ytone.longcare.data.database.entity.OrderProjectEntityDb
         OrderProjectEntityDb::class,
         OrderImageEntityDb::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class LongCareDatabase : RoomDatabase() {
@@ -46,6 +46,6 @@ abstract class LongCareDatabase : RoomDatabase() {
     
     companion object {
         const val DATABASE_NAME = "longcare_database"
-        const val DATABASE_VERSION = 3
+        const val DATABASE_VERSION = 4
     }
 }

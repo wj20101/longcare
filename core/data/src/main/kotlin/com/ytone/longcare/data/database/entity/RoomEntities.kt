@@ -106,6 +106,10 @@ data class OrderLocalStateEntityDb(
     val localStatus: Int = LocalOrderStatus.PENDING.value,
     @ColumnInfo(name = "local_start_timestamp")
     val localStartTimestamp: Long? = null,
+    @ColumnInfo(name = "local_start_elapsed_realtime")
+    val localStartElapsedRealtime: Long? = null,
+    @ColumnInfo(name = "local_start_boot_count")
+    val localStartBootCount: Int? = null,
     @ColumnInfo(name = "local_end_timestamp")
     val localEndTimestamp: Long? = null,
     @ColumnInfo(name = "face_verification_completed", defaultValue = "0")

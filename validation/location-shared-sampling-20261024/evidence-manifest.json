@@ -1,0 +1,73 @@
+{
+  "note": "Hashes identify locally retained historical evidence. Raw logs are not distributed in this repository. Final review/build results are recorded separately in verification.json.",
+  "files": [
+    {
+      "localEvidence": "build/sdk-source-20261023/production-gates.json",
+      "sha256": "d5d0b72286658cfcd9c527c396408ffa429c8d0afc91e4031cde9e7ec60078df"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-fix-acceptance.md",
+      "sha256": "71d5f6ba6e0258e8b238f4311d569e80d23c7fa804a314d0d68f65fd7d81098c"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-retest-independent-review.md",
+      "sha256": "fb81f24cbdd0dddfd367671cf8429bc99702636db34285f6b520afb3d33f743f"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-locked-independent-review.md",
+      "sha256": "55a4d548ce2f19840757d79ffece536b51a1479891e32bad94dc837da85cd70e"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-sdk-network-audit.md",
+      "sha256": "276f9cee6f132a8935ef771d30b98e1e684e63cc467eb445fda19fe982cda3d2"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-locked-xiaomi/analysis.json",
+      "sha256": "c36dda8ed10312b461418fc42effd5f201b811703b19fd3505998d50084e7e37"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-locked-xiaomi/cleanup.json",
+      "sha256": "555abda9758017ed9cd0b6e908f6ca0d619719129f2ce72cbab8d15c0aec3420"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-locked-huawei/analysis.json",
+      "sha256": "4871e1577d3288b174995b4f3f14ba6e0067aa2699dd54047db990883a549df7"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-locked-huawei/cleanup.json",
+      "sha256": "555abda9758017ed9cd0b6e908f6ca0d619719129f2ce72cbab8d15c0aec3420"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-retest-xiaomi/analysis.json",
+      "sha256": "bae55ef92c781adba3b631bc338f69bbbb52512c5f1ad2bb740d5e498176c41d"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-retest-xiaomi/cleanup.json",
+      "sha256": "555abda9758017ed9cd0b6e908f6ca0d619719129f2ce72cbab8d15c0aec3420"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-retest-huawei/analysis.json",
+      "sha256": "f0a2b3551294b5be470291ae3eb6d717eb0d1ed2e2a0965389b359fea7159746"
+    },
+    {
+      "localEvidence": "build/sdk-source-20261023/production-retest-huawei/cleanup.json",
+      "sha256": "555abda9758017ed9cd0b6e908f6ca0d619719129f2ce72cbab8d15c0aec3420"
+    },
+    {
+      "localEvidence": "build/validation/cpu-clock-20261023/jvm-and-lint-summary.json",
+      "sha256": "d2e8c62f8e7abc1b751d3b72c9f6177bd95f54ac66cdfa4fafb302326e131813"
+    },
+    {
+      "localEvidence": "build/validation/cpu-clock-20261023/database-device.log",
+      "sha256": "af3378bf6cbd0bbb8f98fbdf753f4ff736ca1d63660b02416baf6ff4069eeb4d"
+    },
+    {
+      "localEvidence": "build/validation/cpu-clock-20261023/alarm-device-passed.log",
+      "sha256": "4f636221293ac9bbede92fea4b0d2995da47fed9d4fc05c9fffb509c3e76c2aa"
+    },
+    {
+      "localEvidence": "build/validation/cpu-clock-20261023/device-cleanup.json",
+      "sha256": "852a072c555f7d01418944da3c99ef07ddfbb6155299bf3e836a78a4f4cc162e"
+    }
+  ]
+}

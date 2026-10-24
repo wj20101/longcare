@@ -19,6 +19,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ytone.longcare.app.MainApplication
+import com.ytone.longcare.data.time.AndroidServiceTimeProvider
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
@@ -32,6 +33,8 @@ import com.ytone.longcare.features.servicecountdown.service.ServiceCountdownSyst
 import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.model.ImageType
 import com.ytone.longcare.model.OrderImageEntity
+import com.ytone.longcare.model.ServiceCountdownDeadline
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.ServiceOrderInfoModel
@@ -223,6 +226,9 @@ class ServiceCountdownBackgroundInitializationTest {
         assertEquals(ScheduledAlarm(TEST_ORDER, SERVICE_NAME, details.deadline), gateway.scheduled.single())
         assertEquals(0, details.localStarts)
         assertEquals("the system schedule must keep the persisted deadline", details.deadline, prefs.getLong("trigger_time", 0L))
+        assertEquals("the monotonic deadline must reach the system scheduler", details.monotonicDeadline,
+            prefs.getLong("elapsed_deadline", -1L))
+        assertEquals(details.bootCount, prefs.getInt("deadline_boot", -1))
         instrumentation.sendStatus(0, Bundle().apply {
             putString("realAlarmStage", "scheduled_in_background")
             putString("realAlarmMode", if (lockScreen) "lock_screen" else "home")
@@ -242,7 +248,7 @@ class ServiceCountdownBackgroundInitializationTest {
             hasTestNotification() && ringtoneServiceRunning() && hasAlarmPlayback(audioManager)
         }
         val playbackObservedAt = SystemClock.elapsedRealtime()
-        assertTrue("alarm fired before its persisted deadline", System.currentTimeMillis() >= details.deadline)
+        assertTrue("alarm fired before its persisted monotonic deadline", playbackObservedAt >= details.monotonicDeadline)
         if (lockScreen) {
             waitFor("the system did not automatically open the original alarm Activity while locked") { observer.resumed }
             assertEquals(TEST_ORDER, observer.deliveredOrder)
@@ -252,6 +258,7 @@ class ServiceCountdownBackgroundInitializationTest {
             putString("realAlarmMode", if (lockScreen) "lock_screen" else "home")
             putBoolean("realAlarmActivityResumed", observer.resumed)
             putLong("realAlarmPlaybackObservedAt", playbackObservedAt)
+            putLong("realAlarmObservedDelayMs", playbackObservedAt - details.monotonicDeadline)
         })
         waitFor("alarm did not stop its audio and foreground service automatically", timeoutMillis = 40_000L) {
             !hasAlarmPlayback(audioManager) && !ringtoneServiceRunning()
@@ -319,7 +326,7 @@ class ServiceCountdownBackgroundInitializationTest {
     private fun renderCountdown(details: BlockingOrderDetails, gateway: RecordingGateway): ServiceCountdownViewModel {
         lateinit var viewModel: ServiceCountdownViewModel
         instrumentation.runOnMainSync {
-            viewModel = ServiceCountdownViewModel(details, NoImages, NoOrderMonitoring, gateway)
+            viewModel = ServiceCountdownViewModel(details, NoImages, NoOrderMonitoring, gateway, testTimeProvider)
             store.put("countdown", viewModel)
         }
         compose.setContent {
@@ -400,6 +407,9 @@ class ServiceCountdownBackgroundInitializationTest {
         private val boundary: ReadBoundary,
         val deadline: Long = System.currentTimeMillis() + 50_000L,
     ) : OrderDetailRepository {
+        private val referenceTime = testTimeProvider.snapshot()
+        val bootCount = requireNotNull(referenceTime.bootCount) { "Device tests require a known boot identity" }
+        val monotonicDeadline = referenceTime.elapsedRealtimeMillis + deadline - referenceTime.wallTimeMillis
         private val startedAt = deadline - TimeUnit.MINUTES.toMillis(1L)
         val readEntered = CompletableDeferred<Unit>()
         val releaseRead = CompletableDeferred<Unit>()
@@ -420,7 +430,9 @@ class ServiceCountdownBackgroundInitializationTest {
             check(orderKey == order)
             localReads++
             awaitRead(ReadBoundary.LOCAL_START)
-            return OrderLocalStateEntity(orderId = order.orderId, localStartTimestamp = startedAt)
+            return OrderLocalStateEntity(orderId = order.orderId, localStartTimestamp = startedAt,
+                localStartElapsedRealtime = monotonicDeadline - TimeUnit.MINUTES.toMillis(1L),
+                localStartBootCount = bootCount)
         }
 
         private suspend fun awaitRead(current: ReadBoundary) {
@@ -434,7 +446,7 @@ class ServiceCountdownBackgroundInitializationTest {
             }
         }
 
-        override suspend fun startLocalService(orderKey: OrderKey, startedAtMillis: Long) { localStarts++ }
+        override suspend fun startLocalService(orderKey: OrderKey, startedAt: ServiceTimeSnapshot) { localStarts++ }
         override fun getCachedOrderInfo(orderKey: OrderKey): ServiceOrderInfoModel? = null
         override suspend fun getSelectedProjectIds(orderKey: OrderKey) = listOf(PROJECT_ID)
         override suspend fun updateSelectedProjects(orderKey: OrderKey, selectedProjectIds: List<Int>) = Unit
@@ -448,9 +460,9 @@ class ServiceCountdownBackgroundInitializationTest {
         val scheduled = CopyOnWriteArrayList<ScheduledAlarm>()
         override fun canScheduleExactAlarms() = true
         override fun canUseFullScreenIntent() = true
-        override fun scheduleCountdownAlarm(orderKey: OrderKey, serviceName: String, triggerTimeMillis: Long) {
-            realGateway?.scheduleCountdownAlarm(orderKey, serviceName, triggerTimeMillis)
-            scheduled += ScheduledAlarm(orderKey, serviceName, triggerTimeMillis)
+        override fun scheduleCountdownAlarm(orderKey: OrderKey, serviceName: String, deadline: ServiceCountdownDeadline) {
+            realGateway?.scheduleCountdownAlarm(orderKey, serviceName, deadline)
+            scheduled += ScheduledAlarm(orderKey, serviceName, deadline.wallTimeMillis)
         }
         override fun cancelCountdownAlarmForOrder(orderKey: OrderKey) {
             realGateway?.cancelCountdownAlarmForOrder(orderKey)
@@ -493,6 +505,9 @@ class ServiceCountdownBackgroundInitializationTest {
     }
 
     private companion object {
+        val testTimeProvider by lazy {
+            AndroidServiceTimeProvider(InstrumentationRegistry.getInstrumentation().targetContext)
+        }
         const val PROJECT_ID = 1
         const val SERVICE_NAME = "后台初始化回归"
         val TEST_ORDER = OrderKey(orderId = 9_870_163L, planId = 1)

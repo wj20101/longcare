@@ -28,6 +28,7 @@ internal fun scheduleCountdownAlarmInSystem(
     triggerTimeMillis: Long,
     canUseExactAlarm: Boolean,
     owner: String? = null,
+    scheduledTimeMillis: Long = triggerTimeMillis,
 ): CountdownScheduleMetadata? {
     val intent = Intent(context, CountdownAlarmReceiver::class.java).apply {
         putExtra(CountdownNotificationManager.EXTRA_ORDER_KEY, orderKey)
@@ -55,7 +56,7 @@ internal fun scheduleCountdownAlarmInSystem(
         !exactAlarmAllowed -> "exact_permission_missing"
         else -> "show_intent_missing"
     }
-    CountdownAlarmDiagnostics.scheduled(intent, mode, fallback, exactAlarmAllowed)
+    CountdownAlarmDiagnostics.scheduled(intent, mode, fallback, exactAlarmAllowed, plannedAtMillis = scheduledTimeMillis)
     var pendingIntent = PendingIntentCompat.getBroadcast(
         context,
         countdownAlarmRequestCode,
@@ -70,7 +71,7 @@ internal fun scheduleCountdownAlarmInSystem(
     if (useAlarmClock) {
         try {
             val alarmClockInfo = AlarmManager.AlarmClockInfo(
-                triggerTimeMillis,
+                scheduledTimeMillis,
                 showIntent
             )
             alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
@@ -83,7 +84,7 @@ internal fun scheduleCountdownAlarmInSystem(
             klogE("⚠️ 精确闹钟权限在调度时不可用，降级为 setAndAllowWhileIdle: ${exception.message}")
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                triggerTimeMillis,
+                scheduledTimeMillis,
                 pendingIntent
             )
         }
@@ -95,7 +96,7 @@ internal fun scheduleCountdownAlarmInSystem(
         }
         alarmManager.setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            triggerTimeMillis,
+            scheduledTimeMillis,
             pendingIntent
         )
         klogI("✅ 无精确闹钟能力，降级为 setAndAllowWhileIdle: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")

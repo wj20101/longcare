@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.domain.time.ServiceTimeProvider
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
@@ -32,6 +33,7 @@ class ServiceCountdownViewModel @Inject constructor(
     private val imageRepository: OrderImageRepository,
     private val serviceOrderLifecycle: ServiceOrderLifecycle,
     private val systemGateway: ServiceCountdownSystemGateway,
+    private val timeProvider: ServiceTimeProvider,
 ) : ViewModel() {
 
     private data class CountdownServiceInfo(val serviceName: String, val totalMinutes: Int)
@@ -42,7 +44,8 @@ class ServiceCountdownViewModel @Inject constructor(
     private val timerDelegate = ServiceCountdownTimerDelegate(
         stateHolder = stateHolder,
         orderDetailRepository = unifiedOrderRepository,
-        viewModelScope = viewModelScope
+        viewModelScope = viewModelScope,
+        timeProvider = timeProvider,
     )
     private val imageDelegate = ServiceCountdownImageDelegate(
         stateHolder = stateHolder,
@@ -87,11 +90,17 @@ class ServiceCountdownViewModel @Inject constructor(
         val serviceInfo = calculateServiceInfo(projectList, selectedProjectIds)
         if (serviceInfo.totalMinutes <= 0) return false
 
-        val deadline = timerDelegate.synchronizeCountdown(orderKey, serviceInfo.totalMinutes) ?: return false
+        val deadline = timerDelegate.synchronizeCountdown(orderKey, serviceInfo.totalMinutes)
+        if (deadline == null) {
+            if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) {
+                systemGateway.cancelCountdownAlarmForOrder(orderKey)
+            }
+            return false
+        }
 
         currentCoroutineContext().ensureActive()
         if (stateHolder.countdownState.value == ServiceCountdownState.ENDED) return false
-        if (stateHolder.countdownState.value == ServiceCountdownState.RUNNING && deadline > System.currentTimeMillis()) {
+        if (stateHolder.countdownState.value == ServiceCountdownState.RUNNING && deadline.remainingMillis(timeProvider.snapshot()) > 0L) {
             // 设置返回也走这里，以当前授权重新替换旧的降级闹钟；服务起点仍使用持久时间。
             systemGateway.scheduleCountdownAlarm(orderKey, serviceInfo.serviceName, deadline)
         }
