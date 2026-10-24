@@ -101,7 +101,8 @@ class SelectServiceStartLifecycleTest {
         compose.runOnIdle {
             owner = TestOwner().apply { registry.currentState = Lifecycle.State.RESUMED }
             model = SharedOrderDetailViewModel(details, orders, location,
-                ResourceTextResolver(compose.activity.applicationContext), mockk(relaxed = true))
+                ResourceTextResolver(compose.activity.applicationContext), mockk(relaxed = true),
+                { com.ytone.longcare.model.ServiceTimeSnapshot(System.currentTimeMillis(), 0L, null) })
         }
         val selection = SelectServiceViewModel(config)
         restoration = StateRestorationTester(compose)

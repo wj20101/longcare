@@ -22,6 +22,7 @@ internal class CountdownAlarmDelegate(
         serviceName: String,
         triggerTimeMillis: Long,
         owner: String,
+        scheduledTimeMillis: Long = triggerTimeMillis,
     ): Boolean {
         try {
             logI("开始设置倒计时闹钟: orderId=${orderKey.orderId}, serviceName=$serviceName, triggerTime=$triggerTimeMillis")
@@ -38,6 +39,7 @@ internal class CountdownAlarmDelegate(
                 triggerTimeMillis,
                 canScheduleExactAlarms(),
                 owner = owner,
+                scheduledTimeMillis = scheduledTimeMillis,
             ) ?: return false
 
             saveLastScheduledOrderId(

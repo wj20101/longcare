@@ -86,6 +86,25 @@ class BootCompletedReceiverSessionTest {
         verify(exactly = 1) { pendingResult.finish() }
     }
 
+    @Test
+    @Config(sdk = [28, 34, 36])
+    fun `clock change restores due same boot countdown without unrelated service notifications`() = runTest {
+        val (receiver, countdownManager, serviceNotifications, pendingOrders, _, _, pendingResult) =
+            receiverFixture(backgroundScope)
+
+        receiver.onReceive(ApplicationProvider.getApplicationContext(), Intent(Intent.ACTION_TIME_CHANGED))
+        runCurrent()
+
+        verify(exactly = 1) {
+            countdownManager.restorePendingCountdownAlarm(
+                any(), requireExactAlarm = false, allowDueMonotonicAlarm = true,
+            )
+        }
+        verify(exactly = 0) { pendingOrders.getAllPendingOrders() }
+        verify(exactly = 0) { serviceNotifications.scheduleServiceTimeEndNotification(any(), any(), any()) }
+        verify(exactly = 1) { pendingResult.finish() }
+    }
+
     @Test fun `privacy denial unknown timeout and unrelated actions never restore`() = runTest {
         val (receiver, countdownManager, _, pendingOrders, privacyConsent, sessions, pendingResult) =
             receiverFixture(backgroundScope)

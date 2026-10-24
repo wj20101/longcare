@@ -132,7 +132,7 @@ class OrderDetailErrorTest {
     @Test fun `start does not submit empty coordinates and duplicate clicks only submit once`() = runTest {
         val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
         val sample = com.ytone.longcare.model.LocationResult(31.0, 121.0, "test")
-        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true))
+        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true), mockk(relaxed = true))
         coEvery { location.acquireServiceOrderLocation() } returns
             com.ytone.longcare.domain.location.LocationAcquisition.Failure(
                 com.ytone.longcare.domain.location.LocationFailure.TIMEOUT)
@@ -173,7 +173,7 @@ class OrderDetailErrorTest {
         } coAndThen { com.ytone.longcare.domain.location.LocationAcquisition.Success(sample) }
         every { location.serviceOrderLocationFailure(sample) } returns null
         coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
-        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true))
+        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true), mockk(relaxed = true))
         model.starOrder(key)
         runCurrent()
         val next = key.copy(orderId = key.orderId + 1)
@@ -194,7 +194,7 @@ class OrderDetailErrorTest {
         } coAndThen { com.ytone.longcare.domain.location.LocationAcquisition.Success(sample) }
         every { location.serviceOrderLocationFailure(sample) } returns null
         coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
-        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true))
+        val model = SharedOrderDetailViewModel(details, orders, location, text, mockk(relaxed = true), mockk(relaxed = true))
         model.starOrder(key); runCurrent()
         val next = key.copy(orderId = key.orderId + 1)
         model.starOrder(next); runCurrent()
@@ -208,7 +208,7 @@ class OrderDetailErrorTest {
         val location = mockk<com.ytone.longcare.domain.location.LocationFacade>()
         coEvery { location.acquireServiceOrderLocation() } throws CancellationException()
         val lifecycle = mockk<com.ytone.longcare.domain.order.ServiceOrderLifecycle>(relaxed = true)
-        val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle)
+        val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle, mockk(relaxed = true))
 
         model.starOrder(key)
         runCurrent()
@@ -230,7 +230,7 @@ class OrderDetailErrorTest {
             kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { oldResult.await() }
         } coAndThen { newResult.await() }
         val lifecycle = mockk<com.ytone.longcare.domain.order.ServiceOrderLifecycle>(relaxed = true)
-        val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle)
+        val model = SharedOrderDetailViewModel(details, orders, location, text, lifecycle, mockk(relaxed = true))
         model.starOrder(key)
         runCurrent()
         val otherOrder = key.copy(orderId = key.orderId + 1)
@@ -257,7 +257,7 @@ class OrderDetailErrorTest {
     private data class Entry(val state: StateFlow<OrderDetailUiState>, val load: () -> Unit)
 
     private fun entry(shared: Boolean): Entry = if (shared) {
-        val vm = SharedOrderDetailViewModel(details, orders, mockk(), text, mockk(relaxed = true))
+        val vm = SharedOrderDetailViewModel(details, orders, mockk(), text, mockk(relaxed = true), mockk(relaxed = true))
         Entry(vm.uiState) { vm.getOrderInfo(key, forceRefresh = true) }
     } else {
         val vm = OrderDetailViewModel(orders, details, text)

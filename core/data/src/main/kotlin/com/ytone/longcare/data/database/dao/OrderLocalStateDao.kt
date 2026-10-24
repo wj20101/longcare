@@ -42,8 +42,14 @@ interface OrderLocalStateDao {
     @Query("UPDATE order_local_states SET local_status = :status, updated_at = :updatedAt WHERE order_id = :orderId")
     suspend fun updateStatus(orderId: Long, status: Int, updatedAt: Long = System.currentTimeMillis())
     
-    @Query("UPDATE order_local_states SET local_start_timestamp = :timestamp, local_status = 1, updated_at = :updatedAt WHERE order_id = :orderId AND local_start_timestamp IS NULL AND local_status != 2")
-    suspend fun startService(orderId: Long, timestamp: Long, updatedAt: Long = System.currentTimeMillis())
+    @Query("UPDATE order_local_states SET local_start_timestamp = :timestamp, local_start_elapsed_realtime = :elapsedRealtime, local_start_boot_count = :bootCount, local_status = 1, updated_at = :updatedAt WHERE order_id = :orderId AND local_start_timestamp IS NULL AND local_status != 2")
+    suspend fun startService(
+        orderId: Long,
+        timestamp: Long,
+        elapsedRealtime: Long?,
+        bootCount: Int?,
+        updatedAt: Long = System.currentTimeMillis(),
+    )
     
     @Query("UPDATE order_local_states SET local_end_timestamp = :timestamp, local_status = 2, updated_at = :updatedAt WHERE order_id = :orderId")
     suspend fun endService(orderId: Long, timestamp: Long, updatedAt: Long = System.currentTimeMillis())

@@ -14,6 +14,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.getSystemService
 import com.ytone.longcare.common.utils.logE
+import com.ytone.longcare.features.countdown.tracker.CountdownAlarmDiagnostics.ClockSample
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
@@ -30,7 +31,11 @@ internal class AlarmRingtonePlaybackController(
     private val vibratorProvider: () -> Vibrator? = { context.getSystemService<Vibrator>() },
 ) {
     internal sealed interface PlaybackEvent {
-        data class Started(val startedAtElapsedMs: Long, val startupDurationMs: Long) : PlaybackEvent
+        data class Started(
+            val startedAtElapsedMs: Long,
+            val startupDurationMs: Long,
+            val nativeStartedAt: ClockSample? = null,
+        ) : PlaybackEvent
         data class Failed(val outcome: String, val failureType: String, val releaseSucceeded: Boolean) : PlaybackEvent
         data object Finished : PlaybackEvent
     }
@@ -40,6 +45,17 @@ internal class AlarmRingtonePlaybackController(
 
     val isPlaying: Boolean get() = current.get()?.state?.get() == State.PLAYING
     val isAudibleFallbackSafe: Boolean get() = !worker.mayBePlaying
+
+    /** Evidence belongs to the same request token as playback; never reuse a replacement's clocks. */
+    fun preparedAt(token: Long): ClockSample? =
+        current.get()?.takeIf { it.id == token }?.preparedAt?.get()
+
+    data class TimingSnapshot(val preparedAt: ClockSample?, val nativeStartedAt: ClockSample?)
+
+    /** Call before stop() clears the request; no worker calls or playback authorization occur. */
+    fun timingSnapshot(): TimingSnapshot? = current.get()?.let {
+        TimingSnapshot(it.preparedAt.get(), it.nativeStartedAt.get())
+    }
 
     fun prepare(
         preparationDeadlineElapsedMs: Long,
@@ -82,6 +98,8 @@ internal class AlarmRingtonePlaybackController(
         val callbacks: AtomicReference<Callbacks?>,
         val createdAt: Long = SystemClock.elapsedRealtime(),
         val state: AtomicReference<State> = AtomicReference(State.PREPARING),
+        val preparedAt: AtomicReference<ClockSample?> = AtomicReference(null),
+        val nativeStartedAt: AtomicReference<ClockSample?> = AtomicReference(null),
     )
     private class Session(val request: Request, val player: MediaPlayer) {
         var vibrator: Vibrator? = null
@@ -146,6 +164,7 @@ internal class AlarmRingtonePlaybackController(
                     if (!current(request) || SystemClock.elapsedRealtime() >= request.preparationDeadline) {
                         release(owned)
                     } else if (request.state.compareAndSet(State.PREPARING, State.PREPARED)) {
+                        request.preparedAt.set(ClockSample.capture())
                         post(request) {
                             // A queued prepared callback must not erase a later terminal error.
                             if (request.state.get() == State.PREPARED) {
@@ -222,7 +241,10 @@ internal class AlarmRingtonePlaybackController(
                 }
                 try {
                     session.player.start()
-                    val startedAt = SystemClock.elapsedRealtime()
+                    // Native start returning is observable here; physical audio output is not.
+                    val nativeStartedAt = ClockSample.capture()
+                    request.nativeStartedAt.set(nativeStartedAt)
+                    val startedAt = nativeStartedAt.elapsed
                     if (!current(request) || startedAt >= request.playbackDeadline) {
                         release(session)
                         return@postAtTime
@@ -242,7 +264,7 @@ internal class AlarmRingtonePlaybackController(
                         post(request) {
                             // The main Looper may deliver this after the worker already timed out.
                             if (request.state.get() == State.PLAYING && SystemClock.elapsedRealtime() < deadline) {
-                                it.event(PlaybackEvent.Started(startedAt, startedAt - request.createdAt))
+                                it.event(PlaybackEvent.Started(startedAt, startedAt - request.createdAt, nativeStartedAt))
                             }
                         }
                     }

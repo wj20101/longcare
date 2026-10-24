@@ -9,6 +9,7 @@ import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.model.ImageTask
 import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.OrderLocalStateEntity
 import com.ytone.longcare.model.ServiceOrderInfoModel
@@ -50,7 +51,9 @@ class ServiceEndLocationRegressionTest {
         coEvery { repository.getLocalState(orderKey) } returns OrderLocalStateEntity(
             orderId = orderKey.orderId, localStartTimestamp = startedAt)
         val lifecycle = mockk<ServiceOrderLifecycle>(relaxed = true)
-        val countdownViewModel = ServiceCountdownViewModel(repository, mockk(relaxed = true), lifecycle, gateway)
+        val countdownViewModel = ServiceCountdownViewModel(repository, mockk(relaxed = true), lifecycle, gateway) {
+            ServiceTimeSnapshot(System.currentTimeMillis(), 0L, null)
+        }
         assertTrue(countdownViewModel.synchronizeCountdownSession(orderKey, listOf(1)).await())
         countdownViewModel.stopDisplayUpdates()
         var navigatedToConfirmation = false
@@ -80,7 +83,7 @@ class ServiceEndLocationRegressionTest {
         verify(exactly = 0) { gateway.cancelCountdownAlarmForOrder(any()) }
         verify(exactly = 0) { lifecycle.onOrderEnded(any()) }
         verify(exactly = 2) {
-            gateway.scheduleCountdownAlarm(orderKey, "护理", match { kotlin.math.abs(it - (startedAt + 120_000L)) < 1_000L })
+            gateway.scheduleCountdownAlarm(orderKey, "护理", match { kotlin.math.abs(it.wallTimeMillis - (startedAt + 120_000L)) < 1_000L })
         }
         countdownViewModel.stopDisplayUpdates()
     }

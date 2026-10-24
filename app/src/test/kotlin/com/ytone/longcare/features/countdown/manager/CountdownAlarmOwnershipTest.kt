@@ -24,6 +24,9 @@ import kotlinx.coroutines.withContext
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.features.countdown.receiver.CountdownAlarmReceiver
+import com.ytone.longcare.domain.time.ServiceTimeProvider
+import com.ytone.longcare.model.ServiceCountdownDeadline
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.User
 import io.mockk.every
@@ -50,6 +53,10 @@ import org.robolectric.shadows.ShadowAlarmManager
 @Config(application = Application::class, sdk = [34])
 class CountdownAlarmOwnershipTest {
     @get:Rule val mainDispatcherRule = MainDispatcherRule(StandardTestDispatcher())
+    private var clock: ServiceTimeSnapshot? = null
+    private val timeProvider = ServiceTimeProvider {
+        clock ?: ServiceTimeSnapshot(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime(), 7)
+    }
     private lateinit var context: Context
     private lateinit var alarms: AlarmManager
     private lateinit var notifications: NotificationManager
@@ -80,7 +87,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `replacing order rejects old dismiss and old alarm broadcast`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.scheduleCountdownAlarm(firstOrder, "旧订单", System.currentTimeMillis() + 60_000)
         val oldAlarm = alarmIntent(firstOrder)
         manager.scheduleCountdownAlarm(secondOrder, "新订单", System.currentTimeMillis() + 120_000)
@@ -94,7 +101,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `logout and account switch clear the active alarm`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000)
@@ -111,10 +118,10 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `cold process waits for resolved session and preserves same owner alarm`() = runTest {
-        val first = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val first = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         first.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000)
         session.value = SessionState.Unknown
-        val recreated = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val recreated = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         recreated.startSessionObservation()
         val waiting = async { recreated.awaitResolvedSession() }
         runCurrent()
@@ -128,7 +135,7 @@ class CountdownAlarmOwnershipTest {
 
     @Test fun `unresolved session has a bounded wait`() = runTest {
         session.value = SessionState.Unknown
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val waiting = async { manager.awaitResolvedSession() }
         runCurrent()
         advanceTimeBy(5_001)
@@ -137,7 +144,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `system alarm preview opens app rather than completion page`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000)
         val showIntent = shadowOf(alarms.nextAlarmClock.showIntent).savedIntent
         assertEquals(MainActivity::class.java.name, showIntent.component?.className)
@@ -147,7 +154,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `same order reschedule and old plan cancellation cannot affect current reminder`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val firstTrigger = System.currentTimeMillis() + 60_000
         manager.scheduleCountdownAlarm(firstOrder, "护理", firstTrigger)
         val old = alarmIntent(firstOrder)
@@ -160,7 +167,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `legacy alarm is adopted only from matching authorized ongoing order`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val legacy = legacyIntent()
         coEvery { recovery.read() } returns LocationRecoveryRecord(LocationAccount(1, 2, 3), firstOrder.orderId, "existing")
         coEvery { orders.getOrderState(firstOrder.orderId) } returns ApiResult.Success(
@@ -172,7 +179,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `legacy alarm with missing authorization or finished order is rejected`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val legacy = legacyIntent()
         assertFalse(manager.acceptAlarm(legacy))
         coVerify(exactly = 0) { orders.getOrderState(any()) }
@@ -184,7 +191,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `cancelled legacy validation and late old response cannot acquire ownership`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val legacy = legacyIntent()
         val response = CompletableDeferred<ApiResult<ServiceOrderStateModel>>()
         coEvery { recovery.read() } returns LocationRecoveryRecord(LocationAccount(1, 2, 3), firstOrder.orderId, "existing")
@@ -200,7 +207,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `only confirmed state of active order cancels the reminder`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000)
@@ -220,7 +227,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `confirmed terminal state rejects ownership before the cleanup observer runs`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000)
@@ -242,7 +249,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `old notification pending intents retain old immutable identity after replacement`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val trigger = System.currentTimeMillis() + 60_000
         manager.scheduleCountdownAlarm(firstOrder, "旧护理", trigger)
         val ui = CountdownNotificationUiDelegate(context, "countdown_test", 3002, 3003)
@@ -260,7 +267,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `empty account transitions do not start services or broadcast cleanup`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         val app = shadowOf(context as Application)
         val broadcastsBefore = app.broadcastIntents.size
         session.value = SessionState.LoggedOut
@@ -275,7 +282,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `terminal state before a late schedule never recreates ended order alarm`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         orderState.value = ServiceOrderStateModel(firstOrder.orderId, ServiceOrderStateModel.STATE_COMPLETED)
@@ -289,7 +296,7 @@ class CountdownAlarmOwnershipTest {
     }
 
     @Test fun `new account schedule before delayed observer is not cancelled by previous account`() = runTest {
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         manager.scheduleCountdownAlarm(firstOrder, "旧账号", System.currentTimeMillis() + 60_000)
@@ -313,7 +320,7 @@ class CountdownAlarmOwnershipTest {
             override val value: ServiceOrderStateModel? get() = latest
         }
         every { lifecycle.orderState } returns states
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         val trigger = System.currentTimeMillis() + 60_000
@@ -342,7 +349,7 @@ class CountdownAlarmOwnershipTest {
             override val value: SessionState get() = latest
         }
         every { repository.sessionState } returns sessions
-        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope)
+        val manager = CountdownNotificationManager(context, notifications, alarms, repository, recovery, orders, lifecycle, backgroundScope, timeProvider)
         manager.startSessionObservation()
         runCurrent()
         manager.scheduleCountdownAlarm(firstOrder, "护理", System.currentTimeMillis() + 60_000)
@@ -458,8 +465,51 @@ class CountdownAlarmOwnershipTest {
         assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
     }
 
+    @Test fun `clock corrections and process recreation preserve identity while remapping RTC time`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        newManager(backgroundScope).scheduleCountdownAlarm(firstOrder, "原护理", deadline.wallTimeMillis, deadline)
+        val original = Intent(shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent)
+
+        for (shift in listOf(300_000L, -300_000L)) {
+            clock = ServiceTimeSnapshot(1_010_000L + shift, 110_000L, 7)
+            alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+            val recreated = newManager(backgroundScope)
+
+            assertTrue(recreated.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+
+            val restored = shadowOf(shadowOf(alarms).scheduledAlarms.single().operation).savedIntent
+            assertEquals(1_060_000L + shift, alarms.nextAlarmClock.triggerTime)
+            assertEquals(firstOrder, CountdownNotificationManager.extractOrderKey(restored))
+            assertEquals(owner, restored.getStringExtra(CountdownNotificationManager.EXTRA_ALARM_OWNER))
+            assertEquals(deadline.wallTimeMillis, restored.getLongExtra(CountdownNotificationManager.EXTRA_TRIGGER_TIME, 0L))
+            assertEquals("原护理", CountdownNotificationManager.extractServiceName(restored, ""))
+            assertTrue(recreated.ownsAlarm(original))
+            assertTrue(recreated.ownsAlarm(restored))
+            assertEquals(50_000L, deadline.remainingMillis(requireNotNull(clock)))
+        }
+    }
+
+    @Test fun `reboot restores by wall fallback without reusing the previous boot elapsed deadline`() = runTest {
+        clock = ServiceTimeSnapshot(1_000_000L, 100_000L, 7)
+        val deadline = ServiceCountdownDeadline(1_060_000L, 160_000L, 7)
+        newManager(backgroundScope).scheduleCountdownAlarm(firstOrder, "护理", deadline.wallTimeMillis, deadline)
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        clock = ServiceTimeSnapshot(1_020_000L, 5_000L, 8)
+        val recreated = newManager(backgroundScope)
+
+        assertTrue(recreated.restorePendingCountdownAlarm({ true }))
+        assertEquals(deadline.wallTimeMillis, alarms.nextAlarmClock.triggerTime)
+        assertEquals(40_000L, deadline.remainingMillis(requireNotNull(clock)))
+
+        alarms.cancel(requireNotNull(shadowOf(alarms).scheduledAlarms.single().operation))
+        clock = ServiceTimeSnapshot(1_060_001L, 6_000L, 8)
+        assertFalse(recreated.restorePendingCountdownAlarm({ true }, allowDueMonotonicAlarm = true))
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+    }
+
     private fun newManager(scope: kotlinx.coroutines.CoroutineScope) = CountdownNotificationManager(
-        context, notifications, alarms, repository, recovery, orders, lifecycle, scope,
+        context, notifications, alarms, repository, recovery, orders, lifecycle, scope, timeProvider,
     )
 
     private fun legacyIntent(): Intent {

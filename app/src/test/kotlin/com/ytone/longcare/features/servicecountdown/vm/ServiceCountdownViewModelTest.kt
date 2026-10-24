@@ -5,12 +5,15 @@ import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.model.OrderLocalStateEntity
+import com.ytone.longcare.model.LocalOrderStatus
 import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
 import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
+import com.ytone.longcare.model.ServiceCountdownDeadline
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.util.MainDispatcherRule
 import io.mockk.coEvery
@@ -26,6 +29,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.After
@@ -59,7 +63,8 @@ class ServiceCountdownViewModelTest {
             unifiedOrderRepository,
             imageRepository,
             serviceOrderLifecycle,
-            systemGateway
+            systemGateway,
+            { ServiceTimeSnapshot(System.currentTimeMillis(), 0L, null) },
         )
     }
 
@@ -146,7 +151,7 @@ class ServiceCountdownViewModelTest {
         runCurrent()
         assertTrue(sync.await())
         verify(exactly = 1) {
-            systemGateway.scheduleCountdownAlarm(order, "护理", match { kotlin.math.abs(it - (startedAt + 120_000L)) < 1_000L })
+            systemGateway.scheduleCountdownAlarm(order, "护理", match { kotlin.math.abs(it.wallTimeMillis - (startedAt + 120_000L)) < 1_000L })
         }
         coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
         viewModel.stopDisplayUpdates()
@@ -172,7 +177,7 @@ class ServiceCountdownViewModelTest {
 
         assertEquals(listOf(false, true), scheduledWithPermission)
         verify(exactly = 2) {
-            systemGateway.scheduleCountdownAlarm(order, "护理", match { kotlin.math.abs(it - (startedAt + 120_000L)) < 1_000L })
+            systemGateway.scheduleCountdownAlarm(order, "护理", match { kotlin.math.abs(it.wallTimeMillis - (startedAt + 120_000L)) < 1_000L })
         }
         coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
         viewModel.stopDisplayUpdates()
@@ -229,11 +234,11 @@ class ServiceCountdownViewModelTest {
         loaded.complete(ApiResult.Success(orderInfo(order)))
         runCurrent()
 
-        verify(exactly = 1) { systemGateway.scheduleCountdownAlarm(order, "护理", startedAt + 120_000L) }
+        verify(exactly = 1) { systemGateway.scheduleCountdownAlarm(order, "护理", ServiceCountdownDeadline(startedAt + 120_000L)) }
         coVerify(exactly = 1) { unifiedOrderRepository.getLocalState(order) }
         coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
         assertTrue(viewModel.synchronizeCountdownSession(order, listOf(10)).await())
-        verify(exactly = 2) { systemGateway.scheduleCountdownAlarm(order, "护理", startedAt + 120_000L) }
+        verify(exactly = 2) { systemGateway.scheduleCountdownAlarm(order, "护理", ServiceCountdownDeadline(startedAt + 120_000L)) }
         viewModel.stopDisplayUpdates()
     }
 
@@ -318,5 +323,46 @@ class ServiceCountdownViewModelTest {
         coVerify(exactly = 0) { unifiedOrderRepository.endLocalService(any()) }
         verify(exactly = 0) { systemGateway.cancelCountdownAlarmForOrder(any()) }
         viewModel.stopDisplayUpdates()
+    }
+
+    @Test
+    fun `same boot correction forwards the original deadline and preserves the remaining display`() = runTest {
+        val order = OrderKey(12345L, 1)
+        var now = ServiceTimeSnapshot(1_060_000L, 160_000L, 7)
+        clearViewModel()
+        viewModel = ServiceCountdownViewModel(unifiedOrderRepository, imageRepository,
+            serviceOrderLifecycle, systemGateway) { now }
+        coEvery { unifiedOrderRepository.getOrderInfo(order, any()) } returns ApiResult.Success(orderInfo(order))
+        coEvery { unifiedOrderRepository.getLocalState(order) } returns OrderLocalStateEntity(
+            orderId = order.orderId, localStartTimestamp = 1_000_000L,
+            localStartElapsedRealtime = 100_000L, localStartBootCount = 7,
+        )
+        for (shift in listOf(0L, 300_000L, -300_000L)) {
+            now = now.copy(wallTimeMillis = 1_060_000L + shift)
+            assertTrue(viewModel.synchronizeCountdownSession(order, listOf(10)).await())
+            assertEquals(ServiceCountdownState.RUNNING, viewModel.countdownState.value)
+            assertEquals("00:01:00", viewModel.formattedTime.value)
+        }
+        verify(exactly = 3) { systemGateway.scheduleCountdownAlarm(order, "护理",
+            ServiceCountdownDeadline(1_120_000L, 220_000L, 7)) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
+    }
+
+    @Test
+    fun `cold restoration of a completed local order cancels its reminder without making a new origin`() = runTest {
+        val order = OrderKey(12345L, 1)
+        coEvery { unifiedOrderRepository.getOrderInfo(order, any()) } returns ApiResult.Success(orderInfo(order))
+        coEvery { unifiedOrderRepository.getLocalState(order) } returns OrderLocalStateEntity(
+            orderId = order.orderId, localStatus = LocalOrderStatus.COMPLETED.value,
+            localStartTimestamp = System.currentTimeMillis() - 10_000L,
+        )
+
+        assertFalse(viewModel.synchronizeCountdownSession(order, listOf(10)).await())
+
+        assertEquals(ServiceCountdownState.ENDED, viewModel.countdownState.value)
+        verify(exactly = 1) { systemGateway.cancelCountdownAlarmForOrder(order) }
+        verify(exactly = 0) { systemGateway.scheduleCountdownAlarm(any(), any(), any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.startLocalService(any(), any()) }
+        coVerify(exactly = 0) { unifiedOrderRepository.endLocalService(any()) }
     }
 }

@@ -3,6 +3,7 @@ package com.ytone.longcare.data.repository
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.model.OrderInfoParamModel
 import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.UserInfoM
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.config.RuntimeConfigProvider
@@ -184,10 +185,10 @@ class UnifiedOrderRepositoryTest {
     fun `local start writes the confirmation timestamp supplied by the business action`() = runTest {
         val key = OrderKey(42)
 
-        repository.startLocalService(key, startedAtMillis = 1_000L)
+        repository.startLocalService(key, startedAt = ServiceTimeSnapshot(1_000L, 500L, 7))
 
         coVerify(exactly = 1) { localStateDao.insertIfAbsent(match { it.orderId == key.orderId }) }
-        coVerify(exactly = 1) { localStateDao.startService(key.orderId, 1_000L, any()) }
+        coVerify(exactly = 1) { localStateDao.startService(key.orderId, 1_000L, 500L, 7, any()) }
         coVerify(exactly = 0) { localStateDao.getByOrderId(any()) }
     }
 

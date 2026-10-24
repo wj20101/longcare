@@ -34,6 +34,7 @@ class AlarmRingtoneService : Service() {
 
     private lateinit var playbackController: AlarmRingtonePlaybackController
     private var wakeLock: PowerManager.WakeLock? = null
+    private var createdAt: CountdownAlarmDiagnostics.ClockSample? = null
     private var activeAlarm: CountdownAlarm? = null
     private var resourcesCleanedUp = false
     private val ringingHandler = Handler(Looper.getMainLooper())
@@ -81,6 +82,7 @@ class AlarmRingtoneService : Service() {
     }
 
     override fun onCreate() {
+        createdAt = CountdownAlarmDiagnostics.ClockSample.capture()
         super.onCreate()
         logI("AlarmRingtoneService: 服务创建")
         playbackController = AlarmRingtonePlaybackController(applicationContext)
@@ -96,7 +98,7 @@ class AlarmRingtoneService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        CountdownAlarmDiagnostics.serviceEntered(CountdownAlarmDiagnostics.read(intent))
+        CountdownAlarmDiagnostics.serviceEntered(CountdownAlarmDiagnostics.read(intent), createdAt)
         logI("AlarmRingtoneService: 收到启动命令")
 
         val alarm = countdownNotificationManager.extractAlarm(intent)
@@ -138,6 +140,7 @@ class AlarmRingtoneService : Service() {
         scheduleRingingTimeout(playbackDeadline, "playback_total_timeout")
         preparationTimeout = Runnable {
             if (isActive(generation, alarm)) {
+                capturePlaybackProgress(alarm)
                 countdownNotificationManager.trackDeliveryResult(alarm, "playback_prepare_timeout")
                 stopAlarmAndSelf("playback_prepare_timeout")
                 // No play was authorized. Invalidate first so even a racing prepared callback
@@ -154,6 +157,7 @@ class AlarmRingtoneService : Service() {
             isCurrent = { generationState.get() == generation && manager.ownsAlarm(alarm) },
             onPrepared = { token ->
                 if (isActive(generation, alarm)) {
+                    CountdownAlarmDiagnostics.playbackPrepared(alarm.diagnostics, playbackController.preparedAt(token))
                     if (!manager.ownsAlarm(alarm)) {
                         stopAlarmAndSelf("playback_ownership_rejected")
                     } else if (SystemClock.elapsedRealtime() >= preparationDeadline) {
@@ -172,6 +176,7 @@ class AlarmRingtoneService : Service() {
                         stopAlarmAndSelf("playback_ownership_rejected")
                     } else when (event) {
                         is PlaybackEvent.Started -> {
+                            CountdownAlarmDiagnostics.playbackStarted(alarm.diagnostics, event.nativeStartedAt)
                             // Native start returned successfully; this is not proof of audible sound.
                             manager.trackDeliveryResult(alarm, "playback_started",
                                 playbackStartupDurationMs = event.startupDurationMs)
@@ -210,6 +215,7 @@ class AlarmRingtoneService : Service() {
         if (resourcesCleanedUp) {
             return
         }
+        activeAlarm?.let(::capturePlaybackProgress)
         resourcesCleanedUp = true
         playbackGeneration.incrementAndGet()
 
@@ -222,12 +228,18 @@ class AlarmRingtoneService : Service() {
         CountdownEventTracker.trackEvent(
             eventType = CountdownEventTracker.EventType.RINGTONE_SERVICE_STOP,
             orderId = activeAlarm?.orderKey?.orderId,
-            extras = mapOf(
+            extras = CountdownAlarmDiagnostics.fields(activeAlarm?.diagnostics, activeAlarm?.triggerTimeMillis ?: 0L, reason) + mapOf(
                 "serviceName" to activeAlarm?.serviceName,
                 "reason" to reason
             ),
             userId = CountdownAlarmDiagnostics.userId(activeAlarm?.diagnostics, activeAlarm?.owner)
         )
+    }
+
+    private fun capturePlaybackProgress(alarm: CountdownAlarm) {
+        playbackController.timingSnapshot()?.let {
+            CountdownAlarmDiagnostics.playbackProgress(alarm.diagnostics, it.preparedAt, it.nativeStartedAt)
+        }
     }
 
     private fun isActive(generation: Long, alarm: CountdownAlarm): Boolean =
@@ -258,7 +270,10 @@ class AlarmRingtoneService : Service() {
     private fun acquireWakeLock() {
         try {
             wakeLock?.acquire(TOTAL_TIMEOUT_MS /* 包含准备与播放预算 */)
+            // isHeld is only the app's bookkeeping; OEM power services can still ignore/release it.
+            CountdownAlarmDiagnostics.wakeLockAttempted(activeAlarm?.diagnostics, wakeLock?.isHeld)
         } catch (e: Exception) {
+            CountdownAlarmDiagnostics.wakeLockAttempted(activeAlarm?.diagnostics, null, e.javaClass.simpleName)
             logE("AlarmRingtoneService: 获取WakeLock失败 - ${e.message}", throwable = e)
         }
     }

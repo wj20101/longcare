@@ -8,8 +8,10 @@ import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.domain.time.ServiceTimeProvider
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
+import com.ytone.longcare.model.ServiceTimeSnapshot
 import com.ytone.longcare.model.result.ApiResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -46,6 +48,8 @@ class OrderStartResultTest {
     private val location = mockk<LocationFacade>()
     private val lifecycle = mockk<ServiceOrderLifecycle>(relaxed = true)
     private val text = mockk<ResourceTextResolver>(relaxed = true)
+    private val time = mockk<ServiceTimeProvider>()
+    private val confirmedTime = ServiceTimeSnapshot(1_000_000L, 200_000L, 7)
     private val key = OrderKey(42, 7)
     private val sample = LocationResult(31.0, 121.0, "test")
 
@@ -55,6 +59,7 @@ class OrderStartResultTest {
         coEvery { location.acquireServiceOrderLocation() } returns LocationAcquisition.Success(sample)
         every { location.serviceOrderLocationFailure(sample) } returns null
         coEvery { orders.starOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        every { time.snapshot() } returns confirmedTime
     }
 
     @After fun tearDown() {
@@ -105,7 +110,7 @@ class OrderStartResultTest {
     @Test fun `confirmed start persists the countdown origin before projects and navigation`() = runTest {
         val response = CompletableDeferred<ApiResult<Unit>>()
         val projectSave = CompletableDeferred<Unit>()
-        val persistedStart = slot<Long>()
+        val persistedStart = slot<ServiceTimeSnapshot>()
         coEvery { orders.starOrder(any(), any(), any(), any()) } coAnswers { response.await() }
         coEvery { details.startLocalService(key, capture(persistedStart)) } returns Unit
         coEvery { details.updateSelectedProjects(key, any()) } coAnswers { projectSave.await() }
@@ -113,15 +118,15 @@ class OrderStartResultTest {
         model.starOrder(key, listOf(9))
         runCurrent()
         coVerify(exactly = 0) { details.startLocalService(any(), any()) }
+        verify(exactly = 0) { time.snapshot() }
 
-        val beforeResponse = System.currentTimeMillis()
         response.complete(ApiResult.Success(Unit))
         runCurrent()
-        val afterPersistence = System.currentTimeMillis()
 
         // Project persistence and the next page may take minutes; the service has already begun.
         coVerify(exactly = 1) { details.startLocalService(key, any()) }
-        assertTrue(persistedStart.captured in beforeResponse..afterPersistence)
+        assertEquals(confirmedTime, persistedStart.captured)
+        verify(exactly = 1) { time.snapshot() }
         coVerifyOrder {
             details.startLocalService(key, any())
             details.updateSelectedProjects(key, listOf(9))
@@ -139,6 +144,7 @@ class OrderStartResultTest {
         runCurrent()
 
         coVerify(exactly = 0) { details.startLocalService(any(), any()) }
+        verify(exactly = 0) { time.snapshot() }
         assertTrue(model.starOrderState.value is StarOrderUiState.Error)
     }
 
@@ -160,9 +166,9 @@ class OrderStartResultTest {
 
     @Test fun `changing orders completes confirmed start persistence without publishing old projects or UI`() = runTest {
         val write = CompletableDeferred<Unit>()
-        var savedStart: Long? = null
+        var savedStart: ServiceTimeSnapshot? = null
         coEvery { details.startLocalService(key, any()) } coAnswers {
-            val confirmedAt = secondArg<Long>()
+            val confirmedAt = secondArg<ServiceTimeSnapshot>()
             write.await()
             savedStart = confirmedAt
         }
@@ -221,5 +227,5 @@ class OrderStartResultTest {
         assertEquals(StarOrderUiState.Initial, model.starOrderState.value)
     }
 
-    private fun model() = SharedOrderDetailViewModel(details, orders, location, text, lifecycle)
+    private fun model() = SharedOrderDetailViewModel(details, orders, location, text, lifecycle, time)
 }
