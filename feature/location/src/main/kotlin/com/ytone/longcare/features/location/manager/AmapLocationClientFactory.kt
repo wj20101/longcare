@@ -1,12 +1,18 @@
 package com.ytone.longcare.features.location.manager
 
+import android.Manifest
 import android.app.Notification
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
 import com.amap.api.location.AMapLocationListener
+import com.amap.api.location.ILogCallback
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.location.LocationFailure
 import com.ytone.longcare.model.LocationResult
@@ -18,9 +24,18 @@ import javax.inject.Inject
 open class AmapLocationClientFactory @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val privacyConsent: PrivacyConsentManager,
-) {
-    open fun create(apiKey: String): AmapClientHandle {
+) : AmapClientProvider {
+    /** Rechecked before every shared SDK request, including requests on a retained client. */
+    open fun checkStartAllowed() {
         check(privacyConsent.isPrivacyConsented) { "location_privacy_not_consented" }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED) throw SecurityException("location_permission_unavailable")
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        check(LocationManagerCompat.isLocationEnabled(locationManager)) { "location_service_unavailable" }
+    }
+
+    override fun create(apiKey: String): AmapClientHandle {
+        checkStartAllowed()
         AMapLocationClientOption.setLocationProtocol(AMapLocationClientOption.AMapLocationProtocol.HTTPS)
         AMapLocationClient.setApiKey(apiKey)
         AMapLocationClient.updatePrivacyShow(context, true, true)
@@ -38,6 +53,8 @@ interface AmapClientHandle {
     fun setLocationListener(listener: AMapLocationListener)
     fun unRegisterLocationListener(listener: AMapLocationListener)
     fun startLocation()
+    /** Optional caller deadline; raw/test handles retain the existing start contract. */
+    fun startLocation(deadlineElapsedRealtime: Long) = startLocation()
     fun stopLocation()
     fun onDestroy()
 }
@@ -47,6 +64,8 @@ class SdkAmapClientHandle(private val client: AMapLocationClient) : AmapClientHa
     internal fun enableBackgroundLocation(notificationId: Int, notification: Notification) =
         client.enableBackgroundLocation(notificationId, notification)
     internal fun disableBackgroundLocation() = client.disableBackgroundLocation(true)
+    internal fun addLogCallback(callback: ILogCallback) = client.addLogCallback(callback)
+    internal fun removeLogCallback(callback: ILogCallback) = client.removeLogCallback(callback)
 
     override fun sdkVersion(): String = client.version
     override fun notifyAppEnterForeBack(foreground: Boolean) = client.notifyAppEnterForeBack(foreground)

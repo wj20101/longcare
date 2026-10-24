@@ -6,6 +6,8 @@ import com.ytone.longcare.domain.order.ServiceOrderLifecycle
 import com.ytone.longcare.features.location.reporting.LocationReportingManager
 import com.ytone.longcare.features.location.core.AndroidLocationRuntimeReadiness
 import com.ytone.longcare.features.location.core.DefaultLocationFacade
+import com.ytone.longcare.features.location.manager.AmapClientProvider
+import com.ytone.longcare.features.location.manager.SerializedAmapClientProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,6 +17,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class LocationCoreBindModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAmapClientProvider(impl: SerializedAmapClientProvider): AmapClientProvider
 
     @Binds
     @Singleton

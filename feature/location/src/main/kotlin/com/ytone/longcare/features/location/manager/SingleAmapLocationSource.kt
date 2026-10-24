@@ -20,10 +20,10 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-/** 销售、拍照的独立单次采集；取消和重试只释放自身客户端。 */
+/** 销售、拍照保留独立单次预算；取消和重试只释放共享 provider 中的自身句柄。 */
 @Singleton
 class SingleAmapLocationSource @Inject constructor(
-    private val clientFactory: AmapLocationClientFactory,
+    private val clientFactory: AmapClientProvider,
     private val amapApiKeyProvider: AmapApiKeyProvider,
 ) {
     private val singleRequest = SingleLocationRequest(SystemClock::elapsedRealtime)
@@ -99,7 +99,7 @@ class SingleAmapLocationSource @Inject constructor(
                         continuation.resume(LocationAcquisition.Failure(LocationFailure.TIMEOUT))
                     return@suspendCancellableCoroutine
                 }
-                isolatedClient.startLocation()
+                isolatedClient.startLocation(deadlineElapsedRealtime)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
