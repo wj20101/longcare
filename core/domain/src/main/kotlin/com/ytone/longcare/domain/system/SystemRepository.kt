@@ -6,7 +6,7 @@ import com.ytone.longcare.model.AppVersionModel
 interface SystemRepository {
 
     /**
-     * 版本检测
+     * 版本检测；成功结果中的 null 表示没有可更新版本。
      */
-    suspend fun checkVersion(): ApiResult<AppVersionModel>
+    suspend fun checkVersion(): ApiResult<AppVersionModel?>
 }

@@ -12,6 +12,6 @@ class SystemRepositoryImpl @Inject constructor(
     private val apiService: LongCareApiService,
 ) : SystemRepository {
 
-    override suspend fun checkVersion(): ApiResult<AppVersionModel> =
+    override suspend fun checkVersion(): ApiResult<AppVersionModel?> =
         apiService.checkVersion()
 }

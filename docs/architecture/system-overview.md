@@ -70,7 +70,7 @@ flowchart LR
    - `LoggedOut` → `LoginRoute`
    - `LoggedIn` → `HomeRoute`；恢复前校验账号身份，退出或换号清理旧栈
 4. 全局 `SessionInvalidationHandler` 负责失效提示与退出；业务页面不各自实现一套登出导航。
-5. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。版本检查仅对连接、超时及 HTTP 408/429/500/502/503/504 最多重试两次；空数据等无效响应和未知异常直接结束本次任务，保留 attempt、errorKind、httpCode、willRetry 诊断。空数据未被定义为“无更新”，不放宽其他接口契约。
+5. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。`/V1/System/ChecVersion` 已确认业务成功时的 `data:null` 或缺少 `data` 表示“无更新”：仅该接口通过 `@AllowEmptyData` 返回可空版本结果，Worker 正常成功结束，不输出更新或上报异常。其他接口仍校验空数据。版本检查仅对连接、超时及 HTTP 408/429/500/502/503/504 最多重试两次；空响应体、解析失败等无效响应和未知异常直接结束本次任务，保留 attempt、errorKind、httpCode、willRetry 诊断。
 
 ## 导航组装
 

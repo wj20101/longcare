@@ -136,6 +136,16 @@ class UpdateWorkerTest {
     }
 
     @Test
+    fun `no available version succeeds without output or error reporting`() = runTest {
+        coEvery { repository.checkVersion() } returns ApiResult.Success(null)
+
+        assertEquals(ListenableWorker.Result.success(), worker().doWork())
+
+        verify(exactly = 0) { deviceUtils.getAppVersionCode() }
+        verify(exactly = 0) { DiagnosticEventTracker.trackError(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `available update still returns its persisted output`() = runTest {
         val update = AppVersionModel(versionCode = 76, platform = "android", versionName = "1.0.8")
         coEvery { repository.checkVersion() } returns ApiResult.Success(update)

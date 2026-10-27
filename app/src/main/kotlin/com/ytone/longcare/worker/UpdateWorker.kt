@@ -24,7 +24,7 @@ class UpdateWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return when (val result = systemRepository.checkVersion()) {
             is ApiResult.Success -> {
-                val serverVersion = result.data
+                val serverVersion = result.data ?: return Result.success()
                 
                 // 检查平台是否匹配
                 if (serverVersion.platform.lowercase() != "android") {

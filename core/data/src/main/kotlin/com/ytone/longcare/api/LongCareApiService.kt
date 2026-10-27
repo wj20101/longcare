@@ -4,6 +4,7 @@ import com.ytone.longcare.api.model.CheckResultDto
 import com.ytone.longcare.api.model.GetCheckResultRequestDto
 
 import com.ytone.longcare.model.result.ApiResult
+import com.ytone.longcare.common.network.AllowEmptyData
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.model.OrderListParamModel
 import com.ytone.longcare.model.LoginLogParamModel
@@ -223,10 +224,11 @@ interface LongCareApiService {
     suspend fun upUserStartImg(@Body upUserStartImgParamModel: UpUserStartImgParamModel): ApiResult<Unit>
 
     /**
-     * 版本检测
+     * 版本检测；成功响应的 data 为 null 或缺失表示没有可更新版本。
      */
+    @AllowEmptyData
     @GET("/V1/System/ChecVersion")
-    suspend fun checkVersion(): ApiResult<AppVersionModel>
+    suspend fun checkVersion(): ApiResult<AppVersionModel?>
 
     /**
      * 绑定定位
