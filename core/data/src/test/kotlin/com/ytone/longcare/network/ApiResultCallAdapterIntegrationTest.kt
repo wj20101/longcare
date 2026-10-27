@@ -46,6 +46,10 @@ class ApiResultCallAdapterIntegrationTest {
             result = api.successWithoutData(),
             kind = ApiRequestException.Kind.INVALID_RESPONSE,
         )
+        assertRequestError(
+            result = api.nullableSuccessWithoutOptIn(),
+            kind = ApiRequestException.Kind.INVALID_RESPONSE,
+        )
         assertEquals(
             ApiResult.Failure(code = 4001, message = "业务失败"),
             api.businessFailure(),
@@ -223,6 +227,9 @@ private interface StandardAdapterTestApi {
 
     @GET("success-without-data")
     suspend fun successWithoutData(): ApiResult<String>
+
+    @GET("success-without-data")
+    suspend fun nullableSuccessWithoutOptIn(): ApiResult<String?>
 
     @GET("nullable-customer-detail")
     suspend fun nullableCustomerDetail(): ApiResult<UserLatentDetailModel>

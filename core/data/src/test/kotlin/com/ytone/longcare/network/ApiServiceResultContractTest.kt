@@ -3,6 +3,7 @@ package com.ytone.longcare.network
 import com.ytone.longcare.api.LongCareApiService
 import com.ytone.longcare.api.TencentFaceApiService
 import com.ytone.longcare.model.result.ApiResult
+import com.ytone.longcare.common.network.AllowEmptyData
 import com.ytone.longcare.common.network.SuppressSessionInvalidation
 import com.ytone.longcare.di.DefaultOkHttpClient
 import com.ytone.longcare.di.NetworkDataModule
@@ -57,6 +58,16 @@ class ApiServiceResultContractTest {
             annotatedMethods.single()
                 .getAnnotation(SuppressSessionInvalidation::class.java),
         )
+    }
+
+    @Test
+    fun `version check is the only endpoint that accepts empty response data`() {
+        val annotatedMethods =
+            LongCareApiService::class.java.declaredMethods.filter { method ->
+                method.getAnnotation(AllowEmptyData::class.java) != null
+            }
+
+        assertEquals(listOf("checkVersion"), annotatedMethods.map(Method::getName))
     }
 
     @Test
