@@ -52,7 +52,7 @@ coil = "3.6.3"
 
 # Vendor SDKs and diagnostics
 amapLocation = "11.3.101"
-buglyCrashReport = "4.1.9.3"
+buglyCrashReport = "4.1.9.7"
 tencentCos = "5.9.52"
 
 # Build quality
