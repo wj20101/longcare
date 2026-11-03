@@ -10,7 +10,7 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 data class DisplayDate(
-    val timestamp: Long,
+    val date: LocalDate,
     val dayOfWeek: DisplayDayLabel,
     val dateLabel: String,
     val isToday: Boolean
@@ -36,8 +36,15 @@ object TimeUtils {
         TimeDisplayDateDelegate.getWeeklyDateList(pastDays = pastDays, futureDays = futureDays)
 
     @OptIn(ExperimentalTime::class)
-    fun getCurrentMonthDateList(year: Int? = null, monthNumber: Int? = null): List<DisplayDate> =
-        TimeDisplayDateDelegate.getCurrentMonthDateList(year = year, monthNumber = monthNumber)
+    fun getCurrentMonthDateList(
+        year: Int? = null,
+        monthNumber: Int? = null,
+        today: LocalDate = getCurrentLocalDate()
+    ): List<DisplayDate> = TimeDisplayDateDelegate.getCurrentMonthDateList(
+        year = year,
+        monthNumber = monthNumber,
+        today = today
+    )
 
     @OptIn(ExperimentalTime::class)
     fun getCurrentInstant(): Instant = TimeCoreDateDelegate.getCurrentInstant()

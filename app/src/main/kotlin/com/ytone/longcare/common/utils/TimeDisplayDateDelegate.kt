@@ -3,7 +3,6 @@ package com.ytone.longcare.common.utils
 import kotlinx.datetime.*
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 internal object TimeDisplayDateDelegate {
 
@@ -18,16 +17,16 @@ internal object TimeDisplayDateDelegate {
 
         for (i in 0 until totalDays) {
             val currentDate = startDate.plus(DatePeriod(days = i))
-            dateList.add(createDisplayDateFrom(currentDate, today, systemTimeZone))
+            dateList.add(createDisplayDateFrom(currentDate, today))
         }
         return dateList
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun getCurrentMonthDateList(year: Int?, monthNumber: Int?): List<DisplayDate> {
-        val systemTimeZone = TimeZone.currentSystemDefault()
-        val today = Clock.System.todayIn(systemTimeZone)
-
+    fun getCurrentMonthDateList(
+        year: Int?,
+        monthNumber: Int?,
+        today: LocalDate
+    ): List<DisplayDate> {
         val targetYear = year ?: today.year
         val targetMonthNumber = monthNumber ?: today.month.number
         val firstDayOfMonth = LocalDate(targetYear, targetMonthNumber, 1)
@@ -37,31 +36,22 @@ internal object TimeDisplayDateDelegate {
 
         return (1..daysInMonth).map { day ->
             val currentDate = LocalDate(targetYear, targetMonthNumber, day)
-            createDisplayDateFrom(currentDate, today, systemTimeZone)
+            createDisplayDateFrom(currentDate, today)
         }
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun formatDateForApi(displayDate: DisplayDate): String {
-        val instant = Instant.fromEpochMilliseconds(displayDate.timestamp)
-        val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        return localDate.toString()
-    }
+    fun formatDateForApi(displayDate: DisplayDate): String = displayDate.date.toString()
 
-    @OptIn(ExperimentalTime::class)
     private fun createDisplayDateFrom(
         currentDate: LocalDate,
-        today: LocalDate,
-        timeZone: TimeZone
+        today: LocalDate
     ): DisplayDate {
         val dayLabel = resolveDayLabel(currentDate, today)
         val monthStr = currentDate.month.number.toString().padStart(2, '0')
         val dayStr = currentDate.day.toString().padStart(2, '0')
         val dateLabelString = "$monthStr/$dayStr"
-        val timestamp = currentDate.atStartOfDayIn(timeZone).toEpochMilliseconds()
-
         return DisplayDate(
-            timestamp = timestamp,
+            date = currentDate,
             dayOfWeek = dayLabel,
             dateLabel = dateLabelString,
             isToday = currentDate == today

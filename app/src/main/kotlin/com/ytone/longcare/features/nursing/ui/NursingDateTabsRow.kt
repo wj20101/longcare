@@ -1,7 +1,7 @@
 package com.ytone.longcare.features.nursing.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -29,11 +29,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
 import com.ytone.longcare.R
+import com.ytone.longcare.common.utils.DisplayDate
 
 @Composable
 internal fun NursingDateTabsRow(
-    dateList: List<UiDate>,
+    dateList: List<DisplayDate>,
     pagerState: PagerState,
     selectedTabContentColor: Color,
     unselectedTabContentColor: Color,
@@ -59,7 +61,7 @@ internal fun NursingDateTabsRow(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        itemsIndexed(items = dateList, key = { index, _ -> index }) { index, dateInfo ->
+        itemsIndexed(items = dateList, key = { _, date -> date.date.toString() }) { index, dateInfo ->
             val isSelected = pagerState.currentPage == index
             NursingDateTabItem(
                 dateInfo = dateInfo,
@@ -74,7 +76,7 @@ internal fun NursingDateTabsRow(
 
 @Composable
 private fun NursingDateTabItem(
-    dateInfo: UiDate,
+    dateInfo: DisplayDate,
     isSelected: Boolean,
     selectedTabContentColor: Color,
     unselectedTabContentColor: Color,
@@ -87,18 +89,18 @@ private fun NursingDateTabItem(
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
             .then(if (isSelected) Modifier.background(Color.White) else Modifier)
-            .clickable(onClick = onClick)
+            .selectable(selected = isSelected, role = Role.Tab, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(dateInfo.displayInfo.dayOfWeek.labelRes),
+                text = stringResource(dateInfo.dayOfWeek.labelRes),
                 fontWeight = FontWeight.Bold,
                 color = tabTextColor
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = dateInfo.displayInfo.dateLabel,
+                text = dateInfo.dateLabel,
                 fontSize = 12.sp,
                 color = tabTextColor
             )

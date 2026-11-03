@@ -1,6 +1,6 @@
 # 页面与路由地图
 
-最后核对：2026-09-24（销售链路改用实际 Navigation 3 栈；本轮离线回归不替代真实 BLE 验收）
+最后核对：2026-11-03（护理页日期缓存、跨日刷新与订单日期一致性；离线回归不替代真实 BLE 验收）
 
 本文列出当前可运行的 Compose 路由、嵌套页面和现实模块归属。导航代码的机器真相位于 `app/src/main/kotlin/com/ytone/longcare/navigation/`。
 
@@ -27,7 +27,7 @@ Navigation 3 使用可保存的 `AppNavEntry` 包装业务路由，为相同参�
 护理账号的 `HomeScreen` 内有三个非 NavKey 页签：
 
 - 首页：`MainDashboardScreen`，咫尺状态区仅在护理首页可见时轮询，未绑定设备隐藏预览；安装示意和预览打开普通全屏 H5，返回保留原首页
-- 护理：`NursingScreen`
+- 护理：`NursingScreen`，按手机本地日期缓存当月日期列表；页面可见时每分钟核对跨天，恢复前台或切回页签时立即核对。原选中“今天”时跟随新日期，手动选中的本月日期保留，跨月则回到新的今天；页面重建同时恢复所选日期和参考日，遵循相同规则且不额外查询今天。查询参数直接使用所选日期，迟到请求不能覆盖当前日期的订单。
 - 我的：`ProfileScreen`
 
 顶层使用 `AdaptiveAppNavigationScaffold`，根据窗口尺寸选择底部导航或导航轨；三个页面由不可手势滑动的 `HorizontalPager` 保存页签状态。

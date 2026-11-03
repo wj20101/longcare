@@ -69,6 +69,7 @@ internal fun HomeScreenPagerContent(
                     )
 
                     1 -> NursingScreen(
+                        isTabSelected = pagerState.currentPage == 1,
                         actions = NursingActions(
                             onNavigateToNursingExecution = actions.onNavigateToNursingExecution,
                             onNavigateToService = actions.onNavigateToService
