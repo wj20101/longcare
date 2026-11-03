@@ -48,7 +48,7 @@ JAR、Unix/Windows 启动脚本及 properties，并校验官方 JAR/分发包 SH
 | Async | kotlinx.coroutines | 1.11.0 |
 | Location | AMap Location | 11.3.101 |
 | Object storage | Tencent COS Android | 5.9.52 |
-| Diagnostics | Tencent Bugly CrashReport | 4.1.9.3 |
+| Diagnostics | Tencent Bugly CrashReport | 4.1.9.7 |
 | Performance | Baseline Profile / Macrobenchmark | 1.5.0 / 1.5.0 |
 | JVM Tests | Robolectric | 4.17 |
 
