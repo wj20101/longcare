@@ -22,15 +22,19 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 
 class CareOrderApiContractTest {
     @Test fun `today order accepts each nullable field and missing fields`() = runTest {
-        for (field in listOf("name", "callPhone", "identityCardNumber", "liveAddress")) {
+        for (field in listOf("name", "callPhone", "identityCardNumber", "liveAddress", "disabilityName")) {
             val result = api("""[{"orderId":42,"$field":null}]""").getTodayOrderList()
             assertTrue("nullable $field: $result", result is ApiResult.Success)
+            if (field == "disabilityName") {
+                assertNull((result as ApiResult.Success).data.single().disabilityName)
+            }
         }
         val order = (api("""[{"orderId":42}]""").getTodayOrderList() as ApiResult.Success).data.single()
         assertNull(order.name)
         assertNull(order.callPhone)
         assertNull(order.identityCardNumber)
         assertNull(order.liveAddress)
+        assertNull(order.disabilityName)
     }
 
     @Test fun `detail accepts each nullable field and missing fields`() = runTest {
@@ -73,12 +77,13 @@ class CareOrderApiContractTest {
         assertEquals("测试对象", detail.userInfo!!.name)
         assertEquals("121.5", detail.userInfo!!.toOrderElderInfoEntity(42).elderLng)
         assertEquals("测试项目", detail.projectList!!.single().projectName)
-        val today = (api("""[{"orderId":42,"name":"测试对象","callPhone":"test-phone","identityCardNumber":"test-id","liveAddress":"测试地址"}]""")
+        val today = (api("""[{"orderId":42,"name":"测试对象","callPhone":"test-phone","identityCardNumber":"test-id","liveAddress":"测试地址","disabilityName":"重度失能"}]""")
             .getTodayOrderList() as ApiResult.Success).data.single()
         assertEquals("测试对象", today.name)
         assertEquals("test-phone", today.callPhone)
         assertEquals("test-id", today.identityCardNumber)
         assertEquals("测试地址", today.liveAddress)
+        assertEquals("重度失能", today.disabilityName)
     }
 
     @Test fun `invalid types malformed json and empty data remain errors`() = runTest {

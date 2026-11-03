@@ -71,7 +71,13 @@ data class TodayServiceOrderModel(
      * 服务时长
      */
     @param:Json(name = "totalServiceTime")
-    val totalServiceTime: Int = 0
+    val totalServiceTime: Int = 0,
+
+    /**
+     * 失能等级
+     */
+    @param:Json(name = "disabilityName")
+    val disabilityName: String? = null
 )
 
 /**

@@ -67,6 +67,7 @@ fun ServiceOrdersListScreen(
             emptyTitle = emptyTitle,
             emptySubtitle = emptySubtitle,
             filteredOrders = filteredOrders,
+            showDisabilityLevel = orderType == ServiceOrderType.PENDING_CARE_PLANS,
             actions = actions
         )
         SnackbarHost(

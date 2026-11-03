@@ -44,6 +44,7 @@ internal fun ServiceOrdersListScreenLayout(
     emptyTitle: String,
     emptySubtitle: String,
     filteredOrders: List<TodayServiceOrderModel>,
+    showDisabilityLevel: Boolean,
     actions: ServiceOrdersListActions
 ) {
     Box(
@@ -79,6 +80,7 @@ internal fun ServiceOrdersListScreenLayout(
                     items(filteredOrders) { order ->
                         ServiceOrderItem(
                             order = order,
+                            showDisabilityLevel = showDisabilityLevel,
                             onClick = singleClick {
                                 handleOrderNavigation(
                                     state = order.state,

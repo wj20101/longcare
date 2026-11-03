@@ -262,6 +262,7 @@
     <string name="privacy_consent_disagree">不同意</string>
     <string name="service_order_completed">已完成</string>
     <string name="service_order_contact_phone">联系电话：%1$s</string>
+    <string name="service_order_disability_level">失能等级：%1$s</string>
     <string name="user_list_empty">暂无用户数据</string>
     <string name="user_list_empty_description">当前没有符合条件的用户</string>
     <string name="user_list_month_served_hours">本月已服务工时：%1$s</string>

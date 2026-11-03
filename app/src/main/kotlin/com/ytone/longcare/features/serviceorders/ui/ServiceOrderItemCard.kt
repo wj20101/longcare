@@ -31,6 +31,7 @@ import com.ytone.longcare.model.TodayServiceOrderModel
 @Composable
 fun ServiceOrderItem(
     order: TodayServiceOrderModel,
+    showDisabilityLevel: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -55,6 +56,16 @@ fun ServiceOrderItem(
                         fontSize = 14.sp
                     )
                     ServiceOrderStateTags(order)
+                }
+                if (showDisabilityLevel) {
+                    order.disabilityName?.trim()?.takeIf { it.isNotEmpty() }?.let { disabilityName ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.service_order_disability_level, disabilityName),
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -89,7 +100,8 @@ private fun ServiceOrderItemPreview() {
         state = 0,
         totalServiceTime = 60,
         liveAddress = "北京市朝阳区 xxx 街道 xxx 号",
-        callPhone = "138xxxxxxxx"
+        callPhone = "138xxxxxxxx",
+        disabilityName = "重度失能"
     )
-    ServiceOrderItem(order = order)
+    ServiceOrderItem(order = order, showDisabilityLevel = true)
 }
