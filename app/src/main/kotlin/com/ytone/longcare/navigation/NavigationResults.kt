@@ -73,7 +73,11 @@ internal class EntryResults(
         return store.flow(id, key) as StateFlow<T?>
     }
 
-    fun <T> set(key: String, value: T) { if (canWrite()) store.set(id, key, value) }
+    fun <T> set(key: String, value: T): Boolean {
+        if (!canWrite()) return false
+        store.set(id, key, value)
+        return true
+    }
     fun <T> remove(key: String) { if (canWrite()) store.set(id, key, null) }
 }
 

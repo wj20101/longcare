@@ -47,10 +47,12 @@ class AppNavigator internal constructor(
 
     fun navigateWhenResumed(route: AppRoute) { if (active()) navigate(route) }
 
-    fun <T> returnResult(key: String, value: T) {
-        if (!isCurrentSource()) return
-        previousBackStackEntry?.results?.set(key, value)
+    /** Returns true only when the original caller's entry received the result. */
+    fun <T> returnResult(key: String, value: T): Boolean {
+        if (!isCurrentSource()) return false
+        val delivered = previousBackStackEntry?.results?.set(key, value) == true
         popBackStack()
+        return delivered
     }
 
     fun popBackStack(): Boolean {

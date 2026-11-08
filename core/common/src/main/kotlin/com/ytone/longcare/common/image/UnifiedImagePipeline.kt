@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.Paint
+import android.graphics.RectF
 import android.net.Uri
 import android.os.Environment
 import androidx.exifinterface.media.ExifInterface
@@ -243,14 +245,14 @@ class UnifiedImagePipeline @Inject constructor(
         bottomPx: Float,
     ): Bitmap {
         val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        val left = startPx.coerceIn(0f, source.width / 4f)
+        val bottom = bottomPx.coerceIn(0f, source.height / 4f)
+        val scale = minOf(1f, (source.width - 2 * left) / watermark.width, (source.height - 2 * bottom) / watermark.height)
+        val baseline = source.height - bottom
+        val bounds = RectF(left, baseline - watermark.height * scale, left + watermark.width * scale, baseline)
         Canvas(output).apply {
             drawBitmap(source, 0f, 0f, null)
-            drawBitmap(
-                watermark,
-                startPx.coerceAtLeast(0f),
-                (source.height - watermark.height - bottomPx).coerceAtLeast(0f),
-                null,
-            )
+            drawBitmap(watermark, null, bounds, Paint(Paint.FILTER_BITMAP_FLAG))
         }
         return output
     }

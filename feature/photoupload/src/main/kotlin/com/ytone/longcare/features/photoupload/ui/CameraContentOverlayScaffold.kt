@@ -1,6 +1,5 @@
 package com.ytone.longcare.features.photoupload.ui
 
-import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ytone.longcare.feature.photoupload.databinding.WatermarkViewBinding
 import com.ytone.longcare.model.WatermarkData
 
 @Composable
@@ -24,7 +24,7 @@ internal fun CameraContentOverlayScaffold(
     hasFrontCamera: Boolean,
     isCameraSwitching: Boolean,
     countdownSeconds: Int,
-    onWatermarkViewReady: (View) -> Unit,
+    onWatermarkViewReady: (WatermarkViewBinding) -> Unit,
     onToggleDelayMode: () -> Unit,
     onShutterClick: () -> Unit,
     onSwitchCameraClick: () -> Unit

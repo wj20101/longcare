@@ -194,8 +194,8 @@ class AppNavigatorTest {
         val upload = nav.top()
         nav.navigate(camera)
         val cameraPage = nav.page()
-        cameraPage.previousBackStackEntry!!.results.set(NavigationConstants.CAPTURED_IMAGE_URI_KEY, "content://camera")
-        cameraPage.popBackStack()
+        assertTrue(cameraPage.returnResult(NavigationConstants.CAPTURED_IMAGE_URI_KEY, "content://camera"))
+        assertFalse(cameraPage.returnResult(NavigationConstants.CAPTURED_IMAGE_URI_KEY, "duplicate"))
         val restoredStack = Json.decodeFromString<List<AppNavEntry>>(Json.encodeToString(nav.backStack.map { it as AppNavEntry }))
         val restored = AppNavigator(restoredStack.toMutableList<NavKey>(), NavigationResults.restore(nav.results.snapshot()))
         val uploadPage = restored.page()
@@ -232,10 +232,21 @@ class AppNavigatorTest {
         val oldCaller = old.previousBackStackEntry!!
         old.popBackStack()
         nav.navigate(camera)
-        oldCaller.results.set(NavigationConstants.CAPTURED_IMAGE_URI_KEY, "late")
-        old.popBackStack()
+        assertFalse(oldCaller.results.set(NavigationConstants.CAPTURED_IMAGE_URI_KEY, "late"))
+        assertFalse(old.returnResult(NavigationConstants.CAPTURED_IMAGE_URI_KEY, "late"))
+        assertFalse(old.popBackStack())
         assertNull(oldCaller.results.getStateFlow<String>(NavigationConstants.CAPTURED_IMAGE_URI_KEY, null).value)
         assertEquals(2, nav.backStack.size)
+    }
+
+    @Test fun cameraWithMissingCallerClosesWithoutDeliveringToAnotherPage() {
+        val nav = navigator()
+        val home = nav.top()
+        nav.backStack.add(AppNavEntry(camera, callerId = "removed"))
+        val key = NavigationConstants.CAPTURED_IMAGE_URI_KEY
+        assertFalse(nav.page().returnResult(key, "late"))
+        assertEquals(home.id, nav.top().id)
+        assertNull(nav.handle(home).results.getStateFlow<String>(key, null).value)
     }
 
     @Test fun differentEntryMailboxesNeverShareAndDropClearsSubscribers() {

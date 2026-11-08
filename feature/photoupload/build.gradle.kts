@@ -10,6 +10,9 @@ android {
     namespace = "com.ytone.longcare.feature.photoupload"
     defaultConfig { testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true; viewBinding = true }
+    testOptions.unitTests.isIncludeAndroidResources = true
+    sourceSets["test"].kotlin.srcDir("src/sharedTest/kotlin")
+    sourceSets["androidTest"].kotlin.srcDir("src/sharedTest/kotlin")
 }
 
 fun projectDependency(path: String) = dependencies.project(path)
@@ -45,6 +48,9 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.core)
 }

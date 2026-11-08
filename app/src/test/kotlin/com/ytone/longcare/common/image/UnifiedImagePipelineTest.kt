@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -73,6 +74,7 @@ class UnifiedImagePipelineTest {
         }
 
     @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun `watermarked capture applies EXIF orientation compression and cleanup`() =
         runTest {
             val pipeline =
