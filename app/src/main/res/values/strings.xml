@@ -90,7 +90,7 @@
     <string name="service_countdown_allow_location">允许定位</string>
     <string name="service_countdown_allow_notifications">允许通知</string>
     <string name="service_countdown_permission_later">暂不设置</string>
-    <string name="service_countdown_permission_unchanged">本次未开启，可稍后在“后台设置”中调整</string>
+    <string name="service_countdown_permission_unchanged">本次未开启，可稍后在系统设置中调整</string>
     <string name="service_countdown_settings_unavailable">无法打开设置，请在手机设置中找到长护盾，核对定位与提醒权限。</string>
     <string name="service_countdown_order_not_created">订单未开单，无法继续服务</string>
     <string name="service_countdown_order_pending">订单状态异常：待执行</string>

@@ -19,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -45,7 +44,6 @@ internal fun ServiceCountdownScreenScaffold(
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel,
     onNavigateBack: () -> Unit,
-    onOpenBackgroundSettings: () -> Unit,
     onOpenPhotoUpload: () -> Unit,
     onBottomActionClick: () -> Unit
 ) {
@@ -64,11 +62,6 @@ internal fun ServiceCountdownScreenScaffold(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(CoreUiR.string.common_back),
                         )
-                    }
-                },
-                actions = {
-                    TextButton(onClick = onOpenBackgroundSettings) {
-                        Text(stringResource(CoreUiR.string.background_settings_action), color = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

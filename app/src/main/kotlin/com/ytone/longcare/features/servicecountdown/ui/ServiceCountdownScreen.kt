@@ -16,10 +16,7 @@ import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.CustomBackHandler
-import com.ytone.longcare.common.utils.DeviceCompatibilityHelper
 import com.ytone.longcare.common.utils.showShortToast
-import com.ytone.longcare.core.ui.permission.BackgroundSettingsDialog
-import com.ytone.longcare.core.ui.R as CoreUiR
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
@@ -75,7 +72,6 @@ fun ServiceCountdownScreen(
 
     // 权限相关状态
     var permissionIssue by rememberSaveable(orderKey) { mutableStateOf<ServiceCountdownPermissionIssue?>(null) }
-    var showBackgroundSettings by rememberSaveable(orderKey) { mutableStateOf(false) }
 
     val launchers = rememberServiceCountdownScreenLaunchers(
         orderKey = orderKey,
@@ -122,9 +118,6 @@ fun ServiceCountdownScreen(
         projectIdList = projectIdList,
         sharedViewModel = sharedViewModel,
         onNavigateBack = actions.onNavigateHomeAndClearStack,
-        onOpenBackgroundSettings = {
-            showBackgroundSettings = true
-        },
         onOpenPhotoUpload = {
             actions.onNavigateToPhotoUpload(orderKey)
         },
@@ -147,39 +140,8 @@ fun ServiceCountdownScreen(
         }
     )
 
-    if (showBackgroundSettings) {
-        val initialGuides = remember(context) { DeviceCompatibilityHelper.getAllGuides(context) }
-        val permissionsEnabledMessage = stringResource(CoreUiR.string.background_settings_system_permissions_enabled)
-        BackgroundSettingsDialog(
-            initialItems = initialGuides,
-            refreshItems = { DeviceCompatibilityHelper.getAllGuides(context) },
-            onItemAction = { DeviceCompatibilityHelper.openGuide(context, it) },
-            onCheckSystemPermissions = {
-                showBackgroundSettings = false
-                permissionIssue = requiredCountdownPermissionIssue(
-                    context,
-                    countdownViewModel.canScheduleExactAlarms(),
-                    countdownViewModel.canUseFullScreenIntent(),
-                )
-                if (permissionIssue == null) {
-                    context.showShortToast(permissionsEnabledMessage)
-                }
-            },
-            onDismiss = {
-                if (permissionIssue != null) {
-                    permissionIssue = requiredCountdownPermissionIssue(
-                        context,
-                        countdownViewModel.canScheduleExactAlarms(),
-                        countdownViewModel.canUseFullScreenIntent(),
-                    )
-                }
-                showBackgroundSettings = false
-            },
-        )
-    }
-
     ServiceCountdownDialogsHost(
-        permissionIssue = permissionIssue.takeUnless { showBackgroundSettings },
+        permissionIssue = permissionIssue,
         onDismissPermissionDialog = {
             permissionIssue = null
         },

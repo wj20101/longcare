@@ -25,7 +25,6 @@
     <string name="background_settings_hide_details">收起说明</string>
     <string name="background_settings_start_service">开始服务</string>
     <string name="background_settings_check_system_permissions">检查系统权限</string>
-    <string name="background_settings_system_permissions_enabled">系统定位与提醒权限已开启；厂商后台设置请手动核对</string>
     <string name="common_retry">重试</string>
     <string name="common_processing">处理中…</string>
     <string name="photo_preview_content_description">预览图片</string>
