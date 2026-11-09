@@ -4,28 +4,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ytone.longcare.common.image.UnifiedImagePipeline
 import com.ytone.longcare.common.image.WatermarkedCaptureRequest
-import com.ytone.longcare.domain.system.WatermarkConfigProvider
-import com.ytone.longcare.domain.location.LocationFacade
 import com.ytone.longcare.domain.location.LocationAcquisition
+import com.ytone.longcare.domain.location.LocationFacade
+import com.ytone.longcare.domain.location.LocationFailure
+import com.ytone.longcare.domain.repository.UserSessionRepository
+import com.ytone.longcare.domain.system.WatermarkConfigProvider
 import com.ytone.longcare.model.LocationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+internal data class CaptureStamp(val time: String, val location: LocationResult)
+
+internal fun LocationResult.watermarkCoordinates(): String = "$longitude,$latitude"
 
 sealed interface CameraLocationState {
     data object Loading : CameraLocationState
     data object Unavailable : CameraLocationState
     data object Failed : CameraLocationState
     data class Coordinates(val sample: LocationResult) : CameraLocationState {
-        val value: String get() = "${sample.longitude},${sample.latitude}"
+        val value: String get() = sample.watermarkCoordinates()
     }
 }
 
@@ -34,68 +44,123 @@ class CameraViewModel @Inject constructor(
     private val systemConfigManager: WatermarkConfigProvider,
     private val locationFacade: LocationFacade,
     private val imagePipeline: UnifiedImagePipeline,
+    private val sessions: UserSessionRepository,
 ) : ViewModel() {
-
     private val _location = MutableStateFlow<CameraLocationState>(CameraLocationState.Loading)
-    val location: StateFlow<CameraLocationState> = _location
+    val location = _location.asStateFlow()
 
     private val _time = MutableStateFlow("")
-    val time: StateFlow<String> = _time
+    val time = _time.asStateFlow()
 
     private val _syLogoImg = MutableStateFlow("")
     val syLogoImg = _syLogoImg.asStateFlow()
 
-    private var locationJob: Job? = null
-    private var locationRequestId = 0L
+    private val sessionGeneration = sessions.sessionSnapshot.value.generation
+    private var active = false
+    private var locationRequest: Deferred<LocationAcquisition>? = null
 
-    fun updateCurrentLocationInfo(hasLocationPermission: Boolean = true) {
-        val requestId = ++locationRequestId
-        locationJob?.cancel()
-        _location.value = if (hasLocationPermission) CameraLocationState.Loading else CameraLocationState.Unavailable
-        if (!hasLocationPermission) return
-        locationJob = viewModelScope.launch {
-            try {
-                val locationResult = locationFacade.acquireCurrentLocation()
-                if (requestId != locationRequestId) return@launch
-                _location.value = if (locationResult is LocationAcquisition.Success) {
-                    CameraLocationState.Coordinates(
-                        locationResult.location,
-                    )
-                } else {
-                    CameraLocationState.Unavailable
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (requestId == locationRequestId) _location.value = CameraLocationState.Failed
-            }
+    fun onCameraResume(hasFinePermission: Boolean) {
+        active = true
+        updateTime()
+        viewModelScope.launch { _syLogoImg.value = systemConfigManager.getSyLogoImg() }
+        if (hasFinePermission) {
+            requestLocation()
+        } else {
+            locationRequest?.cancel()
+            locationRequest = null
+            _location.value = CameraLocationState.Unavailable
         }
     }
 
-    fun coordinatesForCapture(): String? {
-        val coordinates = _location.value as? CameraLocationState.Coordinates ?: return null
-        if (locationFacade.isUsable(coordinates.sample)) return coordinates.value
+    fun onCameraPause() {
+        active = false
+        locationRequest?.cancel()
+        locationRequest = null
         _location.value = CameraLocationState.Unavailable
+    }
+
+    internal fun isCurrentAccount(): Boolean {
+        val session = sessions.sessionSnapshot.value
+        return session.user != null && session.generation == sessionGeneration
+    }
+
+    internal suspend fun awaitAccountChange() {
+        sessions.sessionSnapshot.first { it.generation != sessionGeneration }
+    }
+
+    internal fun ensureCameraSession() {
+        if (!active || !isCurrentAccount()) throw CancellationException("Camera session ended")
+    }
+
+    private fun requestLocation(): Deferred<LocationAcquisition> {
+        locationRequest?.takeIf { it.isActive }?.let { return it }
+        _location.value = CameraLocationState.Loading
+        return viewModelScope.async {
+            ensureCameraSession()
+            val result = try {
+                locationFacade.acquireCurrentLocation()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                ensureActive()
+                ensureCameraSession()
+                _location.value = CameraLocationState.Failed
+                return@async LocationAcquisition.Failure(LocationFailure.UNAVAILABLE)
+            }
+            ensureActive()
+            ensureCameraSession()
+            _location.value = when (result) {
+                is LocationAcquisition.Success -> CameraLocationState.Coordinates(result.location)
+                is LocationAcquisition.Failure -> CameraLocationState.Unavailable
+            }
+            result
+        }.also { locationRequest = it }
+    }
+
+    internal suspend fun awaitCountdown(delaySeconds: Int, onCountdownTick: (Int) -> Unit) {
+        ensureCameraSession()
+        for (seconds in delaySeconds downTo 1) {
+            onCountdownTick(seconds)
+            delay(1000)
+        }
+        onCountdownTick(0)
+        ensureCameraSession()
+    }
+
+    internal suspend fun shutterStamp(
+        prepareWatermark: () -> Boolean,
+        onFailure: (LocationFailure) -> Unit,
+    ): CaptureStamp? {
+        ensureCameraSession()
+        val cached = (_location.value as? CameraLocationState.Coordinates)?.sample
+        if (cached != null && locationFacade.isUsable(cached)) {
+            if (!prepareWatermark()) return null
+            checkedStamp(cached)?.let { return it }
+        }
+        // A cached fix may have expired while drawing the logo. Acquire once and sample the logo again.
+        val result = requestLocation().await()
+        currentCoroutineContext().ensureActive()
+        ensureCameraSession()
+        if (result is LocationAcquisition.Success) {
+            if (!prepareWatermark()) return null
+            checkedStamp(result.location)?.let { return it }
+            _location.value = CameraLocationState.Unavailable
+        }
+        val failure = (result as? LocationAcquisition.Failure)?.reason ?: LocationFailure.QUALITY
+        onFailure(failure)
         return null
     }
 
-    fun stopLocationRequest() {
-        ++locationRequestId
-        locationJob?.cancel()
-        _location.value = CameraLocationState.Unavailable
+    private fun checkedStamp(sample: LocationResult): CaptureStamp? {
+        val stamp = CaptureStamp(updateTime(), sample)
+        val usable = locationFacade.isUsable(sample)
+        ensureCameraSession()
+        return stamp.takeIf { usable }
     }
 
-    fun updateTime() {
-        _time.value = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
-    }
+    private fun updateTime(): String =
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()).also { _time.value = it }
 
-    fun updateSyLogoImg(){
-        viewModelScope.launch {
-            _syLogoImg.value = systemConfigManager.getSyLogoImg()
-        }
-    }
-
-    suspend fun processCapturedImage(request: WatermarkedCaptureRequest) =
+    internal suspend fun processCapturedImage(request: WatermarkedCaptureRequest) =
         imagePipeline.processWatermarkedCapture(request)
-
 }
