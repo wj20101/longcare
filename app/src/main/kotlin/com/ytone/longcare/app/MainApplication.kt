@@ -3,6 +3,7 @@ package com.ytone.longcare.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -14,7 +15,7 @@ import com.ytone.longcare.common.utils.LogFileConfig
 import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.features.countdown.manager.CountdownNotificationManager
 import com.ytone.longcare.features.location.session.LocationSessionLifecycleObserver
-import com.ytone.longcare.worker.StartupUpdateWorkObserver
+import com.ytone.longcare.worker.UpdateWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import javax.inject.Inject
@@ -31,9 +32,6 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
 
     @Inject
     lateinit var privacyConsentManager: PrivacyConsentManager
-
-    @Inject
-    lateinit var startupUpdateWorkObserver: StartupUpdateWorkObserver
 
     @Inject
     lateinit var locationSessionLifecycleObserver: LocationSessionLifecycleObserver
@@ -55,20 +53,20 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
         locationSessionLifecycleObserver.start()
         countdownNotificationManager.startSessionObservation { privacyConsentManager.isPrivacyConsented }
 
-        // 只有用户已同意隐私政策才初始化 SDK 和调度 Worker
+        // 只有用户已同意隐私政策才初始化 SDK。
         if (privacyConsentManager.isPrivacyConsented) {
             performPostConsentInit()
         }
     }
 
     /**
-     * 隐私同意后调用，初始化需要设备标识符的 SDK 和 Worker。
+     * 隐私同意后调用，初始化需要设备标识符的 SDK，并清除旧版更新检查任务。
      * 首次同意时由 UI 层调用，后续启动由 onCreate 直接调用。
      */
     fun performPostConsentInit() {
         if (!postConsentInitDone.compareAndSet(false, true)) return
         initCrashReportingIfNeeded()
-        scheduleStartupWorkers()
+        WorkManager.getInstance(this).cancelUniqueWork(UpdateWorker.LEGACY_WORK_NAME)
     }
 
     private fun initCrashReportingIfNeeded() {
@@ -76,10 +74,6 @@ class MainApplication : Application(), SingletonImageLoader.Factory, Configurati
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoaderProvider.get()
-
-    private fun scheduleStartupWorkers() {
-        startupUpdateWorkObserver.enqueueLatestCheck()
-    }
 
     private fun initLogger() {
         val logDirectory = File(filesDir, "logs")

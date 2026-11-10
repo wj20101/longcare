@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,6 +56,10 @@ fun MainApp(
             onDisagree = { /* Dialog 内部会 finish Activity */ }
         )
         return
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.checkForUpdateOnStartup()
     }
 
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
