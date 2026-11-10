@@ -13,8 +13,6 @@ import com.ytone.longcare.common.diagnostics.DiagnosticEventTracker
 import com.ytone.longcare.R
 import com.ytone.longcare.core.ui.R as CoreUiR
 import com.ytone.longcare.core.common.di.IoDispatcher
-import com.ytone.longcare.platform.update.ApkPackageVerifier
-import com.ytone.longcare.platform.update.ApkVerificationResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -32,6 +30,7 @@ import retrofit2.http.Streaming
 import retrofit2.http.Url
 import java.io.File
 import java.io.IOException
+import java.net.HttpURLConnection
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -41,7 +40,6 @@ class DownloadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val retrofit: Retrofit,
-    private val apkPackageVerifier: ApkPackageVerifier,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : CoroutineWorker(context, workerParams) {
 
@@ -71,7 +69,6 @@ class DownloadWorker @AssistedInject constructor(
             workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_file_name_required))
         )
         val fileName = sanitizeApkFileName(rawFileName)
-        val expectedVersionCode = inputData.getLong(KEY_EXPECTED_VERSION_CODE, 0L)
 
         return withContext(ioDispatcher) {
             try {
@@ -86,7 +83,6 @@ class DownloadWorker @AssistedInject constructor(
                     url = url,
                     fileName = fileName,
                     downloadDir = downloadDir,
-                    expectedVersionCode = expectedVersionCode,
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -134,7 +130,6 @@ class DownloadWorker @AssistedInject constructor(
         url: String,
         fileName: String,
         downloadDir: File,
-        expectedVersionCode: Long,
     ): Result {
         val response = downloadApi.downloadFile(url)
         if (!response.isSuccessful) {
@@ -150,6 +145,13 @@ class DownloadWorker @AssistedInject constructor(
             )
             return Result.failure(
                 workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_download_failed))
+            )
+        }
+
+        if (response.code() == HttpURLConnection.HTTP_PARTIAL) {
+            response.body()?.close()
+            return Result.failure(
+                workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_download_incomplete)),
             )
         }
 
@@ -206,7 +208,13 @@ class DownloadWorker @AssistedInject constructor(
                 }
             }
 
-            if (contentLength > 0L && bytesRead != contentLength) {
+            if (bytesRead == 0L) {
+                return Result.failure(
+                    workDataOf(KEY_ERROR to applicationContext.getString(R.string.update_empty_response)),
+                )
+            }
+
+            if ((contentLength >= 0L && bytesRead != contentLength) || temporaryFile.length() != bytesRead) {
                 return Result.failure(
                     workDataOf(
                         KEY_ERROR to applicationContext.getString(R.string.update_download_incomplete),
@@ -214,30 +222,9 @@ class DownloadWorker @AssistedInject constructor(
                 )
             }
 
-            when (
-                val verification = apkPackageVerifier.verify(
-                    apkFile = temporaryFile,
-                    expectedVersionCode = expectedVersionCode,
-                )
-            ) {
-                is ApkVerificationResult.Invalid -> {
-                    DiagnosticEventTracker.trackError(
-                        category = UPDATE_DIAGNOSTIC_CATEGORY,
-                        event = "apk_verification_failed",
-                        description = "下载后的APK未通过安全校验",
-                        extras = mapOf(
-                            "reason" to verification.reason.name,
-                            "fileName" to fileName,
-                            "expectedVersionCode" to expectedVersionCode,
-                        ),
-                    )
-                    return Result.failure(workDataOf(KEY_ERROR to verification.message))
-                }
+            publishDownloadedApk(temporaryFile, finalFile)
 
-                is ApkVerificationResult.Valid -> publishVerifiedApk(temporaryFile, finalFile)
-            }
-
-            if (contentLength > 0 && lastProgress < 100) {
+            if (lastProgress < 100) {
                 setProgress(workDataOf(KEY_PROGRESS to 100))
             }
 
@@ -259,14 +246,13 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_FILE_PATH = "filePath"
         const val KEY_PROGRESS = "progress"
         const val KEY_ERROR = "error"
-        const val KEY_EXPECTED_VERSION_CODE = "expectedVersionCode"
         const val KEY_FILE_SIZE = "fileSize"
         private val UPDATE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.APP_UPDATE
         private const val MAX_RETRY_COUNT = 2
     }
 }
 
-private fun publishVerifiedApk(temporaryFile: File, finalFile: File) {
+private fun publishDownloadedApk(temporaryFile: File, finalFile: File) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         moveAtomicallyOnApi26(temporaryFile, finalFile)
         return
@@ -276,7 +262,7 @@ private fun publishVerifiedApk(temporaryFile: File, finalFile: File) {
         throw IOException("无法替换旧安装包")
     }
     if (!temporaryFile.renameTo(finalFile)) {
-        throw IOException("无法发布已校验安装包")
+        throw IOException("无法发布下载完成的安装包")
     }
 }
 

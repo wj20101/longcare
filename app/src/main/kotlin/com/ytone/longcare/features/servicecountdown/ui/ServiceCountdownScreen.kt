@@ -16,8 +16,10 @@ import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.shared.vm.SharedOrderDetailViewModel
 import com.ytone.longcare.features.location.viewmodel.LocationTrackingViewModel
 import com.ytone.longcare.common.utils.CustomBackHandler
+import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import com.ytone.longcare.common.utils.showShortToast
 import com.ytone.longcare.features.servicecountdown.api.ServiceCountdownActions
+import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
@@ -72,20 +74,31 @@ fun ServiceCountdownScreen(
 
     // 权限相关状态
     var permissionIssue by rememberSaveable(orderKey) { mutableStateOf<ServiceCountdownPermissionIssue?>(null) }
+    var isLocationReady by remember(orderKey) { mutableStateOf(true) }
+    val refreshLocationReadiness = {
+        isLocationReady = UnifiedPermissionHelper.hasLocationPermission(context) &&
+            UnifiedPermissionHelper.isLocationServiceEnabled(context)
+    }
 
     val launchers = rememberServiceCountdownScreenLaunchers(
         orderKey = orderKey,
         canScheduleExactAlarms = countdownViewModel::canScheduleExactAlarms,
         canUseFullScreenIntent = countdownViewModel::canUseFullScreenIntent,
-        onLocationPermissionGranted = { locationTrackingViewModel.startTracking(orderKey) },
+        onLocationPermissionGranted = {
+            if (countdownViewModel.countdownState.value != ServiceCountdownState.ENDED) {
+                locationTrackingViewModel.startTracking(orderKey)
+            }
+        },
         onPermissionDialogRequired = { issue ->
             permissionIssue = issue
+            refreshLocationReadiness()
         }
     )
 
     ServiceCountdownInitialPermissionCheck(orderKey, launchers.checkPermissions)
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        refreshLocationReadiness()
         // Saved state preserves the dialog choice, never a permission grant conclusion.
         if (permissionIssue != null) {
             permissionIssue = requiredCountdownPermissionIssue(
@@ -117,6 +130,14 @@ fun ServiceCountdownScreen(
         orderKey = orderKey,
         projectIdList = projectIdList,
         sharedViewModel = sharedViewModel,
+        showLocationRecovery = !isLocationReady,
+        onRecoverLocation = {
+            if (countdownViewModel.countdownState.value != ServiceCountdownState.ENDED) {
+                refreshLocationReadiness()
+                if (isLocationReady) locationTrackingViewModel.startTracking(orderKey)
+                else launchers.checkPermissions()
+            }
+        },
         onNavigateBack = actions.onNavigateHomeAndClearStack,
         onOpenPhotoUpload = {
             actions.onNavigateToPhotoUpload(orderKey)
