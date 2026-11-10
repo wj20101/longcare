@@ -44,6 +44,8 @@ class ServiceCountdownScreenScaffoldTest {
                     orderKey = OrderKey(42, 7),
                     projectIdList = emptyList(),
                     sharedViewModel = details,
+                    showLocationRecovery = false,
+                    onRecoverLocation = {},
                     onNavigateBack = { backClicks++ },
                     onOpenPhotoUpload = {},
                     onBottomActionClick = {},

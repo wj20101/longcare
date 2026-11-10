@@ -3,6 +3,7 @@ package com.ytone.longcare.features.servicecountdown.ui
 import com.ytone.longcare.core.ui.R as CoreUiR
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +15,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -43,6 +46,8 @@ internal fun ServiceCountdownScreenScaffold(
     orderKey: OrderKey,
     projectIdList: List<Int>,
     sharedViewModel: SharedOrderDetailViewModel,
+    showLocationRecovery: Boolean,
+    onRecoverLocation: () -> Unit,
     onNavigateBack: () -> Unit,
     onOpenPhotoUpload: () -> Unit,
     onBottomActionClick: () -> Unit
@@ -100,6 +105,17 @@ internal fun ServiceCountdownScreenScaffold(
                     formattedTime = formattedTime,
                     onOpenPhotoUpload = onOpenPhotoUpload
                 )
+
+                if (showLocationRecovery && countdownState != ServiceCountdownState.ENDED) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = onRecoverLocation,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.7f)),
+                    ) {
+                        Text(stringResource(R.string.service_countdown_enable_location))
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
