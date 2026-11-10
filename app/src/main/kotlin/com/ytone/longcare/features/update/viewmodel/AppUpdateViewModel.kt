@@ -54,6 +54,7 @@ class AppUpdateViewModel @Inject constructor(
         }
 
     init {
+        _uiState.value = _uiState.value.copy(hasPendingInstall = pendingInstallFilePath != null)
         currentWorkId?.let(::observeDownloadProgress)
     }
 
@@ -75,7 +76,6 @@ class AppUpdateViewModel @Inject constructor(
         val data = Data.Builder()
             .putString(DownloadWorker.KEY_URL, appVersionModel.downUrl)
             .putString(DownloadWorker.KEY_FILE_NAME, "longcare_${appVersionModel.versionName}.apk")
-            .putLong(DownloadWorker.KEY_EXPECTED_VERSION_CODE, appVersionModel.versionCode.toLong())
             .build()
 
         val downloadWorkRequest = OneTimeWorkRequestBuilder<DownloadWorker>()

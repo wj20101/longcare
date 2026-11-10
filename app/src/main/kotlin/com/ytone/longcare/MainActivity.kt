@@ -1,22 +1,7 @@
 package com.ytone.longcare
 
 import android.content.Intent
-import android.provider.Settings
-import androidx.core.net.toUri
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.features.location.manager.LocationTrackingManager
-import com.ytone.longcare.features.location.reporting.LocationReportingStatus
-import com.ytone.longcare.common.utils.UnifiedPermissionHelper
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -71,28 +56,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             LongCareTheme {
-                val pendingRecovery by locationTrackingManager.pendingRecovery.collectAsStateWithLifecycle()
-                val locationStatus by locationTrackingManager.status.collectAsStateWithLifecycle()
-                Column(Modifier.fillMaxSize()) {
-                    if (pendingRecovery != null || locationStatus == LocationReportingStatus.INTERRUPTED) {
-                        Surface(Modifier.fillMaxWidth().statusBarsPadding()) {
-                            TextButton(onClick = {
-                                when {
-                                    !UnifiedPermissionHelper.hasLocationPermission(this@MainActivity) ->
-                                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                            "package:$packageName".toUri()))
-                                    !UnifiedPermissionHelper.isLocationServiceEnabled(this@MainActivity) ->
-                                        startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-                                    else -> {
-                                        locationTrackingManager.resumePendingRecovery()
-                                        locationTrackingManager.onAppVisible()
-                                    }
-                                }
-                            }) { Text(getString(R.string.location_recovery_action)) }
-                        }
-                    }
-                    Box(Modifier.weight(1f)) { MainApp(viewModel) }
-                }
+                MainApp(viewModel)
             }
         }
     }

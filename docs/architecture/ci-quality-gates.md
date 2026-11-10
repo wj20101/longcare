@@ -149,6 +149,8 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 
 新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；未经明确接受的发布阻断问题不能靠新增 waiver 绕过。
 
+2026-11-10 复核了当前告警：Bugly `4.1.9.7` 的 x86_64 对齐、`qcloud-foundation:1.5.82` 的既有分支及 QLZ `1.3.0.5` 的已接受弱 TLS。两项 waiver 的来源已从版本通配收窄到当前版本，并将下一次复核期限设为 `2026-12-10`；腾讯人脸只保留现有 `6.6.2-8e4718fc` 范围。此维护不代表厂商风险已修复。新版本、新来源、新告警及到期仍会阻断；厂商替换版本通过 Lint 和 SDK 回归后移除相应例外。
+
 ## 生成报告的位置
 
 - 质量快照：`build/quality-snapshot/`
