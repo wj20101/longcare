@@ -70,7 +70,7 @@ flowchart LR
    - `LoggedOut` → `LoginRoute`
    - `LoggedIn` → `HomeRoute`；恢复前校验账号身份，退出或换号清理旧栈
 4. 全局 `SessionInvalidationHandler` 负责失效提示与退出；业务页面不各自实现一套登出导航。
-5. WorkManager 启动任务检查新版本；UI 只观察最新一次启动请求，避免历史成功任务重新弹出旧更新。`/V1/System/ChecVersion` 已确认业务成功时的 `data:null` 或缺少 `data` 表示“无更新”：仅该接口通过 `@AllowEmptyData` 返回可空版本结果，Worker 正常成功结束，不输出更新或上报异常。其他接口仍校验空数据。版本检查仅对连接、超时及 HTTP 408/429/500/502/503/504 最多重试两次；空响应体、解析失败等无效响应和未知异常直接结束本次任务，保留 attempt、errorKind、httpCode、willRetry 诊断。
+5. 用户打开 App 且同意隐私政策后，由 Activity 的 MainViewModel 发起本次启动唯一一次版本检查。重组、Activity 配置重建、页面切换、登录状态变化及前后台切换不重复请求；后台组件拉起进程不检查更新。请求失败或取消后本次启动不再检查，也不持久化为联网恢复或退避重试任务；下次启动重新检查。`/V1/System/ChecVersion` 已确认业务成功时的 `data:null` 或缺少 `data` 表示“无更新”：仅该接口通过 `@AllowEmptyData` 返回可空版本结果，不展示更新或上报异常。其他接口仍校验空数据。仍以 Android 平台和更大的 versionCode 判断新版本；检查异常保留 attempt=1、errorKind、httpCode、willRetry=false 诊断。旧版 startup_update_worker 在隐私同意后的初始化中取消，兼容 Worker 只成功退出，不再查询版本或提供历史更新结果。
 
 更新 APK 只保障下载完整：拒绝部分响应和空内容，正常读完响应后核对已声明的长度及落盘字节数，临时文件完成后才发布为待安装文件，支持时使用原子替换；未知长度的响应在正常收完且非空后发布。下载失败或取消会清理尚存的临时文件，未完成的下载不会覆盖之前的完整文件。正常安装和手动安装入口均直接交给系统安装器，不在客户端解析或校验 APK 包名、版本及签名。
 
@@ -111,7 +111,7 @@ flowchart LR
 - Room 当前 schema 版本为 4，schema JSON 保存在 `app/schemas`。`MIGRATION_3_4` 通过 `ALTER TABLE` 为订单本地状态增加 `local_start_elapsed_realtime`、`local_start_boot_count` 两个可空列，保留订单、本地进度、项目和未上传照片；已有行的新字段为 null，不补造单调起点。`DatabaseModule` 仍仅允许从已确认的 v1/v2 破坏性重建；其他缺少迁移路径的版本拒绝打开。迁移及保留策略测试覆盖 v3 升级、正常重开、首次起点/终态与并发保护，以及未知版本打开失败后记录仍保留。后续 schema 变更必须提交保数据 Migration 和升级测试。
 - 订单详情统一通过 `OrderDetailRepository` 读取；`OrderRepository.getOrderInfo` 委托其强制刷新路径。请求保留 `orderId/planId`；刷新成功同步 Room 后才写内存缓存。订单内存缓存与腾讯凭据共用 `UserSessionTracker` 的会话代次，退出、换号、令牌变化和重新登录时清空，旧请求不能回填新会话缓存。
 - DataStore 保存会话、偏好和少量兼容记录。
-- WorkManager 用于启动更新检查、APK 下载等需要跨重建继续或恢复结果的任务。
+- WorkManager 用于 APK 下载等需要跨重建继续或恢复结果的任务；版本检查仅属于本次前台启动，不使用持久化任务。
 - 腾讯 COS 负责业务图片/文件上传，Feature 通过 `PhotoCloudUploader` 等受校验门面使用。
 - Debug 可选的本地 mock 只存在于 debug source set，不进入 Release。
 

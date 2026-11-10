@@ -27,7 +27,9 @@ import com.ytone.longcare.common.utils.PrivacyConsentManager
 import com.ytone.longcare.domain.repository.SessionState
 import com.ytone.longcare.domain.repository.UserSessionRepository
 import com.ytone.longcare.model.User
-import com.ytone.longcare.worker.StartupUpdateWorkObserver
+import com.ytone.longcare.domain.system.SystemRepository
+import com.ytone.longcare.model.AppVersionModel
+import com.ytone.longcare.model.result.ApiResult
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -40,6 +42,7 @@ class Navigation3StateTest {
     private lateinit var navigator: AppNavigator
     private val shared = mutableMapOf<AppRoute, ProbeViewModel>()
     private val todayShared = mutableMapOf<AppRoute, TodayOrderViewModel>()
+    private var startupVersionChecks = 0
     private val individual = mutableMapOf<String, ProbeViewModel>()
     private val identity = mutableStateOf("user-1")
     private lateinit var activity: ComponentActivity
@@ -262,10 +265,15 @@ class Navigation3StateTest {
             override suspend fun updateUser(user: User) { login(user) }
             override suspend fun logout() { sessionState.value = SessionState.LoggedOut }
         }
-        // No work is enqueued; the observer's empty active-work flow never calls a service.
-        val observer = StartupUpdateWorkObserver(androidx.work.WorkManager.getInstance(context),
+        startupVersionChecks = 0
+        val updates = object : SystemRepository {
+            override suspend fun checkVersion(): ApiResult<AppVersionModel?> {
+                startupVersionChecks++
+                return ApiResult.Success(null)
+            }
+        }
+        val vm = MainViewModel(repository, updates,
             DeviceUtils(context, context.getSharedPreferences("device", 0)))
-        val vm = MainViewModel(repository, observer)
         val store = androidx.lifecycle.ViewModelStore().apply { put("gate", vm) }
         compose.setContent { MainApp(vm, privacy) }
         return store
@@ -276,6 +284,7 @@ class Navigation3StateTest {
         try {
             compose.onNodeWithText("用户协议与隐私政策").assertExists()
             compose.onNodeWithText("确定登录").assertDoesNotExist()
+            compose.runOnIdle { assertEquals(0, startupVersionChecks) }
             // This plain, non-Hilt host would fail if any business entry were constructed.
         } finally { compose.runOnIdle { store.clear() } }
     }
@@ -286,6 +295,7 @@ class Navigation3StateTest {
             compose.onNode(hasProgressBarRangeInfo(androidx.compose.ui.semantics.ProgressBarRangeInfo.Indeterminate)).assertExists()
             compose.onNodeWithText("确定登录").assertDoesNotExist()
             compose.onNodeWithText("用户协议与隐私政策").assertDoesNotExist()
+            compose.runOnIdle { assertEquals(1, startupVersionChecks) }
         } finally { compose.runOnIdle { store.clear() } }
     }
 
