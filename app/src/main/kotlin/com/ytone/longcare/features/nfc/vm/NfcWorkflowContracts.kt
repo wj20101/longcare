@@ -46,6 +46,7 @@ internal data class NfcWorkflowIdentity(
 )
 
 enum class NfcLoadingReason {
+    CHECKING_INFORMATION,
     CARD_RECOGNIZED_FETCHING_LOCATION,
     WAITING_FOR_LOCATION_PERMISSION,
     FETCHING_LOCATION,

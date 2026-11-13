@@ -9,12 +9,19 @@ import com.ytone.longcare.model.ServiceProjectM
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.common.text.ResourceTextResolver
 import com.ytone.longcare.domain.repository.OrderDetailRepository
+import com.ytone.longcare.domain.repository.OrderImageRepository
+import com.ytone.longcare.domain.order.CheckoutPhotos
+import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 /**
@@ -24,6 +31,7 @@ import javax.inject.Inject
 class EndServiceSelectionViewModel @Inject constructor(
     private val unifiedOrderRepository: OrderDetailRepository,
     private val textResolver: ResourceTextResolver,
+    private val imageRepository: OrderImageRepository,
 ) : ViewModel() {
 
     // 页面状态
@@ -37,6 +45,10 @@ class EndServiceSelectionViewModel @Inject constructor(
     // 所有的项目列表
     private val _projectList = MutableStateFlow<List<ServiceProjectM>>(emptyList())
     val projectList: StateFlow<List<ServiceProjectM>> = _projectList.asStateFlow()
+    private val _isPreparingCheckout = MutableStateFlow(false)
+    val isPreparingCheckout = _isPreparingCheckout.asStateFlow()
+    private var activeOrder: OrderKey? = null
+    private var initialization: Job? = null
 
     /**
      * 初始化数据
@@ -44,7 +56,12 @@ class EndServiceSelectionViewModel @Inject constructor(
      * @param initialSelectedIds 初始选中的项目ID列表（开始服务时选择的项目）
      */
     fun initData(orderKey: OrderKey, initialSelectedIds: List<Int>) {
-        viewModelScope.launch {
+        initialization?.cancel()
+        activeOrder = orderKey
+        _uiState.value = EndServiceSelectionUiState.Loading
+        _selectedProjectIds.value = emptySet()
+        _projectList.value = emptyList()
+        initialization = viewModelScope.launch {
             // 尝试获取缓存的订单详情
             val cachedOrderInfo = unifiedOrderRepository.getCachedOrderInfo(orderKey)
             if (cachedOrderInfo != null) {
@@ -57,7 +74,10 @@ class EndServiceSelectionViewModel @Inject constructor(
                 _uiState.value = EndServiceSelectionUiState.Success
             } else {
                 // 如果没有缓存，尝试从网络加载
-                when (val result = unifiedOrderRepository.getOrderInfo(orderKey)) {
+                val result = unifiedOrderRepository.getOrderInfo(orderKey)
+                currentCoroutineContext().ensureActive()
+                if (activeOrder != orderKey) return@launch
+                when (result) {
                     is ApiResult.Success -> {
                         // 只显示开始服务时选择的项目（过滤后的列表）
                         val selectedProjects = (result.data.projectList ?: emptyList())
@@ -95,6 +115,7 @@ class EndServiceSelectionViewModel @Inject constructor(
      * 设置选中状态
      */
     fun setSelection(projectIds: Set<Int>) {
+        if (_isPreparingCheckout.value) return
         _selectedProjectIds.value = projectIds
     }
 
@@ -102,6 +123,7 @@ class EndServiceSelectionViewModel @Inject constructor(
      * 全选
      */
     fun selectAll() {
+        if (_isPreparingCheckout.value) return
         _selectedProjectIds.value = _projectList.value.map { it.projectId }.toSet()
     }
     
@@ -109,6 +131,7 @@ class EndServiceSelectionViewModel @Inject constructor(
      * 取消全选
      */
     fun deselectAll() {
+        if (_isPreparingCheckout.value) return
         _selectedProjectIds.value = emptySet()
     }
 
@@ -117,6 +140,7 @@ class EndServiceSelectionViewModel @Inject constructor(
      * @param projectId 项目ID
      */
     fun toggleSelection(projectId: Int) {
+        if (_isPreparingCheckout.value) return
         val currentSelected = _selectedProjectIds.value.toMutableSet()
         if (currentSelected.contains(projectId)) {
             currentSelected.remove(projectId)
@@ -133,9 +157,42 @@ class EndServiceSelectionViewModel @Inject constructor(
         return _selectedProjectIds.value.toList()
     }
 
+    suspend fun prepareCheckout(orderKey: OrderKey, endType: Int): CheckoutPreparation? {
+        if (_isPreparingCheckout.value || activeOrder != orderKey) return null
+        val projectIds = getConfirmedProjectIds()
+        if (projectIds.isEmpty()) return CheckoutPreparation.Rejected(textResolver.text(R.string.end_service_selection_required))
+        _isPreparingCheckout.value = true
+        try {
+            val images = imageRepository.getImagesByOrderId(orderKey)
+            currentCoroutineContext().ensureActive()
+            if (activeOrder != orderKey) return null
+            val photos = CheckoutPhotos.from(orderKey, images)
+                ?: return CheckoutPreparation.Rejected(textResolver.text(R.string.service_checkout_photos_incomplete))
+            return CheckoutPreparation.Ready(EndOderInfo(projectIds, photos.before, photos.center, photos.after, endType))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            DiagnosticEventTracker.trackError(
+                category = END_SERVICE_DIAGNOSTIC_CATEGORY,
+                event = "end_service_photo_load_exception",
+                description = "签退前读取服务照片失败",
+                throwable = error,
+                extras = mapOf("orderId" to orderKey.orderId, "planId" to orderKey.planId),
+            )
+            return CheckoutPreparation.Rejected(textResolver.text(R.string.service_checkout_photos_load_failed))
+        } finally {
+            _isPreparingCheckout.value = false
+        }
+    }
+
     private companion object {
         val END_SERVICE_DIAGNOSTIC_CATEGORY = DiagnosticCategory.END_SERVICE
     }
+}
+
+sealed interface CheckoutPreparation {
+    data class Ready(val info: EndOderInfo) : CheckoutPreparation
+    data class Rejected(val message: String) : CheckoutPreparation
 }
 
 sealed class EndServiceSelectionUiState {

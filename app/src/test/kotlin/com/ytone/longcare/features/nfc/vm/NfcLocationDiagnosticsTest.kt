@@ -11,6 +11,7 @@ import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.EndOrderResultModel
+import com.ytone.longcare.model.ServiceOrderInfoModel
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.navigation.SignInMode
 import io.mockk.*
@@ -114,7 +115,8 @@ class NfcLocationDiagnosticsTest {
             ApiResult.Failure(4001, "绑定失败")
         }
         val scan = NfcScanWorkflowDelegate(facade, { LocationRequestResult.Coordinates(sample) }, AppEventBus(),
-            mockk(), orders, backgroundScope, MutableStateFlow(NfcSignInUiState.Initial), pending,
+            mockk { coEvery { getOrderInfo(any(), true) } returns ApiResult.Success(ServiceOrderInfoModel()) },
+            orders, backgroundScope, MutableStateFlow(NfcSignInUiState.Initial), pending,
             MutableStateFlow(ScanMode.SYSTEM_NFC), MutableStateFlow(ReaderUiState.NotRequired), orderDelegate,
             NfcUserMessages("network", "detail", "bind", "unavailable"))
         scan.confirmLocationActivation(data)
@@ -145,12 +147,12 @@ class NfcLocationDiagnosticsTest {
         }
         val state = MutableStateFlow<NfcSignInUiState>(NfcSignInUiState.Initial)
         val delegate = NfcOrderWorkflowDelegate(facade, mockk(), mockk(), orders,
-            mockk(), mockk(), mockk(), state, NfcUserMessages("network", "detail", "bind", "unavailable"))
+            mockk(), nfcTestImageRepository(), mockk(), state, NfcUserMessages("network", "detail", "bind", "unavailable"))
         delegate.startOrder(key, "tag", sample)
         delegate.endOrder(key, "tag", emptyList(), emptyList(), emptyList(), requestLocation = { LocationRequestResult.Coordinates(endSample) })
         coVerify(exactly = 1) { orders.checkOrder(key.orderId, "tag", sample.longitude.toString(), sample.latitude.toString()) }
         coVerify(exactly = 1) {
-            orders.endOrder(key.orderId, "tag", emptyList(), emptyList(), emptyList(), emptyList(),
+            orders.endOrder(key.orderId, "tag", emptyList(), listOf("before"), listOf("middle"), listOf("after"),
                 endSample.longitude.toString(), endSample.latitude.toString(), 1)
         }
         assertEquals("超出签到范围", (state.value as NfcSignInUiState.Error).message)
@@ -331,7 +333,7 @@ class NfcLocationDiagnosticsTest {
     private fun checkout(orders: OrderRepository): NfcOrderWorkflowDelegate = NfcOrderWorkflowDelegate(
         mockk { every { serviceOrderLocationFailure(any()) } returns null },
         mockk(relaxed = true), mockk(relaxed = true), orders, mockk(relaxed = true),
-        mockk(relaxed = true), mockk(relaxed = true), MutableStateFlow(NfcSignInUiState.Initial),
+        nfcTestImageRepository(), mockk(relaxed = true), MutableStateFlow(NfcSignInUiState.Initial),
         NfcUserMessages("network", "detail", "bind", "unavailable"),
     )
 }

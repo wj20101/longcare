@@ -63,7 +63,7 @@ internal fun ServiceCountdownLifecycleEffects(
 
         actions.photoUploadResultFlow.collect { result ->
             result?.let {
-                countdownViewModel.handlePhotoUploadResult(it)
+                countdownViewModel.loadUploadedImagesFromRepository(orderKey)
                 actions.clearPhotoUploadResult()
             }
         }

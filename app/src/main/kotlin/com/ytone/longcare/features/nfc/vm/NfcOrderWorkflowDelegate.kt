@@ -2,6 +2,8 @@ package com.ytone.longcare.features.nfc.vm
 
 import com.ytone.longcare.domain.order.OrderRepository
 import com.ytone.longcare.domain.order.ServiceOrderLifecycle
+import com.ytone.longcare.domain.order.CheckoutPhotos
+import com.ytone.longcare.R
 import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.domain.repository.OrderImageRepository
 import com.ytone.longcare.features.servicecountdown.domain.ServiceCountdownSystemGateway
@@ -184,6 +186,8 @@ internal class NfcOrderWorkflowDelegate(
         diagnostics: EndOrderDiagnostics,
     ) {
         pendingEndOrder = params
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION)
+        if (readCheckoutPhotos(params.orderKey, diagnostics) == null) return
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
         var locationException: Exception? = null
         val result = diagnostics.measure("location") {
@@ -219,6 +223,8 @@ internal class NfcOrderWorkflowDelegate(
             }
         }
         diagnostics.captureLocation(location)
+        // Confirmation, permissions and location retries can outlive the navigation snapshot.
+        val photos = readCheckoutPhotos(params.orderKey, diagnostics) ?: return
         val failure = locationFacade.serviceOrderLocationFailure(location)
         if (failure != null) {
             diagnostics.finish("location_rejected", reason = failure.name, isError = true)
@@ -236,14 +242,35 @@ internal class NfcOrderWorkflowDelegate(
             orderKey = params.orderKey,
             nfcDeviceId = params.nfcDeviceId,
             projectIdList = params.porjectIdList,
-            beginImgList = params.beginImgList,
-            endImageList = params.endImageList,
-            centerImgList = params.centerImgList,
+            beginImgList = photos.before,
+            endImageList = photos.after,
+            centerImgList = photos.center,
             location = location,
             endType = params.endType,
             userMessages = userMessages,
             diagnostics = diagnostics,
         )
+    }
+
+    private suspend fun readCheckoutPhotos(orderKey: OrderKey, diagnostics: EndOrderDiagnostics): CheckoutPhotos? {
+        val photos = try {
+            val rows = imageRepository.getImagesByOrderId(orderKey)
+            currentCoroutineContext().ensureActive()
+            CheckoutPhotos.from(orderKey, rows)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            pendingEndOrder = null
+            diagnostics.finish("photo_load_failure", throwable = error, isError = true)
+            uiState.value = reportedNfcError(textResolver.text(R.string.service_checkout_photos_load_failed))
+            return null
+        }
+        if (photos == null) {
+            pendingEndOrder = null
+            diagnostics.finish("photos_incomplete", isError = true)
+            uiState.value = reportedNfcError(textResolver.text(R.string.service_checkout_photos_incomplete))
+        }
+        return photos
     }
 
     private fun validateLocation(location: LocationResult, orderKey: OrderKey, mode: SignInMode, stage: String): Boolean {

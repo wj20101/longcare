@@ -30,6 +30,7 @@ all_smoke() {
   add_class com.ytone.longcare.core.ui.permission.BackgroundSettingsDialogTest
   add_class com.ytone.longcare.platform.location.LocationPermissionUiTest
   add_class com.ytone.longcare.platform.location.AmapContinuousRecoveryTest
+  add_class com.ytone.longcare.features.nfc.NfcIntentLifecycleDeviceTest
   add_class com.ytone.longcare.features.maindashboard.ui.HomeDeviceStatusCardTest
 }
 
@@ -51,6 +52,9 @@ else
       case "$file" in
         .github/workflows/android-ci.yml|.github/actions/*|.github/scripts/*|scripts/quality/select_ci_smoke.sh|scripts/quality/enable_kvm.sh|scripts/quality/run_ci_checks.sh|scripts/quality/run_jvm_tests.sh|*build.gradle.kts|settings.gradle.kts|constants.gradle.kts|gradle.properties|gradle/*|build-logic/*|app/src/main/AndroidManifest.xml|baselineprofile/*)
           all_smoke ;;
+        app/src/main/*/com/ytone/longcare/MainActivity.kt|app/src/main/*/com/ytone/longcare/features/nfc/*|app/src/main/*/com/ytone/longcare/platform/nfc/*|core/common/src/*/com/ytone/longcare/common/utils/Nfc*|core/common/src/*/com/ytone/longcare/common/event/*|app/src/androidTest/*/com/ytone/longcare/features/nfc/*)
+          run_instrumentation=true
+          add_class com.ytone.longcare.features.nfc.NfcIntentLifecycleDeviceTest ;;
         app/src/main/*/com/ytone/longcare/navigation/*|app/src/androidTest/*/com/ytone/longcare/navigation/*)
           run_instrumentation=true
           add_class com.ytone.longcare.navigation.Navigation3StateTest ;;

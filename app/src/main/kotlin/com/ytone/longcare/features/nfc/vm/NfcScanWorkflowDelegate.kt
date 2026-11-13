@@ -46,6 +46,7 @@ internal class NfcScanWorkflowDelegate(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
+        scanSessionId: String? = null,
         onLocationRequest: suspend () -> LocationRequestResult,
     ) {
         val identity = NfcWorkflowIdentity(orderKey, signInMode, endOderInfo)
@@ -56,8 +57,10 @@ internal class NfcScanWorkflowDelegate(
             appEventBus.events.collect { event ->
                 readerUiState.value = reduceReaderUiState(scanMode.value, event, readerUiState.value)
                 if (event is AppEvent.TagScanned && event.isFromActiveSource(scanMode.value) &&
+                    (event.source != ScanSource.SYSTEM_NFC || event.scanSessionId == scanSessionId) &&
                     event.tagId.isNotBlank() && uiState.value is NfcSignInUiState.Initial && pendingNfcData.value == null
                 ) {
+                    confirmedBindingOrder = null
                     processScan(PendingNfcScan(orderKey, signInMode, endOderInfo, event.tagId), onLocationRequest)
                 }
             }
@@ -73,7 +76,7 @@ internal class NfcScanWorkflowDelegate(
             return
         }
         retryScan = scan
-        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION)
         // 先读客户资料；未绑定时先确认，再采集，避免页面等待消耗有效定位。
         if (confirmedBindingOrder == scan.orderKey) {
             requestAndStart(scan, request)
@@ -141,6 +144,18 @@ internal class NfcScanWorkflowDelegate(
     }
 
     private suspend fun bindCurrentLocation(data: PendingNfcData, request: suspend () -> LocationRequestResult) {
+        uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION)
+        // The confirmation dialog and permission recovery can outlive the original detail read.
+        val info = readCurrentNfcOrderInfo(unifiedOrderRepository, data.orderKey, data.signInMode,
+            data.tagId, orderDelegate, userMessages) ?: return
+        if (info.hasBoundLocation()) {
+            retryBinding = null
+            confirmedBindingOrder = data.orderKey
+            val scan = PendingNfcScan(data.orderKey, data.signInMode, data.endOderInfo, data.tagId)
+            retryScan = scan
+            requestAndStart(scan, request)
+            return
+        }
         uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION)
         val result = requestNfcLocation(data.orderKey, data.signInMode, "bind_submit_acquire", userMessages.locationUnavailable, request = request)
         currentCoroutineContext().ensureActive()

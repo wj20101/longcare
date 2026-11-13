@@ -60,6 +60,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 2. `verify-build` 调用 `run_ci_checks.sh` 和 `run_jvm_tests.sh`，上传主应用 Debug APK 和所有模块测试报告，不常规构建 Debug AAB。
 3. `instrumentation-smoke` 在前置构建成功且所选路径需要时执行。API 36 模拟器以真实启动用例为基础，按导航、WebView、服务、销售 UI 等路径追加离线用例；服务/定位及倒计时改动覆盖通知、精确闹钟、全屏提醒的授权回调链，以及首次读取期间 Home/锁屏后的排程与显示暂停；机型后台设置与共享引导改动追加关闭/确认分离、重建恢复、大字体操作可见、显式复查及设置返回刷新测试；共享定位申请验证拒绝不劝导及定位与通知分开。不自动运行需账号/硬件的 opt-in 测试。
    定位采集与诊断改动还选择高德 SDK 边界回归：离线注入错误 4 与成功回调，检查同客户端恢复、停止后的迟到回调隔离、30 秒网络超时与动作间隔切换，以及无后台采集时 `Main.immediate` 动作经真实 Handler 回调完成和释放临时客户端；使用真实 SDK 值类型，不调用真实定位服务器或护理接口。
+   NFC 入口、事件总线及刷卡页面改动选择 `NfcIntentLifecycleDeviceTest`，以合成 Tag、私有事件总线和真实 Activity 生命周期验证启动消费、`singleTop` 新 Intent、重建不重放及同卡再次刷卡，不提交护理接口。
 4. 手动 CI 或差异基线不可用时执行完整基础验证及固定离线冒烟集合，不将 HEAD 自身比较为空视为无需验证。
 5. PR 并发组跨提交稳定，新提交只取消同 PR 旧运行；主分支 Push 不自动取消。CI 本身仅有读取权限，无缓存删除 job。
 
@@ -146,6 +147,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - GitHub Actions：未使用 waiver 默认仅提示，降低环境差异导致的 post-merge 噪声。
 - CI 仍可通过 `LINT_ENFORCE_UNUSED_WAIVERS=true` 强制严格模式。
 - 版本目录产生的 `GradleDependency` 与 `NewerVersionAvailable` 仅作为 advisory 输出，不阻断 CI；依赖升级由每周 Dependabot PR 承载，并单独执行兼容性回归。
+- Wrapper 文件的 `AndroidGradlePluginVersion` 仅在提示 `A newer version of Gradle than … is available` 时作为 advisory；其他来源、兼容性要求或新 warning 仍阻断。Gradle 升级通过独立 PR 验证。
 
 新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；未经明确接受的发布阻断问题不能靠新增 waiver 绕过。
 

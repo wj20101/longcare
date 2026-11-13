@@ -13,11 +13,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.ytone.longcare.common.network.SessionInvalidationHandler
 import com.ytone.longcare.common.utils.NfcManager
 import com.ytone.longcare.common.utils.ToastHelper
-import com.ytone.longcare.common.utils.logD
 import com.ytone.longcare.navigation.MainApp
 import com.ytone.longcare.theme.LongCareTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -45,14 +43,8 @@ class MainActivity : AppCompatActivity() {
 
         observeSessionInvalidations()
         
-        // 【日志调试】检查启动Intent是否是NFC Intent - 与测试功能无关
-        intent?.let {
-            logD("MainActivity", "onCreate - intent action: ${it.action}")
-            if (it.action?.startsWith("android.nfc.action") == true) {
-                logD("MainActivity", "onCreate收到NFC Intent，延迟处理")
-                handleNfcIntent(it, delayMillis = 500)
-            }
-        }
+        // An NFC launch without an attached order is consumed, never retained for a later page.
+        intent?.let { nfcManager.handleNfcIntent(this, it, dispatchAllowed = savedInstanceState == null) }
 
         setContent {
             LongCareTheme {
@@ -68,15 +60,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        logD("MainActivity", "onNewIntent called with action: ${intent.action}")
-        
-        // 【业务功能】延迟处理NFC Intent，确保所有初始化完成 - 与测试功能无关
-        if (intent.action?.startsWith("android.nfc.action") == true) {
-            handleNfcIntent(intent, delayMillis = 100)
-        } else {
-            // 非NFC Intent直接处理
-            nfcManager.handleNfcIntent(this, intent)
-        }
+        nfcManager.handleNfcIntent(this, intent)
     }
 
     private fun observeSessionInvalidations() {
@@ -93,10 +77,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleNfcIntent(intent: Intent, delayMillis: Long) {
-        lifecycleScope.launch {
-            delay(delayMillis)
-            nfcManager.handleNfcIntent(this@MainActivity, intent)
-        }
-    }
 }

@@ -39,6 +39,7 @@ class NfcOrderLocationSessionTest {
         mockkStatic(SystemClock::class)
         every { SystemClock.elapsedRealtime() } returns 1_000
         every { details.getCachedOrderInfo(any()) } returns bound
+        coEvery { details.getOrderInfo(any(), true) } returns ApiResult.Success(bound)
         every { facade.serviceOrderLocationFailure(any()) } returns null
         coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
         coEvery { orders.bindLocation(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
@@ -52,7 +53,7 @@ class NfcOrderLocationSessionTest {
     @Test fun `customer lookup completes before SDK location starts`() = runTest {
         val response = CompletableDeferred<ApiResult<ServiceOrderInfoModel>>()
         every { details.getCachedOrderInfo(key) } returns null
-        coEvery { details.getOrderInfo(key) } coAnswers { response.await() }
+        coEvery { details.getOrderInfo(key, true) } coAnswers { response.await() }
         var requests = 0
         val scan = scan()
         scan.observeScanEvents(key, SignInMode.START_ORDER, null) { requests++; LocationRequestResult.Coordinates(sample) }
@@ -67,6 +68,7 @@ class NfcOrderLocationSessionTest {
 
     @Test fun `unbound customer waits for confirmation before any location acquisition`() = runTest {
         every { details.getCachedOrderInfo(key) } returns ServiceOrderInfoModel()
+        coEvery { details.getOrderInfo(key, true) } returns ApiResult.Success(ServiceOrderInfoModel())
         var requests = 0
         val scan = scan()
         scan.observeScanEvents(key, SignInMode.START_ORDER, null) { requests++; LocationRequestResult.Coordinates(sample) }
@@ -91,7 +93,7 @@ class NfcOrderLocationSessionTest {
             clearMocks(orders, answers = false)
             val old = CompletableDeferred<ApiResult<ServiceOrderInfoModel>>()
             every { details.getCachedOrderInfo(key) } returns null
-            coEvery { details.getOrderInfo(key) } coAnswers { withContext(NonCancellable) { old.await() } }
+            coEvery { details.getOrderInfo(key, true) } coAnswers { withContext(NonCancellable) { old.await() } }
             var oldRequests = 0
             val scan = scan()
             scan.observeScanEvents(key, SignInMode.START_ORDER, null) { oldRequests++; LocationRequestResult.Coordinates(sample) }

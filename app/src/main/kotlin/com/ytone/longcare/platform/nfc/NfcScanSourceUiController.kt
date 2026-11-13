@@ -17,9 +17,9 @@ class NfcScanSourceUiController internal constructor(
     private val nfcManager: NfcManager,
     private val externalRfidReaderManager: ExternalRfidReaderManager,
 ) {
-    fun startSystemNfc(activity: Activity) = nfcManager.enableNfcForActivity(activity)
+    fun startSystemNfc(activity: Activity, sessionId: String) = nfcManager.enableNfcForActivity(activity, sessionId)
 
-    fun stopSystemNfc(activity: Activity) = nfcManager.disableNfcForActivity(activity)
+    fun stopSystemNfc(activity: Activity, sessionId: String) = nfcManager.disableNfcForActivity(activity, sessionId)
 
     fun startExternalReader(activity: Activity) = externalRfidReaderManager.start(activity)
 

@@ -20,6 +20,7 @@ import com.ytone.longcare.model.ServiceTimeSnapshot
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import java.io.IOException
 
 @Singleton
 class UnifiedOrderRepository @Inject constructor(
@@ -49,9 +50,13 @@ class UnifiedOrderRepository @Inject constructor(
             if (!forceRefresh) {
                 memoryCache.get(orderKey)?.let { return@withOrderLock ApiResult.Success(it) }
             }
+            val revision = memoryCache.revision(orderKey.orderId)
             val apiResult =
                 apiService.getOrderInfo(OrderInfoParamModel(orderKey.orderId, orderKey.planId))
             session.requireCurrent(generation)
+            if (memoryCache.revision(orderKey.orderId) != revision) {
+                return@withOrderLock ApiResult.Exception(IOException("Order detail changed during request; reload required"))
+            }
             if (apiResult is ApiResult.Success) {
                 logOrderIdConsistencyIfDebug(
                     source = "getOrderInfo",
@@ -59,7 +64,9 @@ class UnifiedOrderRepository @Inject constructor(
                     payloadOrderId = apiResult.data.orderId
                 )
                 roomSyncDelegate.syncOrderInfoToRoom(orderKey.orderId, apiResult.data)
-                memoryCache.put(orderKey, apiResult.data) { session.isCurrent(generation) }
+                if (!memoryCache.put(orderKey, apiResult.data, revision) { session.isCurrent(generation) }) {
+                    return@withOrderLock ApiResult.Exception(IOException("Order detail changed during persistence; reload required"))
+                }
             }
             apiResult
         }

@@ -56,6 +56,12 @@ class UserSessionTracker @Inject constructor() : FaceVerificationSession {
         if (!isCurrent(expected)) throw CancellationException("User session changed")
     }
 
+    internal fun invalidateOrderInfo(orderId: Long, expectedGeneration: Long?) = synchronized(lock) {
+        // Check and invalidate under the same lock as login/logout. A late mutation from
+        // the previous operator must not evict or interrupt the new operator's reads.
+        if (expectedGeneration != null && isCurrent(expectedGeneration)) orderInfo.invalidate(orderId)
+    }
+
     private fun publish(user: User?) {
         val next = user.identity()
         if (next == identity) {
