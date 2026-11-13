@@ -144,11 +144,14 @@ is_advisory_version_warning() {
   local warning_line="$2"
 
   # Version freshness is tracked by Dependabot and should not block unrelated
-  # changes. Keep this exception narrowly scoped to the version catalog so the
-  # same lint IDs from any other source still go through the blocking gate.
+  # changes. Limit advisory handling to catalog version notices and the Wrapper
+  # update notice; other sources or compatibility messages remain blocking.
   case "${issue_id}" in
     GradleDependency|NewerVersionAvailable)
       [[ "${warning_line}" == *"gradle/libs.versions.toml"* ]]
+      ;;
+    AndroidGradlePluginVersion)
+      [[ "${warning_line}" == *"gradle/wrapper/gradle-wrapper.properties:"*": Warning: A newer version of Gradle than "*" is available: "* ]]
       ;;
     *)
       return 1

@@ -147,6 +147,7 @@ bash scripts/quality/verify_validation_app_isolation.sh .
 - GitHub Actions：未使用 waiver 默认仅提示，降低环境差异导致的 post-merge 噪声。
 - CI 仍可通过 `LINT_ENFORCE_UNUSED_WAIVERS=true` 强制严格模式。
 - 版本目录产生的 `GradleDependency` 与 `NewerVersionAvailable` 仅作为 advisory 输出，不阻断 CI；依赖升级由每周 Dependabot PR 承载，并单独执行兼容性回归。
+- Wrapper 文件的 `AndroidGradlePluginVersion` 仅在提示 `A newer version of Gradle than … is available` 时作为 advisory；其他来源、兼容性要求或新 warning 仍阻断。Gradle 升级通过独立 PR 验证。
 
 新增 warning 应优先修复根因。只有有 Owner、范围和退出条件的已知厂商问题才可进入 waiver；未经明确接受的发布阻断问题不能靠新增 waiver 绕过。
 

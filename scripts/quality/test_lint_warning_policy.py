@@ -69,6 +69,27 @@ class LintWarningPolicyTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("outside waiver allowlist", result.stderr)
 
+    def test_wrapper_new_version_notice_is_advisory(self):
+        result = self.gate(
+            KNOWN
+            + "/home/runner/work/longcare/longcare/gradle/wrapper/gradle-wrapper.properties:4: Warning: "
+            "A newer version of Gradle than 9.9.0 is available: 9.9.1 [AndroidGradlePluginVersion]\n"
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("advisory version warning IDs", result.stdout)
+        self.assertIn("AndroidGradlePluginVersion", result.stdout)
+
+    def test_wrapper_advisory_does_not_accept_other_sources_or_messages(self):
+        for line in (
+            "app/build.gradle.kts:4: Warning: A newer version of Gradle than 9.9.0 is available: 9.9.1 [AndroidGradlePluginVersion]",
+            "gradle/wrapper/gradle-wrapper.properties:4: Warning: You must use a newer version of Gradle [AndroidGradlePluginVersion]",
+            "gradle/wrapper/gradle-wrapper.properties:4: Warning: new issue [NewBlockingIssue]",
+        ):
+            with self.subTest(warning=line):
+                result = self.gate(KNOWN + line + "\n")
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("outside waiver allowlist", result.stderr)
+
     def test_expired_exceptions_still_block(self):
         entries = json.loads(WAIVERS.read_text())["waivers"]
         expired_date = max(date.fromisoformat(entry["review_by"]) for entry in entries) + timedelta(days=1)
