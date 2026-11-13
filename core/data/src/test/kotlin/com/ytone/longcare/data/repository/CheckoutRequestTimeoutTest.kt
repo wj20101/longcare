@@ -113,8 +113,9 @@ class CheckoutRequestTimeoutTest {
                 .addConverterFactory(MoshiConverterFactory.create(Moshi.Builder().add(Unit::class.java, UnitJsonAdapter).build()))
                 .build().create(LongCareApiService::class.java)
             val details = mockk<OrderDetailRepository>()
-            repository = if (timeoutMillis == null) OrderRepositoryImpl(api, details)
-                else OrderRepositoryImpl(api, details, timeoutMillis)
+            val session = UserSessionTracker()
+            repository = if (timeoutMillis == null) OrderRepositoryImpl(api, details, session)
+                else OrderRepositoryImpl(api, details, timeoutMillis, session)
         }
 
         override fun close() {

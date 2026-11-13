@@ -28,9 +28,10 @@ class OrderRepositoryImpl internal constructor(
     private val apiService: LongCareApiService,
     private val orderDetails: OrderDetailRepository,
     private val checkoutTimeoutMillis: Long,
+    private val session: UserSessionTracker,
 ) : OrderRepository {
-    @Inject constructor(apiService: LongCareApiService, orderDetails: OrderDetailRepository) :
-        this(apiService, orderDetails, 30_000L)
+    @Inject constructor(apiService: LongCareApiService, orderDetails: OrderDetailRepository, session: UserSessionTracker) :
+        this(apiService, orderDetails, 30_000L, session)
 
     // Only our own deadline is mapped; parent cancellation still cancels Retrofit and propagates.
     // An EndOrder timeout has an unknown server outcome: never replay it or report success here.
@@ -122,15 +123,22 @@ class OrderRepositoryImpl internal constructor(
         nfc: String,
         longitude: String,
         latitude: String
-    ): ApiResult<Unit> =
-        apiService.bindLocation(
-            BindLocationParamModel(
-                orderId = orderId,
-                nfc = nfc,
-                longitude = longitude,
-                latitude = latitude,
+    ): ApiResult<Unit> {
+        val generation = session.sessionGeneration.value
+        try {
+            return apiService.bindLocation(
+                BindLocationParamModel(
+                    orderId = orderId,
+                    nfc = nfc,
+                    longitude = longitude,
+                    latitude = latitude,
+                )
             )
-        )
+        } finally {
+            // Cancellation / a lost response does not prove the server rejected the binding.
+            session.invalidateOrderInfo(orderId, generation)
+        }
+    }
 
     override suspend fun checkEndOrder(
         orderId: Long,

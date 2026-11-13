@@ -77,6 +77,7 @@ internal fun resolveCopyRes(key: NfcWorkflowCopyKey): Int = when (key) {
 
 @StringRes
 internal fun resolveLoadingCopyRes(reason: NfcLoadingReason): Int = when (reason) {
+    NfcLoadingReason.CHECKING_INFORMATION -> R.string.nfc_loading_checking_information
     NfcLoadingReason.CARD_RECOGNIZED_FETCHING_LOCATION -> R.string.nfc_loading_card_recognized_fetching_location
     NfcLoadingReason.WAITING_FOR_LOCATION_PERMISSION -> R.string.nfc_loading_waiting_location_permission
     NfcLoadingReason.FETCHING_LOCATION -> R.string.nfc_loading_fetching_location

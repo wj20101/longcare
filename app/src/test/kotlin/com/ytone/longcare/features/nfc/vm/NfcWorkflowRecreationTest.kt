@@ -36,6 +36,7 @@ class NfcWorkflowRecreationTest {
     private val facade = mockk<LocationFacade>()
     private val lifecycle = mockk<ServiceOrderLifecycle>(relaxed = true)
     private val countdown = mockk<ServiceCountdownSystemGateway>(relaxed = true)
+    private val images = nfcTestImageRepository()
     private val key = OrderKey(1)
     private val endInfo = EndOderInfo(projectIdList = listOf(7), beginImgList = listOf("before"),
         centerImgList = listOf("middle"), endImgList = listOf("after"))
@@ -52,6 +53,8 @@ class NfcWorkflowRecreationTest {
         every { facade.serviceOrderLocationFailure(any()) } returns null
         every { details.getCachedOrderInfo(any()) } returns
             ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31"))
+        coEvery { details.getOrderInfo(any(), true) } returns
+            ApiResult.Success(ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31")))
         coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
         coEvery { orders.bindLocation(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
         coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Failure(3005, "confirm")
@@ -63,7 +66,7 @@ class NfcWorkflowRecreationTest {
             every { text(R.string.nfc_submission_interrupted) } returns "submission unknown"
         }
         vm = NfcWorkflowViewModel(orders, lifecycle, bus, mockk(relaxed = true), facade,
-            details, mockk(relaxed = true), countdown,
+            details, images, countdown,
             mockk { every { isNfcSupported() } returns true }, text)
     }
 
@@ -76,13 +79,53 @@ class NfcWorkflowRecreationTest {
     private fun observe(mode: SignInMode = SignInMode.START_ORDER, order: OrderKey = key,
                         info: EndOderInfo? = if (mode == SignInMode.END_ORDER) endInfo else null,
                         request: suspend () -> LocationRequestResult = { LocationRequestResult.Coordinates(sample) }) {
-        vm.observeScanEvents(order, mode, info, request)
+        vm.observeScanEvents(order, mode, info, onLocationRequest = request)
     }
 
     private suspend fun TestScope.scan() {
         runCurrent()
         bus.send(AppEvent.TagScanned("tag", ScanSource.SYSTEM_NFC))
         runCurrent()
+    }
+
+    @Test fun `read only detail refresh interrupted by recreation can retry without an unknown submission`() = runTest {
+        var reads = 0
+        coEvery { details.getOrderInfo(key, true) } coAnswers {
+            if (++reads == 1) awaitCancellation()
+            ApiResult.Success(ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31")))
+        }
+        observe()
+        scan()
+        assertEquals(NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION), vm.uiState.value)
+        vm.stopScanRequests(preserveWorkflow = true)
+        observe()
+        runCurrent()
+        assertEquals("location interrupted", (vm.uiState.value as NfcSignInUiState.Error).message)
+        vm.retryLocation { LocationRequestResult.Coordinates(sample) }
+        runCurrent()
+        assertTrue(vm.uiState.value is NfcSignInUiState.Success)
+        assertEquals(2, reads)
+        coVerify(exactly = 1) { orders.checkOrder(any(), any(), any(), any()) }
+    }
+
+    @Test fun `photo read interrupted by recreation retains confirmed end data for an explicit fresh retry`() = runTest {
+        var reads = 0
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        coEvery { images.getImagesByOrderId(key) } coAnswers {
+            if (++reads == 1) awaitCancellation()
+            uploadedNfcPhotos(key.orderId)
+        }
+        observe(SignInMode.END_ORDER)
+        scan()
+        assertEquals(NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION), vm.uiState.value)
+        vm.stopScanRequests(preserveWorkflow = true)
+        observe(SignInMode.END_ORDER)
+        runCurrent()
+        vm.retryLocation { LocationRequestResult.Coordinates(sample) }
+        runCurrent()
+        assertTrue(vm.uiState.value is NfcSignInUiState.Success)
+        coVerify(exactly = 1) { orders.checkEndOrder(any(), any()) }
+        coVerify(exactly = 1) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test fun `same workflow rebind retains confirmed success and never checks again`() = runTest {
@@ -139,6 +182,7 @@ class NfcWorkflowRecreationTest {
 
     @Test fun `pending binding and already confirmed binding survive without duplicate binding`() = runTest {
         every { details.getCachedOrderInfo(key) } returns ServiceOrderInfoModel()
+        coEvery { details.getOrderInfo(key, true) } returns ApiResult.Success(ServiceOrderInfoModel())
         observe()
         scan()
         val pending = requireNotNull(vm.pendingNfcData.value)
@@ -231,6 +275,7 @@ class NfcWorkflowRecreationTest {
         assertEquals(NfcSignInUiState.Initial, vm.uiState.value)
         assertFalse(vm.resumePendingPermissionScan { error("stale permission") })
         every { details.getCachedOrderInfo(key) } returns ServiceOrderInfoModel()
+        coEvery { details.getOrderInfo(key, true) } returns ApiResult.Success(ServiceOrderInfoModel())
         scan()
         val pending = requireNotNull(vm.pendingNfcData.value)
         vm.stopScanRequests()
@@ -243,6 +288,7 @@ class NfcWorkflowRecreationTest {
 
     @Test fun `unknown binding submission is not treated as an interrupted location retry`() = runTest {
         every { details.getCachedOrderInfo(key) } returns ServiceOrderInfoModel()
+        coEvery { details.getOrderInfo(key, true) } returns ApiResult.Success(ServiceOrderInfoModel())
         val response = CompletableDeferred<ApiResult<Unit>>()
         coEvery { orders.bindLocation(any(), any(), any(), any()) } coAnswers {
             withContext(NonCancellable) { response.await() }

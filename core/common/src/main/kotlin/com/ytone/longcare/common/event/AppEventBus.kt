@@ -1,6 +1,5 @@
 package com.ytone.longcare.common.event
 
-import android.content.Intent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
@@ -26,8 +25,7 @@ enum class ScanSource {
 }
 
 sealed class AppEvent {
-    data class NfcIntentReceived(val intent: Intent) : AppEvent()
-    data class TagScanned(val tagId: String, val source: ScanSource) : AppEvent()
+    data class TagScanned(val tagId: String, val source: ScanSource, val scanSessionId: String? = null) : AppEvent()
     data class ReaderConnectionChanged(
         val connected: Boolean,
         val source: ScanSource = ScanSource.EXTERNAL_RFID,

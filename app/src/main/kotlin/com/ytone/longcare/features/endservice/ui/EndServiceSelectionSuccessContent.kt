@@ -24,16 +24,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ytone.longcare.common.utils.KLogger
 import com.ytone.longcare.R
 import com.ytone.longcare.common.utils.singleClick
 import com.ytone.longcare.features.endservice.api.EndServiceSelectionActions
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionViewModel
-import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
-import com.ytone.longcare.model.ImageTaskType
+import com.ytone.longcare.features.endservice.vm.CheckoutPreparation
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceProjectM
-import com.ytone.longcare.navigation.EndOderInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.material3.Text
@@ -42,7 +41,6 @@ import androidx.compose.material3.Text
 internal fun BoxScope.EndServiceSelectionSuccessContent(
     actions: EndServiceSelectionActions,
     viewModel: EndServiceSelectionViewModel,
-    countdownViewModel: ServiceCountdownViewModel,
     orderKey: OrderKey,
     endType: Int,
     projectList: List<ServiceProjectM>,
@@ -50,6 +48,7 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
     context: Context,
     scope: CoroutineScope
 ) {
+    val preparingCheckout by viewModel.isPreparingCheckout.collectAsStateWithLifecycle()
     val totalDuration = projectList
         .filter { selectedProjectIds.contains(it.projectId) }
         .sumOf { it.serviceTime }
@@ -111,7 +110,7 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
             val isAllSelected = projectList.isNotEmpty() && selectedProjectIds.size == projectList.size
             SelectAllButton(
                 isAllSelected = isAllSelected,
-                enabled = true,
+                enabled = !preparingCheckout,
                 onClick = {
                     if (isAllSelected) viewModel.deselectAll() else viewModel.selectAll()
                 },
@@ -122,7 +121,7 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
 
             NextStepButton(
                 text = stringResource(R.string.end_service_confirm_action),
-                enabled = selectedProjectIds.isNotEmpty(),
+                enabled = selectedProjectIds.isNotEmpty() && !preparingCheckout,
                 onClick = singleClick {
                     if (selectedProjectIds.isEmpty()) {
                         Toast.makeText(
@@ -134,26 +133,11 @@ internal fun BoxScope.EndServiceSelectionSuccessContent(
                     }
 
                     scope.launch {
-                        val uploadedImages = countdownViewModel.getUploadedImagesSuspend(orderKey)
-                        val beginImgList = uploadedImages[ImageTaskType.BEFORE_CARE]?.mapNotNull { it.key } ?: emptyList()
-                        val centerImgList = uploadedImages[ImageTaskType.CENTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-                        val endImgList = uploadedImages[ImageTaskType.AFTER_CARE]?.mapNotNull { it.key } ?: emptyList()
-
-                        KLogger.i(
-                            "EndServiceSelection",
-                            "Navigating to NFC. Images - Begin: ${beginImgList.size}, Center: ${centerImgList.size}, End: ${endImgList.size}"
-                        )
-
-                        actions.onNavigateToNfcSignInForEndOrder(
-                            orderKey,
-                            EndOderInfo(
-                                projectIdList = viewModel.getConfirmedProjectIds(),
-                                beginImgList = beginImgList,
-                                centerImgList = centerImgList,
-                                endImgList = endImgList,
-                                endType = endType
-                            )
-                        )
+                        when (val result = viewModel.prepareCheckout(orderKey, endType)) {
+                            is CheckoutPreparation.Ready -> actions.onNavigateToNfcSignInForEndOrder(orderKey, result.info)
+                            is CheckoutPreparation.Rejected -> Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                            null -> Unit
+                        }
                     }
                 },
                 modifier = Modifier.weight(1f)

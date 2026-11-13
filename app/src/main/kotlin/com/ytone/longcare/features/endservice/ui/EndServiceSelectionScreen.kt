@@ -21,7 +21,6 @@ import com.ytone.longcare.R
 import com.ytone.longcare.features.endservice.api.EndServiceSelectionActions
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionUiState
 import com.ytone.longcare.features.endservice.vm.EndServiceSelectionViewModel
-import com.ytone.longcare.features.servicecountdown.vm.ServiceCountdownViewModel
 import com.ytone.longcare.navigation.EndOderInfo
 import com.ytone.longcare.theme.bgGradientBrush
 import androidx.compose.ui.platform.LocalContext
@@ -37,7 +36,6 @@ fun EndServiceSelectionScreen(
     initialProjectIdList: List<Int>,
     endType: Int,
     viewModel: EndServiceSelectionViewModel = hiltViewModel(),
-    countdownViewModel: ServiceCountdownViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val projectList by viewModel.projectList.collectAsStateWithLifecycle()
@@ -48,7 +46,7 @@ fun EndServiceSelectionScreen(
 
 
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(orderKey, initialProjectIdList) {
         viewModel.initData(orderKey, initialProjectIdList)
     }
 
@@ -102,7 +100,6 @@ fun EndServiceSelectionScreen(
                     EndServiceSelectionSuccessContent(
                         actions = actions,
                         viewModel = viewModel,
-                        countdownViewModel = countdownViewModel,
                         orderKey = orderKey,
                         endType = endType,
                         projectList = projectList,

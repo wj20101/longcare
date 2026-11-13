@@ -99,6 +99,19 @@ class SelectionTest(unittest.TestCase):
         result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/servicecountdown/ui/ServiceCountdownPermissionFlowTest.kt")
         self.assertIn("ServiceCountdownPermissionFlowTest", result["smoke_test_classes"])
 
+    def test_nfc_ingress_and_lifecycle_changes_select_native_card_regression(self):
+        for path in [
+            "app/src/main/kotlin/com/ytone/longcare/MainActivity.kt",
+            "core/common/src/main/kotlin/com/ytone/longcare/common/utils/NfcManager.kt",
+            "core/common/src/main/kotlin/com/ytone/longcare/common/event/AppEventBus.kt",
+            "app/src/main/kotlin/com/ytone/longcare/features/nfc/ui/NfcWorkflowEffects.kt",
+            "app/src/androidTest/kotlin/com/ytone/longcare/features/nfc/NfcIntentLifecycleDeviceTest.kt",
+        ]:
+            with self.subTest(path=path):
+                result = self.select(path)
+                self.assertEqual("true", result["run_instrumentation"])
+                self.assertIn("NfcIntentLifecycleDeviceTest", result["smoke_test_classes"])
+
     def test_alarm_fallback_test_change_selects_its_own_class(self):
         result = self.select("app/src/androidTest/kotlin/com/ytone/longcare/features/countdown/manager/CountdownAlarmPermissionFallbackIntegrationTest.kt")
         self.assertEqual("true", result["run_instrumentation"])

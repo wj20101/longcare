@@ -96,6 +96,7 @@ class NfcWorkflowViewModel @Inject constructor(
     private var r65cCompletionJob: kotlinx.coroutines.Job? = null
     private var orderActionJob: kotlinx.coroutines.Job? = null
     private var activeWorkflow: NfcWorkflowIdentity? = null
+    private var attachedScanSessionId: String? = null
 
     private fun launchOrderDelegateAction(action: suspend NfcOrderWorkflowDelegate.() -> Unit) {
         if (orderActionJob?.isActive == true) return
@@ -135,6 +136,7 @@ class NfcWorkflowViewModel @Inject constructor(
         orderKey: OrderKey,
         signInMode: SignInMode,
         endOderInfo: EndOderInfo?,
+        scanSessionId: String? = null,
         onLocationRequest: suspend () -> LocationRequestResult,
     ) {
         val identity = NfcWorkflowIdentity(orderKey, signInMode, endOderInfo)
@@ -145,7 +147,8 @@ class NfcWorkflowViewModel @Inject constructor(
             orderActionJob = null
         }
         activeWorkflow = identity
-        scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, onLocationRequest)
+        attachedScanSessionId = scanSessionId
+        scanDelegate.observeScanEvents(orderKey, signInMode, endOderInfo, scanSessionId, onLocationRequest)
     }
 
     fun resumePendingPermissionScan(onLocationRequest: suspend () -> LocationRequestResult): Boolean {
@@ -162,7 +165,9 @@ class NfcWorkflowViewModel @Inject constructor(
         orderDelegate.locationPermissionDenied()
     }
 
-    fun stopScanRequests(preserveWorkflow: Boolean = false) {
+    fun stopScanRequests(preserveWorkflow: Boolean = false, scanSessionId: String? = null) {
+        if (scanSessionId != null && attachedScanSessionId != scanSessionId) return
+        attachedScanSessionId = null
         orderActionJob?.cancel()
         orderActionJob = null
         cancelR65cCompletionJob()

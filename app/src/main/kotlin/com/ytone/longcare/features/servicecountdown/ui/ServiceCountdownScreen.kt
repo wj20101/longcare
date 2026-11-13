@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -23,6 +24,9 @@ import com.ytone.longcare.features.servicecountdown.model.ServiceCountdownState
 import com.ytone.longcare.model.OrderKey
 import androidx.compose.ui.res.stringResource
 import com.ytone.longcare.R
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import com.ytone.longcare.common.utils.logE
 
 /**
  * 服务倒计时页面
@@ -62,8 +66,11 @@ fun ServiceCountdownScreen(
     val formattedTime by countdownViewModel.formattedTime.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var checkingPhotos by remember(orderKey) { mutableStateOf(false) }
+    val photoLoadFailedMessage = stringResource(R.string.service_checkout_photos_load_failed)
     val lifecycleOwner = LocalLifecycleOwner.current
-    val photoRequiredMessage = stringResource(R.string.service_countdown_photo_required)
+    val photoRequiredMessage = stringResource(R.string.service_checkout_photos_incomplete)
     
     // 订单状态异常弹窗状态
     var showOrderStateErrorDialog by remember { mutableStateOf(false) }
@@ -143,21 +150,36 @@ fun ServiceCountdownScreen(
             actions.onNavigateToPhotoUpload(orderKey)
         },
         onBottomActionClick = {
-            handleServiceCountdownBottomAction(
-                countdownState = countdownState,
-                validatePhotosUploaded = countdownViewModel::validatePhotosUploaded,
-                photoRequiredMessage = photoRequiredMessage,
-                onShowToast = context::showShortToast,
-                onRequireConfirm = { showConfirmDialog = true },
-                onEndServiceDirectly = {
-                    handleEndService(
-                        orderKey = orderKey,
-                        projectIdList = projectIdList,
-                        actions = actions,
-                        endType = 1
-                    )
+            if (!checkingPhotos) {
+                checkingPhotos = true
+                scope.launch {
+                    try {
+                        val hasPhotos = countdownViewModel.validatePhotosUploaded(orderKey)
+                        handleServiceCountdownBottomAction(
+                            countdownState = countdownState,
+                            validatePhotosUploaded = { hasPhotos },
+                            photoRequiredMessage = photoRequiredMessage,
+                            onShowToast = context::showShortToast,
+                            onRequireConfirm = { showConfirmDialog = true },
+                            onEndServiceDirectly = {
+                                handleEndService(
+                                    orderKey = orderKey,
+                                    projectIdList = projectIdList,
+                                    actions = actions,
+                                    endType = 1
+                                )
+                            }
+                        )
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        logE("读取签退照片失败", throwable = error)
+                        context.showShortToast(photoLoadFailedMessage)
+                    } finally {
+                        checkingPhotos = false
+                    }
                 }
-            )
+            }
         }
     )
 

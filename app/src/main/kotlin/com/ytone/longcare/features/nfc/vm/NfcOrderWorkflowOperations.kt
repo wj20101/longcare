@@ -81,7 +81,7 @@ internal suspend fun performEndOrderWorkflow(
     userMessages: NfcUserMessages,
     diagnostics: EndOrderDiagnostics,
 ) {
-    uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.SUBMITTING)
+    uiState.value = NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION)
     val endOrderParams = createEndOrderParams(
         orderKey = orderKey,
         nfcDeviceId = nfcDeviceId,

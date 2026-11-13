@@ -12,6 +12,7 @@ import com.ytone.longcare.domain.repository.OrderDetailRepository
 import com.ytone.longcare.model.LocationResult
 import com.ytone.longcare.model.OrderKey
 import com.ytone.longcare.model.ServiceOrderInfoModel
+import com.ytone.longcare.model.UserInfoM
 import com.ytone.longcare.model.result.ApiResult
 import com.ytone.longcare.navigation.SignInMode
 import io.mockk.coEvery
@@ -61,7 +62,11 @@ class NfcBindingLocationSessionTest {
         every { facade.serviceOrderLocationFailure(any()) } returns null
         // Deliberately retain the pre-bind cache: retries must honor the confirmed server outcome.
         every { details.getCachedOrderInfo(any()) } returns ServiceOrderInfoModel()
-        coEvery { orders.bindLocation(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
+        val boundOrders = mutableSetOf<Long>()
+        coEvery { details.getOrderInfo(any(), true) } coAnswers {
+            ApiResult.Success(if (firstArg<OrderKey>().orderId in boundOrders) ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31")) else ServiceOrderInfoModel())
+        }
+        coEvery { orders.bindLocation(any(), any(), any(), any()) } coAnswers { boundOrders += firstArg<Long>(); ApiResult.Success(Unit) }
         coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
     }
 
@@ -199,7 +204,7 @@ class NfcBindingLocationSessionTest {
         val scan = NfcScanWorkflowDelegate(facade, request, bus, details, orders, backgroundScope,
             state, pending, MutableStateFlow(ScanMode.SYSTEM_NFC), MutableStateFlow(ReaderUiState.NotRequired),
             orderDelegate, messages)
-        scan.observeScanEvents(key, SignInMode.START_ORDER, null, request)
+        scan.observeScanEvents(key, SignInMode.START_ORDER, null, onLocationRequest = request)
         runCurrent()
         bus.send(AppEvent.TagScanned("tag", ScanSource.SYSTEM_NFC))
         runCurrent()

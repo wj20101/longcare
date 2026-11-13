@@ -34,7 +34,7 @@ class NfcLocationFreshnessTest {
     private val text = mockk<ResourceTextResolver> { every { text(any()) } returns "location insufficient" }
     private val details = mockk<OrderDetailRepository>(relaxed = true)
     private val delegate = NfcOrderWorkflowDelegate(facade, text, lifecycle, orders,
-        details, mockk(relaxed = true), mockk(relaxed = true), state, messages)
+        details, nfcTestImageRepository(), mockk(relaxed = true), state, messages)
     private val sample = LocationResult(31.0, 121.0, "test", 8f, "GCJ02", 5, 1,
         locationTime = System.currentTimeMillis(), receivedAt = System.currentTimeMillis(), receivedElapsedRealtime = 1_000)
     private val key = OrderKey(1)
@@ -50,6 +50,7 @@ class NfcLocationFreshnessTest {
         }
         coEvery { facade.acquireServiceOrderLocation() } returns LocationAcquisition.Success(sample)
         every { details.getCachedOrderInfo(any()) } returns ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31"))
+        coEvery { details.getOrderInfo(any(), true) } returns ApiResult.Success(ServiceOrderInfoModel(userInfo = UserInfoM(lng = "121", lat = "31")))
     }
     @After fun cleanup() = unmockkAll()
 
@@ -105,6 +106,7 @@ class NfcLocationFreshnessTest {
     }
 
     @Test fun `binding confirmation uses fresh coordinates instead of old preview`() = runTest {
+        coEvery { details.getOrderInfo(key, true) } returns ApiResult.Success(ServiceOrderInfoModel())
         val pending = MutableStateFlow<PendingNfcData?>(PendingNfcData(key, SignInMode.START_ORDER, null, "tag"))
         coEvery { orders.bindLocation(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
         coEvery { orders.checkOrder(any(), any(), any(), any()) } returns ApiResult.Success(Unit)
