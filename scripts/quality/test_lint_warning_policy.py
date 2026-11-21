@@ -90,6 +90,31 @@ class LintWarningPolicyTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode)
                 self.assertIn("outside waiver allowlist", result.stderr)
 
+    def test_agp_catalog_new_version_notices_are_advisory(self):
+        for coordinate in (
+            "com.android.application", "com.android.library", "com.android.test", "com.android.tools.build:gradle",
+        ):
+            with self.subTest(coordinate=coordinate):
+                result = self.gate(
+                    KNOWN + "/home/runner/work/longcare/longcare/gradle/libs.versions.toml:3: Warning: "
+                    f"A newer version of {coordinate} than 9.5.1 is available: 9.5.2 [AndroidGradlePluginVersion]\n"
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("advisory version warning IDs", result.stdout)
+                self.assertIn("AndroidGradlePluginVersion", result.stdout)
+
+    def test_agp_advisory_does_not_accept_compatibility_warnings_or_other_sources(self):
+        for line in (
+            "gradle/libs.versions.toml:3: Warning: You must use a newer version of the Android Gradle plugin [AndroidGradlePluginVersion]",
+            "app/build.gradle.kts:3: Warning: A newer version of com.android.application than 9.5.1 is available: 9.5.2 [AndroidGradlePluginVersion]",
+            "gradle/libs.versions.toml:3: Warning: A newer version of org.jetbrains.kotlin.android than 2.2.0 is available: 2.3.0 [AndroidGradlePluginVersion]",
+            "gradle/libs.versions.toml:3: Warning: A newer version of com.android.application than 9.5.1 is available: 9.5.2 [NewBlockingIssue]",
+        ):
+            with self.subTest(warning=line):
+                result = self.gate(KNOWN + line + "\n")
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("outside waiver allowlist", result.stderr)
+
     def test_expired_exceptions_still_block(self):
         entries = json.loads(WAIVERS.read_text())["waivers"]
         expired_date = max(date.fromisoformat(entry["review_by"]) for entry in entries) + timedelta(days=1)

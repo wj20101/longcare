@@ -69,10 +69,12 @@ internal class NfcScanWorkflowDelegate(
 
     private suspend fun processScan(scan: PendingNfcScan, request: suspend () -> LocationRequestResult) {
         if (scan.signInMode == SignInMode.END_ORDER) {
-            retryScan = null
             val info = scan.endOderInfo ?: return
+            // Only the read-only precheck may be retried from the original scan.
+            retryScan = scan
             orderDelegate.endOrder(scan.orderKey, scan.tagId, info.projectIdList, info.beginImgList,
-                info.endImgList, info.centerImgList, info.endType, request)
+                info.endImgList, info.centerImgList, info.endType,
+                onPrecheckFinished = { retryScan = null }, requestLocation = request)
             return
         }
         retryScan = scan

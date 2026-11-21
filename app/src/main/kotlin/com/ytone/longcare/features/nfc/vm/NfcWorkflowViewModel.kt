@@ -184,7 +184,7 @@ class NfcWorkflowViewModel @Inject constructor(
         scanDelegate.confirmLocationActivation(data, request)
 
     fun retryLocation(request: suspend () -> LocationRequestResult) {
-        if (activeWorkflow == null) return
+        if (activeWorkflow == null || _uiState.value !is NfcSignInUiState.Error) return
         if (orderDelegate.hasPendingEndLocation) launchOrderDelegateAction { retryEndLocation(request) }
         else if (!scanDelegate.retryLocation(request)) resetState()
     }

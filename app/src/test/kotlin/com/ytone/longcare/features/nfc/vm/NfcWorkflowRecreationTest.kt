@@ -27,6 +27,7 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.net.SocketTimeoutException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NfcWorkflowRecreationTest {
@@ -108,6 +109,88 @@ class NfcWorkflowRecreationTest {
         coVerify(exactly = 1) { orders.checkOrder(any(), any(), any(), any()) }
     }
 
+    @Test fun `read only end precheck interrupted by recreation retries with the new location callback`() = runTest {
+        var checks = 0
+        coEvery { orders.checkEndOrder(any(), any()) } coAnswers {
+            if (++checks == 1) awaitCancellation()
+            ApiResult.Success(Unit)
+        }
+        observe(SignInMode.END_ORDER, request = { error("old Activity callback") })
+        scan()
+        assertEquals(NfcSignInUiState.Loading(NfcLoadingReason.CHECKING_INFORMATION), vm.uiState.value)
+        vm.stopScanRequests(preserveWorkflow = true)
+        observe(SignInMode.END_ORDER, request = { error("reattachment must not replay the scan") })
+        runCurrent()
+        assertEquals("location interrupted", (vm.uiState.value as NfcSignInUiState.Error).message)
+        coVerify(exactly = 1) { orders.checkEndOrder(any(), any()) }
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+
+        var locations = 0
+        val location = CompletableDeferred<LocationRequestResult>()
+        val requestLocation: suspend () -> LocationRequestResult = {
+            locations++
+            location.await()
+        }
+        vm.retryLocation(requestLocation)
+        runCurrent()
+        assertEquals(NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION), vm.uiState.value)
+        // A second tap from the old error UI can arrive while this location request is active.
+        vm.retryLocation(requestLocation)
+        runCurrent()
+        location.complete(LocationRequestResult.Coordinates(sample))
+        runCurrent()
+        assertTrue(vm.uiState.value is NfcSignInUiState.Success)
+        assertEquals(1, locations)
+        coVerify(exactly = 2) { orders.checkEndOrder(1, listOf(7)) }
+        coVerify(exactly = 1) {
+            orders.endOrder(1, "tag", listOf(7), listOf("before"), listOf("middle"), listOf("after"),
+                "121.0", "31.0", 1)
+        }
+    }
+
+    @Test fun `retried end precheck still requires server confirmation and retains the end type`() = runTest {
+        var checks = 0
+        coEvery { orders.checkEndOrder(any(), any()) } coAnswers {
+            if (++checks == 1) awaitCancellation()
+            ApiResult.Failure(3005, "confirm")
+        }
+        val info = endInfo.copy(endType = 2)
+        observe(SignInMode.END_ORDER, info = info)
+        scan()
+        vm.stopScanRequests(preserveWorkflow = true)
+        observe(SignInMode.END_ORDER, info = info)
+        runCurrent()
+        vm.retryLocation { error("confirmation must precede location acquisition") }
+        runCurrent()
+        val confirmation = vm.uiState.value as NfcSignInUiState.ShowConfirmDialog
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        vm.confirmEndOrder(confirmation.endOrderParams) { LocationRequestResult.Coordinates(sample) }
+        runCurrent()
+        assertTrue(vm.uiState.value is NfcSignInUiState.Success)
+        coVerify(exactly = 2) { orders.checkEndOrder(1, listOf(7)) }
+        coVerify(exactly = 1) {
+            orders.endOrder(1, "tag", listOf(7), listOf("before"), listOf("middle"), listOf("after"),
+                "121.0", "31.0", 2)
+        }
+    }
+
+    @Test fun `exit or order switch discards an interrupted end precheck`() = runTest {
+        coEvery { orders.checkEndOrder(any(), any()) } coAnswers { awaitCancellation() }
+        for ((preserve, nextOrder) in listOf(false to key, true to OrderKey(2))) {
+            vm.stopScanRequests()
+            observe(SignInMode.END_ORDER)
+            scan()
+            vm.stopScanRequests(preserveWorkflow = preserve)
+            observe(SignInMode.END_ORDER, order = nextOrder)
+            runCurrent()
+            vm.retryLocation { error("the old order must not be retried") }
+            runCurrent()
+            assertEquals(NfcSignInUiState.Initial, vm.uiState.value)
+        }
+        coVerify(exactly = 2) { orders.checkEndOrder(any(), any()) }
+        coVerify(exactly = 0) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
     @Test fun `photo read interrupted by recreation retains confirmed end data for an explicit fresh retry`() = runTest {
         var reads = 0
         coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
@@ -126,6 +209,27 @@ class NfcWorkflowRecreationTest {
         assertTrue(vm.uiState.value is NfcSignInUiState.Success)
         coVerify(exactly = 1) { orders.checkEndOrder(any(), any()) }
         coVerify(exactly = 1) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `retry after resumed checkout times out requires a fresh scan`() = runTest {
+        coEvery { orders.checkEndOrder(any(), any()) } returns ApiResult.Success(Unit)
+        coEvery { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            ApiResult.Exception(SocketTimeoutException())
+        observe(SignInMode.END_ORDER, request = { awaitCancellation() })
+        scan()
+        assertEquals(NfcSignInUiState.Loading(NfcLoadingReason.FETCHING_LOCATION), vm.uiState.value)
+        vm.stopScanRequests(preserveWorkflow = true)
+        observe(SignInMode.END_ORDER)
+        runCurrent()
+
+        vm.retryLocation { LocationRequestResult.Coordinates(sample) }
+        runCurrent()
+        assertTrue(vm.uiState.value is NfcSignInUiState.Error)
+        vm.retryLocation { LocationRequestResult.Coordinates(sample) }
+        runCurrent()
+        coVerify(exactly = 1) { orders.checkEndOrder(any(), any()) }
+        coVerify(exactly = 1) { orders.endOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        assertEquals(NfcSignInUiState.Initial, vm.uiState.value)
     }
 
     @Test fun `same workflow rebind retains confirmed success and never checks again`() = runTest {

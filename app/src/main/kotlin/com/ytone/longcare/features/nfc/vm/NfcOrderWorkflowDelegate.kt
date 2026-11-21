@@ -91,6 +91,7 @@ internal class NfcOrderWorkflowDelegate(
         endImageList: List<String>,
         centerImgList: List<String> = emptyList(),
         endType: Int = 1,
+        onPrecheckFinished: () -> Unit = {},
         requestLocation: suspend () -> LocationRequestResult = ::acquireLocation,
     ) {
         pendingEndOrder = null
@@ -108,6 +109,7 @@ internal class NfcOrderWorkflowDelegate(
                 uiState = uiState,
                 userMessages = userMessages,
                 diagnostics = diagnostics,
+                onPrecheckFinished = onPrecheckFinished,
                 onCheckSuccess = {
                     executeEndOrder(EndOrderParams(orderKey, nfcDeviceId, projectIdList,
                         beginImgList, endImageList, centerImgList, endType = endType), requestLocation, diagnostics)
