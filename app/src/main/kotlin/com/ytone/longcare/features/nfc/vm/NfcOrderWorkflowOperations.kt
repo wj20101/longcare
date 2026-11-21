@@ -77,6 +77,7 @@ internal suspend fun performEndOrderWorkflow(
     centerImgList: List<String>,
     endType: Int,
     uiState: MutableStateFlow<NfcSignInUiState>,
+    onPrecheckFinished: () -> Unit,
     onCheckSuccess: suspend () -> Unit,
     userMessages: NfcUserMessages,
     diagnostics: EndOrderDiagnostics,
@@ -96,6 +97,7 @@ internal suspend fun performEndOrderWorkflow(
         orderRepository.checkEndOrder(orderId = orderKey.orderId, projectIdList = projectIdList)
     }
     currentCoroutineContext().ensureActive()
+    onPrecheckFinished()
     when (checkResult) {
         is ApiResult.Success -> onCheckSuccess()
         is ApiResult.Exception -> {
