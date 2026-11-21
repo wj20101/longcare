@@ -151,7 +151,12 @@ is_advisory_version_warning() {
       [[ "${warning_line}" == *"gradle/libs.versions.toml"* ]]
       ;;
     AndroidGradlePluginVersion)
-      [[ "${warning_line}" == *"gradle/wrapper/gradle-wrapper.properties:"*": Warning: A newer version of Gradle than "*" is available: "* ]]
+      local catalog_agp_notice_pattern
+      catalog_agp_notice_pattern='(^|/)gradle/libs\.versions\.toml:[0-9]+: Warning: A newer version of '
+      catalog_agp_notice_pattern+='(com\.android\.(application|library|test)|com\.android\.tools\.build:gradle)'
+      catalog_agp_notice_pattern+=' than [^[:space:]]+ is available: [^[:space:]]+ \[AndroidGradlePluginVersion\]$'
+      [[ "${warning_line}" == *"gradle/wrapper/gradle-wrapper.properties:"*": Warning: A newer version of Gradle than "*" is available: "* ]] ||
+        [[ "${warning_line}" =~ ${catalog_agp_notice_pattern} ]]
       ;;
     *)
       return 1
