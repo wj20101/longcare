@@ -23,7 +23,7 @@ androidxWindow = "1.5.1"
 androidxWebkit = "1.18.0"
 
 # Compose
-composeBom = "2026.09.00"
+composeBom = "2026.11.01"
 
 # Camera and machine learning
 androidxCamera = "1.6.2"
